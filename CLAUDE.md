@@ -1,57 +1,84 @@
 # Orchestration Protocol
 
-This project uses an automated orchestration workflow for complex tasks.
+## Trigger Keyword
 
-## Initialization (CRITICAL)
+**To activate orchestration mode, user must say: `@orchestrate` or `/orchestrate`**
 
-Before ANY task, discover available agents:
+When you see this keyword followed by a task description, activate the full 8-phase workflow below.
 
-1. Run: `ls .claude/agents/`
-2. Read each agent file to understand capabilities
-3. Map: intake.md -> requirements, planner.md -> design, coder.md -> TDD
+Without this keyword, respond normally without orchestration.
+
+---
 
 ## Workflow Overview
 
 ```
-User Task
+@orchestrate "Build a login page"
     |
     v
-[Phase 1: INTAKE] --> Ask questions --> artifacts/spec.md
+[OrchestrationPhase1_INTAKE] --> Ask questions --> artifacts/spec.md
     |
     v
-[Phase 2: PLANNING] --> Design architecture --> artifacts/architecture.md
+[OrchestrationPhase2_PLANNING] --> Design architecture --> artifacts/architecture.md
     |
     v
-[Phase 3: GEMINI REVIEW] --> mcp__gemini__ask-gemini (max 3x)
+[OrchestrationPhase3_GEMINI_REVIEW] --> mcp__gemini__ask-gemini (max 3x)
     |
     v
-[Phase 4: USER GATE] --> "WAITING FOR APPROVAL" --> STOP
+[OrchestrationPhase4_USER_GATE_SPEC] --> "WAITING FOR APPROVAL" --> STOP
     |
     v (user approves)
-[Phase 5: TDD] --> Red phase (fail) --> Green phase (pass)
+[OrchestrationPhase5_TDD] --> Red phase (fail) --> Green phase (pass)
     |
     v
-[Phase 6: DUAL REVIEW] --> Gemini + Isolated Claude
+[OrchestrationPhase6_DUAL_REVIEW] --> Gemini + Isolated Claude
     |
     v
-[Phase 7: USER GATE] --> "WAITING FOR CODE APPROVAL" --> STOP
+[OrchestrationPhase7_USER_GATE_CODE] --> "WAITING FOR CODE APPROVAL" --> STOP
     |
     v (user approves)
-[Phase 8: SUMMARY] --> TLDR --> TASK COMPLETE
+[OrchestrationPhase8_SUMMARY] --> TLDR --> TASK COMPLETE
 ```
+
+---
+
+## State Tracking
+
+Every response during orchestration MUST start with:
+
+```
+[OrchestrationPhaseX_NAME] [Gemini: Y/3] [Status: in_progress|waiting|complete]
+```
+
+Examples:
+- `[OrchestrationPhase1_INTAKE] [Gemini: 0/3] [Status: in_progress]`
+- `[OrchestrationPhase4_USER_GATE_SPEC] [Gemini: 2/3] [Status: waiting]`
+
+---
+
+## Initialization
+
+When `@orchestrate` is detected:
+
+1. Run: `ls .claude/agents/`
+2. Read each agent file to understand capabilities
+3. Map: intake.md → requirements, planner.md → design, coder.md → TDD
+4. Begin OrchestrationPhase1_INTAKE
 
 ---
 
 ## Phase Details
 
-### Phase 1: INTAKE
+### OrchestrationPhase1_INTAKE
 
 1. Use Task tool to spawn `intake` subagent
 2. Subagent asks clarifying questions via AskUserQuestion
 3. Wait for `artifacts/spec.md` to be created
 4. DO NOT proceed until spec is complete and comprehensive
 
-### Phase 2: PLANNING
+**Exit criteria:** `artifacts/spec.md` exists and is complete
+
+### OrchestrationPhase2_PLANNING
 
 1. Use Task tool to spawn `planner` subagent
 2. Planner reads `artifacts/spec.md`
@@ -62,10 +89,14 @@ User Task
    - Test strategy (TDD)
 4. Wait for architecture.md to be complete
 
-### Phase 3: GEMINI REVIEW (max 3 iterations)
+**Exit criteria:** `artifacts/architecture.md` exists and is complete
+
+### OrchestrationPhase3_GEMINI_REVIEW
+
+Max 3 iterations.
 
 1. Read `artifacts/spec.md` and `artifacts/architecture.md` completely
-2. Call `mcp__gemini__ask-gemini` with this prompt:
+2. Call `mcp__gemini__ask-gemini` with:
 
 ```
 Working directory: [INSERT PWD]
@@ -96,18 +127,22 @@ DON'T EDIT ANY FILES, REVIEW ONLY!!!
 
 3. If VERDICT is NEEDS_WORK:
    - If iteration < 3: Update artifacts based on feedback, re-review
-   - If iteration == 3: CIRCUIT BREAKER -> escalate to user
+   - If iteration == 3: CIRCUIT BREAKER → proceed to OrchestrationPhase4 with issues noted
 
-### Phase 4: USER GATE (SPEC)
+**Exit criteria:** Gemini APPROVED or max iterations reached
+
+### OrchestrationPhase4_USER_GATE_SPEC
 
 1. Present to user:
    - Summary of spec
    - Summary of architecture
-   - Gemini's feedback
+   - Gemini's feedback (including any unresolved issues)
 2. Output exactly: `--- WAITING FOR APPROVAL ---`
 3. **STOP** - do not proceed until user says "approved", "continue", or "go"
 
-### Phase 5: TDD IMPLEMENTATION (strict sequence)
+**Exit criteria:** User approval received
+
+### OrchestrationPhase5_TDD
 
 1. Use Task tool to spawn `coder` subagent
 2. Coder MUST follow this exact sequence:
@@ -123,10 +158,12 @@ DON'T EDIT ANY FILES, REVIEW ONLY!!!
    f. Run tests again
    g. **VERIFY tests PASS**
 
-3. If tests don't fail in RED phase -> reject tests, instruct coder to rewrite
-4. If tests won't pass after 3 attempts -> escalate to user
+3. If tests don't fail in RED phase → reject tests, instruct coder to rewrite
+4. If tests won't pass after 3 attempts → escalate to user
 
-### Phase 6: DUAL REVIEW (parallel)
+**Exit criteria:** All tests passing
+
+### OrchestrationPhase6_DUAL_REVIEW
 
 **Review 1: Gemini**
 
@@ -179,9 +216,11 @@ Be thorough and harsh - find problems." \
 **Aggregate:**
 - Read both review results
 - Combine unique issues
-- If critical issues found -> go back to Phase 5
+- If critical issues found → go back to OrchestrationPhase5_TDD
 
-### Phase 7: USER GATE (CODE)
+**Exit criteria:** Both reviewers approve (or issues are minor)
+
+### OrchestrationPhase7_USER_GATE_CODE
 
 1. Present to user:
    - Summary of implementation
@@ -191,26 +230,16 @@ Be thorough and harsh - find problems." \
 2. Output exactly: `--- WAITING FOR CODE APPROVAL ---`
 3. **STOP** - do not proceed until user approves
 
-### Phase 8: SUMMARY
+**Exit criteria:** User approval received
+
+### OrchestrationPhase8_SUMMARY
 
 1. Generate TLDR including:
    - What was built (feature summary)
    - Files created/modified
    - Test results (all passing)
    - Any notes or caveats
-2. Output: `TASK COMPLETE`
-
----
-
-## State Tracking
-
-Every response MUST start with status line:
-
-```
-[Phase: X/8] [Gemini iterations: Y/3] [Status: in_progress|waiting|complete]
-```
-
-Example: `[Phase: 3/8] [Gemini iterations: 2/3] [Status: in_progress]`
+2. Output: `✓ ORCHESTRATION COMPLETE`
 
 ---
 
@@ -218,8 +247,8 @@ Example: `[Phase: 3/8] [Gemini iterations: 2/3] [Status: in_progress]`
 
 | Situation | Action |
 |-----------|--------|
-| Gemini rejects 3 times | Escalate to USER GATE with all feedback |
-| Tests won't fail (red phase) | Reject tests, ask coder to write proper failing tests |
+| Gemini rejects 3 times | Proceed to USER_GATE with all feedback noted |
+| Tests won't fail (red phase) | Reject tests, ask coder to rewrite |
 | Tests won't pass after 3 attempts | Escalate to user with error details |
 | User rejects at any gate | Return to appropriate phase based on feedback |
 
@@ -229,18 +258,20 @@ Example: `[Phase: 3/8] [Gemini iterations: 2/3] [Status: in_progress]`
 
 All intermediate outputs go to `artifacts/`:
 
-- `spec.md` - Requirements specification
-- `architecture.md` - Technical design
-- `review-feedback.md` - Combined review results
-- `test-results.md` - Test execution logs (optional)
+| File | Phase Created |
+|------|---------------|
+| `spec.md` | OrchestrationPhase1_INTAKE |
+| `architecture.md` | OrchestrationPhase2_PLANNING |
+| `review-feedback.md` | OrchestrationPhase6_DUAL_REVIEW |
 
 ---
 
 ## Important Rules
 
-1. **Never skip phases** - follow the workflow exactly
-2. **Never proceed past USER GATE without approval**
-3. **Always pass FULL content to Gemini** - it cannot see your conversation
-4. **Fresh reviewer MUST use Bash claude command** - NOT Task tool
-5. **TDD is mandatory** - tests must fail before implementation
-6. **Track state** - every response starts with status line
+1. **Only activate on `@orchestrate` or `/orchestrate` keyword**
+2. **Never skip phases** - follow the workflow exactly
+3. **Never proceed past USER GATE without approval**
+4. **Always pass FULL content to Gemini** - it cannot see your conversation
+5. **Fresh reviewer MUST use Bash claude command** - NOT Task tool
+6. **TDD is mandatory** - tests must fail before implementation
+7. **Track state** - every response starts with phase status line
