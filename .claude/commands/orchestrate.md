@@ -32,8 +32,6 @@ Every response MUST start with:
 1. Read `artifacts/spec.md` and `artifacts/architecture.md`
 2. Call `mcp__gemini__ask-gemini` with FULL content:
 ```
-Working directory: $PWD
-
 Review this specification and architecture.
 
 SPEC:
@@ -49,7 +47,7 @@ ARCHITECTURE:
 Check completeness, feasibility, TDD strategy.
 Respond with VERDICT: APPROVED or NEEDS_WORK
 
-DON'T EDIT FILES!!!
+CRITICAL: Return your response as TEXT ONLY. DO NOT create any files. DO NOT write any .md files. Just respond with your verdict and feedback inline.
 ```
 3. If NEEDS_WORK and iteration < 3: Update and re-review
 4. Max 3 iterations
@@ -67,7 +65,14 @@ DON'T EDIT FILES!!!
 5. If tests don't fail initially, rewrite them
 
 **Orc.Phase6_DUAL_REVIEW** - Two independent reviewers
-1. Call `mcp__gemini__ask-gemini` to review code
+1. Call `mcp__gemini__ask-gemini` to review code:
+```
+Review the implementation code for quality and security.
+Check: code quality, security, test coverage, edge cases.
+Respond with VERDICT: APPROVED or NEEDS_WORK
+
+CRITICAL: Return your response as TEXT ONLY. DO NOT create any files. DO NOT write any .md files. Just respond inline.
+```
 2. Spawn isolated Claude via Bash:
 ```bash
 claude -p "You are a code reviewer with ZERO context.
