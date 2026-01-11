@@ -107,7 +107,7 @@ INSTRUCTIONS:
    - ISSUES: Problems found
    - SUGGESTIONS: Improvements
 
-DON'T EDIT FILES, REVIEW ONLY!!!
+CRITICAL: Return your response as TEXT ONLY. DO NOT create any files. DO NOT write any .md files. Just respond with your verdict and feedback inline.
 ```
 
 3. If NEEDS_WORK and iteration < 3: Update and re-review
@@ -159,7 +159,7 @@ Check:
 
 Respond with VERDICT: APPROVED or NEEDS_WORK
 
-DON'T EDIT FILES!!!
+CRITICAL: Return your response as TEXT ONLY. DO NOT create any files. Just respond inline.
 ```
 
 **Review 2: Isolated Claude**
