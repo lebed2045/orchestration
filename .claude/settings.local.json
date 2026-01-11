@@ -4,7 +4,8 @@
       "mcp__gemini__ask-gemini",
       "Bash(git init:*)",
       "Bash(git add:*)",
-      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: Add Claude Code orchestration system with custom subagents\n\nImplement an 8-phase workflow for automated task orchestration:\n- Intake agent for requirements clarification\n- Planner agent \\(opus\\) for architecture design\n- Coder agent for TDD implementation \\(red→green\\)\n- Fresh reviewer via isolated claude -p command\n- Gemini MCP integration for external review\n- User gates at spec and code approval stages\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+      "Bash(git commit:*)",
+      "Bash(claude -p:*)"
     ]
   }
 }
