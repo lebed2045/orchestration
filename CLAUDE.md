@@ -4,40 +4,38 @@
 
 **To activate orchestration mode, user must say: `@orchestrate` or `/orchestrate`**
 
-When you see this keyword followed by a task description, activate the full 8-phase workflow below.
-
-Without this keyword, respond normally without orchestration.
+Without this keyword, respond normally.
 
 ---
 
-## Workflow Overview
+## Workflow Overview (Leverages Built-in Plan Mode)
 
 ```
 @orchestrate "Build a login page"
     |
     v
-[OrchestrationPhase1_INTAKE] --> Ask questions --> artifacts/spec.md
+[Orc.Phase1_INTAKE] ──────────────────┐
+    |                                  │
+    v                                  │  Built-in Plan Mode
+[Orc.Phase2_PLANNING] ─────────────────┤  (EnterPlanMode)
+    |                                  │
+    v                                  │
+[Orc.Phase3_GEMINI_REVIEW] ───────────┘
     |
     v
-[OrchestrationPhase2_PLANNING] --> Design architecture --> artifacts/architecture.md
+[Orc.Phase4_USER_GATE] --> ExitPlanMode --> User approves
     |
     v
-[OrchestrationPhase3_GEMINI_REVIEW] --> mcp__gemini__ask-gemini (max 3x)
+[Orc.Phase5_TDD] --> Red phase (fail) --> Green phase (pass)
     |
     v
-[OrchestrationPhase4_USER_GATE_SPEC] --> "WAITING FOR APPROVAL" --> STOP
-    |
-    v (user approves)
-[OrchestrationPhase5_TDD] --> Red phase (fail) --> Green phase (pass)
+[Orc.Phase6_DUAL_REVIEW] --> Gemini + Isolated Claude
     |
     v
-[OrchestrationPhase6_DUAL_REVIEW] --> Gemini + Isolated Claude
+[Orc.Phase7_USER_GATE_CODE] --> "WAITING FOR CODE APPROVAL"
     |
     v
-[OrchestrationPhase7_USER_GATE_CODE] --> "WAITING FOR CODE APPROVAL" --> STOP
-    |
-    v (user approves)
-[OrchestrationPhase8_SUMMARY] --> TLDR --> TASK COMPLETE
+[Orc.Phase8_SUMMARY] --> TLDR --> ORCHESTRATION COMPLETE
 ```
 
 ---
@@ -47,199 +45,170 @@ Without this keyword, respond normally without orchestration.
 Every response during orchestration MUST start with:
 
 ```
-[OrchestrationPhaseX_NAME] [Gemini: Y/3] [Status: in_progress|waiting|complete]
+[Orc.PhaseX_NAME] [Gemini: Y/3] [Status: in_progress|waiting|complete]
 ```
 
 Examples:
-- `[OrchestrationPhase1_INTAKE] [Gemini: 0/3] [Status: in_progress]`
-- `[OrchestrationPhase4_USER_GATE_SPEC] [Gemini: 2/3] [Status: waiting]`
-
----
-
-## Initialization
-
-When `@orchestrate` is detected:
-
-1. Run: `ls .claude/agents/`
-2. Read each agent file to understand capabilities
-3. Map: intake.md → requirements, planner.md → design, coder.md → TDD
-4. Begin OrchestrationPhase1_INTAKE
+- `[Orc.Phase1_INTAKE] [Gemini: 0/3] [Status: in_progress]`
+- `[Orc.Phase5_TDD] [Gemini: 0/3] [Status: in_progress]`
 
 ---
 
 ## Phase Details
 
-### OrchestrationPhase1_INTAKE
+### Orc.Phase1_INTAKE (Uses Plan Mode)
 
-1. Use Task tool to spawn `intake` subagent
-2. Subagent asks clarifying questions via AskUserQuestion
-3. Wait for `artifacts/spec.md` to be created
-4. DO NOT proceed until spec is complete and comprehensive
+1. Call `EnterPlanMode` tool
+2. In plan mode, ask clarifying questions using `AskUserQuestion`
+3. Cover: inputs, outputs, edge cases, constraints, success criteria
+4. Write findings to `artifacts/spec.md`
 
-**Exit criteria:** `artifacts/spec.md` exists and is complete
+**This is plan mode's natural behavior** - explore and understand before coding.
 
-### OrchestrationPhase2_PLANNING
+### Orc.Phase2_PLANNING (Uses Plan Mode)
 
-1. Use Task tool to spawn `planner` subagent
-2. Planner reads `artifacts/spec.md`
-3. Creates `artifacts/architecture.md` with:
+1. Still in plan mode
+2. Design architecture based on spec
+3. Write to `artifacts/architecture.md`:
    - Component design
    - File structure
    - Dependencies
-   - Test strategy (TDD)
-4. Wait for architecture.md to be complete
+   - TDD test plan
 
-**Exit criteria:** `artifacts/architecture.md` exists and is complete
+**Plan mode naturally does this** - designs implementation approach.
 
-### OrchestrationPhase3_GEMINI_REVIEW
+### Orc.Phase3_GEMINI_REVIEW (In Plan Mode)
 
-Max 3 iterations.
+Before exiting plan mode, send to Gemini for review:
 
-1. Read `artifacts/spec.md` and `artifacts/architecture.md` completely
+1. Read `artifacts/spec.md` and `artifacts/architecture.md`
 2. Call `mcp__gemini__ask-gemini` with:
 
 ```
-Working directory: [INSERT PWD]
+Working directory: [PWD]
 
-Review this specification and architecture for a software project.
+Review this specification and architecture.
 
 SPEC:
 ---
-[INSERT FULL CONTENT OF spec.md]
+[FULL CONTENT]
 ---
 
 ARCHITECTURE:
 ---
-[INSERT FULL CONTENT OF architecture.md]
+[FULL CONTENT]
 ---
 
 INSTRUCTIONS:
-1. Analyze for completeness, correctness, and feasibility
-2. Check for missing edge cases
-3. Verify TDD strategy is sound
-4. Respond with:
+1. Check completeness and feasibility
+2. Verify TDD strategy is sound
+3. Respond with:
    - VERDICT: APPROVED or NEEDS_WORK
-   - ISSUES: List any problems found
-   - SUGGESTIONS: Improvements to make
+   - ISSUES: Problems found
+   - SUGGESTIONS: Improvements
 
-DON'T EDIT ANY FILES, REVIEW ONLY!!!
+DON'T EDIT FILES, REVIEW ONLY!!!
 ```
 
-3. If VERDICT is NEEDS_WORK:
-   - If iteration < 3: Update artifacts based on feedback, re-review
-   - If iteration == 3: CIRCUIT BREAKER → proceed to OrchestrationPhase4 with issues noted
+3. If NEEDS_WORK and iteration < 3: Update and re-review
+4. If iteration == 3: Note issues, proceed anyway
 
-**Exit criteria:** Gemini APPROVED or max iterations reached
+### Orc.Phase4_USER_GATE (Exit Plan Mode)
 
-### OrchestrationPhase4_USER_GATE_SPEC
+1. Call `ExitPlanMode` tool
+2. This naturally triggers user approval
+3. Present summary of spec + architecture + Gemini feedback
+4. **STOP** - plan mode handles the approval gate
 
-1. Present to user:
-   - Summary of spec
-   - Summary of architecture
-   - Gemini's feedback (including any unresolved issues)
-2. Output exactly: `--- WAITING FOR APPROVAL ---`
-3. **STOP** - do not proceed until user says "approved", "continue", or "go"
+**Exit criteria:** User approves the plan
 
-**Exit criteria:** User approval received
+### Orc.Phase5_TDD (Custom - Post Plan Mode)
 
-### OrchestrationPhase5_TDD
+After user approves plan:
 
-1. Use Task tool to spawn `coder` subagent
-2. Coder MUST follow this exact sequence:
+1. Use Task tool to spawn `coder` subagent (or do inline)
+2. Follow strict TDD:
 
    **RED PHASE:**
-   a. Read `artifacts/spec.md` and `artifacts/architecture.md`
-   b. Write test file(s) FIRST (before any implementation)
-   c. Run tests with `npm test` or `vitest` or appropriate runner
-   d. **VERIFY tests FAIL** - if they pass, something is wrong, rewrite tests
+   - Write test files FIRST
+   - Run tests: `npm test` / `vitest`
+   - **VERIFY tests FAIL**
 
    **GREEN PHASE:**
-   e. Write MINIMAL implementation code to make tests pass
-   f. Run tests again
-   g. **VERIFY tests PASS**
+   - Write MINIMAL implementation
+   - Run tests again
+   - **VERIFY tests PASS**
 
-3. If tests don't fail in RED phase → reject tests, instruct coder to rewrite
-4. If tests won't pass after 3 attempts → escalate to user
+3. If tests don't fail in RED phase → rewrite tests
+4. If tests won't pass after 3 attempts → ask user
 
-**Exit criteria:** All tests passing
-
-### OrchestrationPhase6_DUAL_REVIEW
+### Orc.Phase6_DUAL_REVIEW (Custom)
 
 **Review 1: Gemini**
 
-Call `mcp__gemini__ask-gemini` with:
-
 ```
-Working directory: [INSERT PWD]
+Working directory: [PWD]
 
-Review this implementation code for quality and security.
+Review implementation code in src/ and tests/.
 
-Read all files in src/ and tests/ using @ syntax.
+Check:
+1. Code quality
+2. Security vulnerabilities
+3. Test coverage
+4. Edge cases
 
-INSTRUCTIONS:
-1. Check code quality and best practices
-2. Look for security vulnerabilities
-3. Verify test coverage is adequate
-4. Check for edge cases not handled
-5. Respond with:
-   - VERDICT: APPROVED or NEEDS_WORK
-   - ISSUES: List problems found
-   - SECURITY: Any security concerns
+Respond with VERDICT: APPROVED or NEEDS_WORK
 
-DON'T EDIT ANY FILES, REVIEW ONLY!!!
+DON'T EDIT FILES!!!
 ```
 
-**Review 2: Isolated Claude (CRITICAL)**
+**Review 2: Isolated Claude**
 
-Spawn a SEPARATE Claude process via Bash to ensure NO context pollution:
+Spawn separate process via Bash:
 
 ```bash
-claude -p "You are a code reviewer with ZERO prior context about this project.
-
-Read the code in src/ and tests/ directories.
-You know NOTHING about why this code was written.
-
-Review for:
-1. Code quality and readability
-2. Security vulnerabilities
-3. Test coverage gaps
-4. Edge cases not handled
-5. Potential bugs
-
-Output your findings to artifacts/review-feedback.md
-
-Be thorough and harsh - find problems." \
+claude -p "You are a code reviewer with ZERO context.
+Read src/ and tests/. Find problems.
+Output to artifacts/review-feedback.md" \
   --allowedTools Read,Glob,Grep,Write \
   --print
 ```
 
-**Aggregate:**
-- Read both review results
-- Combine unique issues
-- If critical issues found → go back to OrchestrationPhase5_TDD
+**Aggregate feedback** - if critical issues, go back to Orc.Phase5_TDD
 
-**Exit criteria:** Both reviewers approve (or issues are minor)
+### Orc.Phase7_USER_GATE_CODE
 
-### OrchestrationPhase7_USER_GATE_CODE
-
-1. Present to user:
-   - Summary of implementation
+1. Present:
+   - Implementation summary
    - Gemini review results
    - Isolated Claude review results
    - Test results
-2. Output exactly: `--- WAITING FOR CODE APPROVAL ---`
-3. **STOP** - do not proceed until user approves
+2. Output: `--- WAITING FOR CODE APPROVAL ---`
+3. **STOP** until user approves
 
-**Exit criteria:** User approval received
+### Orc.Phase8_SUMMARY
 
-### OrchestrationPhase8_SUMMARY
-
-1. Generate TLDR including:
-   - What was built (feature summary)
+1. Generate TLDR:
+   - What was built
    - Files created/modified
-   - Test results (all passing)
-   - Any notes or caveats
+   - Test results
 2. Output: `✓ ORCHESTRATION COMPLETE`
+
+---
+
+## Key Insight: Plan Mode Integration
+
+| Phase | Mechanism |
+|-------|-----------|
+| Orc.Phase1-3 | Inside `EnterPlanMode` |
+| Orc.Phase4 | `ExitPlanMode` (built-in approval gate) |
+| Orc.Phase5-6 | Custom TDD + dual review |
+| Orc.Phase7 | Manual approval gate |
+| Orc.Phase8 | Summary |
+
+**Why this works:**
+- Plan mode already handles exploration, design, and user approval
+- We just add: Gemini review during planning + TDD enforcement + dual review after coding
 
 ---
 
@@ -247,31 +216,29 @@ Be thorough and harsh - find problems." \
 
 | Situation | Action |
 |-----------|--------|
-| Gemini rejects 3 times | Proceed to USER_GATE with all feedback noted |
-| Tests won't fail (red phase) | Reject tests, ask coder to rewrite |
-| Tests won't pass after 3 attempts | Escalate to user with error details |
-| User rejects at any gate | Return to appropriate phase based on feedback |
+| Gemini rejects 3x | Note issues, proceed to user gate |
+| Tests won't fail (red) | Rewrite tests |
+| Tests won't pass 3x | Escalate to user |
+| User rejects plan | Stay in plan mode, revise |
+| User rejects code | Go back to Orc.Phase5_TDD |
 
 ---
 
-## Artifacts Directory
+## Artifacts
 
-All intermediate outputs go to `artifacts/`:
-
-| File | Phase Created |
-|------|---------------|
-| `spec.md` | OrchestrationPhase1_INTAKE |
-| `architecture.md` | OrchestrationPhase2_PLANNING |
-| `review-feedback.md` | OrchestrationPhase6_DUAL_REVIEW |
+| File | Phase |
+|------|-------|
+| `artifacts/spec.md` | Orc.Phase1_INTAKE |
+| `artifacts/architecture.md` | Orc.Phase2_PLANNING |
+| `artifacts/review-feedback.md` | Orc.Phase6_DUAL_REVIEW |
 
 ---
 
 ## Important Rules
 
-1. **Only activate on `@orchestrate` or `/orchestrate` keyword**
-2. **Never skip phases** - follow the workflow exactly
-3. **Never proceed past USER GATE without approval**
-4. **Always pass FULL content to Gemini** - it cannot see your conversation
-5. **Fresh reviewer MUST use Bash claude command** - NOT Task tool
-6. **TDD is mandatory** - tests must fail before implementation
-7. **Track state** - every response starts with phase status line
+1. **Only activate on `@orchestrate` keyword**
+2. **Use EnterPlanMode for phases 1-4** (don't reinvent)
+3. **Gemini review happens BEFORE ExitPlanMode**
+4. **TDD is mandatory** - red before green
+5. **Fresh reviewer uses Bash `claude -p`** - NOT Task tool
+6. **Track state** - every response starts with `[Orc.PhaseX_NAME]`
