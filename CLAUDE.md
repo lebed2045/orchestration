@@ -61,7 +61,7 @@ Examples:
 1. Call `EnterPlanMode` tool
 2. In plan mode, ask clarifying questions using `AskUserQuestion`
 3. Cover: inputs, outputs, edge cases, constraints, success criteria
-4. Write findings to `artifacts/spec.md`
+4. Write findings to `.claude/artifacts/spec.md`
 
 **This is plan mode's natural behavior** - explore and understand before coding.
 
@@ -69,7 +69,7 @@ Examples:
 
 1. Still in plan mode
 2. Design architecture based on spec
-3. Write to `artifacts/architecture.md`:
+3. Write to `.claude/artifacts/architecture.md`:
    - Component design
    - File structure
    - Dependencies
@@ -81,7 +81,7 @@ Examples:
 
 Before exiting plan mode, send to Gemini for review:
 
-1. Read `artifacts/spec.md` and `artifacts/architecture.md`
+1. Read `.claude/artifacts/spec.md` and `.claude/artifacts/architecture.md`
 2. Call `mcp__gemini__ask-gemini` with:
 
 ```
@@ -169,7 +169,7 @@ Spawn separate process via Bash:
 ```bash
 claude -p "You are a code reviewer with ZERO context.
 Read src/ and tests/. Find problems.
-Output to artifacts/review-feedback.md" \
+Output to .claude/artifacts/review-feedback.md" \
   --allowedTools Read,Glob,Grep,Write \
   --print
 ```
@@ -226,11 +226,13 @@ Output to artifacts/review-feedback.md" \
 
 ## Artifacts
 
+All artifacts stored in `.claude/artifacts/` (gitignored, temp files):
+
 | File | Phase |
 |------|-------|
-| `artifacts/spec.md` | Orc.Phase1_INTAKE |
-| `artifacts/architecture.md` | Orc.Phase2_PLANNING |
-| `artifacts/review-feedback.md` | Orc.Phase6_DUAL_REVIEW |
+| `.claude/artifacts/spec.md` | Orc.Phase1_INTAKE |
+| `.claude/artifacts/architecture.md` | Orc.Phase2_PLANNING |
+| `.claude/artifacts/review-feedback.md` | Orc.Phase6_DUAL_REVIEW |
 
 ---
 
