@@ -2,10 +2,27 @@
 
 **Version 2**: 10-phase workflow with 3-gate dual-review + isolated coder architecture.
 
-Key differences from v1 (`/orchestrate`):
+Uses agents: `coder-v2`, `planner-v2`, `intake-v2`, `fresh-reviewer-v2`
+
+Key differences from v1 (`/orc1`):
 - 3 review gates (Plan, Tests, Code) with dual reviewers each
 - Coder spawned via `claude -p` for context isolation
 - Orchestrator never writes code directly
+
+---
+
+## VSCODE COMPATIBILITY (CRITICAL)
+
+**VSCode plugin has a bug with parallel tool calls. To avoid "API Error: 400":**
+
+1. **DO NOT use Task tool with Explore agent** - It makes parallel calls that crash
+2. **Explore manually** - Use Read, Grep, Glob directly, ONE AT A TIME
+3. **Sequential tool calls only** - Never batch multiple tool calls in one response during exploration
+4. **Wait for each result** - Before making next tool call
+
+This applies to ALL phases, especially INTAKE when understanding the codebase.
+
+---
 
 ## Instructions
 
@@ -79,6 +96,10 @@ Design architecture (still in plan mode).
 
 Both reviewers must approve the plan.
 
+**IMPORTANT: Exit plan mode FIRST to allow `claude -p` subprocess.**
+
+1. Call `ExitPlanMode` tool (temporary - to run reviewers)
+
 #### Reviewer 1: Gemini
 
 Call `mcp__gemini__ask-gemini` with spec + architecture content:
@@ -101,15 +122,21 @@ Output to .claude/temp/plan-review.md with VERDICT, ISSUES, SUGGESTIONS." \
   --print
 ```
 
-VERIFY: Both verdicts APPROVED. If NEEDS_WORK, fix and re-review (max 3 iterations).
+#### If NEEDS_WORK (max 3 iterations):
+
+1. Call `EnterPlanMode` tool
+2. Fix issues in spec/architecture
+3. Call `ExitPlanMode` tool
+4. Re-run both reviewers
+
+VERIFY: Both verdicts APPROVED before proceeding.
 
 ### Phase 4: USER_GATE_PLAN
 
-Exit plan mode for approval.
+Present plan for user approval (already out of plan mode from Phase 3).
 
-1. Call `ExitPlanMode` tool
-2. Present summary + both review verdicts
-3. Wait for user approval
+1. Present summary + both review verdicts
+2. Wait for user approval
 
 ---
 

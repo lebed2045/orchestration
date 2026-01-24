@@ -1,6 +1,6 @@
 ---
-name: intake
-description: "Requirements analyst. Use FIRST when user gives a new development task. Asks clarifying questions until specification is 100% clear."
+name: intake-v1
+description: "Requirements analyst for orc1. Asks clarifying questions until spec is clear."
 tools:
   - Read
   - Glob

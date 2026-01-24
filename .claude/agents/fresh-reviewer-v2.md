@@ -1,6 +1,6 @@
 ---
-name: fresh-reviewer
-description: "DO NOT spawn via Task tool. This agent must be invoked via Bash command to ensure isolated context. See CLAUDE.md for correct invocation."
+name: fresh-reviewer-v2
+description: "ISOLATED code reviewer for orc2. Invoked via Bash 'claude -p' for context isolation."
 tools: []
 model: sonnet
 ---

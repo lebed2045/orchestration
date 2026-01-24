@@ -1,6 +1,6 @@
 ---
-name: planner
-description: "Software architect. Use after intake to design technical architecture. Creates detailed implementation plan with TDD strategy."
+name: planner-v2
+description: "Software architect for orc2. Creates architecture with TDD strategy for isolated coder."
 tools:
   - Read
   - Glob
