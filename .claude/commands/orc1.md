@@ -24,6 +24,7 @@ This applies to ALL phases, especially INTAKE when understanding the codebase.
 You are now in **Orchestration Mode**. Follow this workflow exactly:
 
 ### State Tracking
+
 Every response MUST start with:
 ```
 [Orc.PhaseX_NAME] [Gemini: Y/3] [Status: in_progress|waiting|complete]

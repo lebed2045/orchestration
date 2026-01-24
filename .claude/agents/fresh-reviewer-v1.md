@@ -5,7 +5,7 @@ tools: []
 model: sonnet
 ---
 
-# Fresh Reviewer Agent
+# Fresh Reviewer Agent (v1)
 
 **IMPORTANT: This file is for REFERENCE ONLY.**
 
@@ -21,7 +21,7 @@ Subagents spawned via Task tool inherit the conversation context. For a truly un
 
 ## How to Invoke
 
-The orchestrator (CLAUDE.md) specifies this Bash command:
+The orchestrator (orc1.md) specifies this Bash command:
 
 ```bash
 claude -p "You are a code reviewer with ZERO prior context about this project.
