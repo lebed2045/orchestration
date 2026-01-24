@@ -1,275 +1,96 @@
 # /orchestrate - Orchestrated Development Workflow
 
-Activate the 10-phase orchestrated development workflow with 3-gate dual-review system, TDD, and anti-sycophancy enforcement.
+Activate the 8-phase orchestrated development workflow with TDD, Gemini review, and dual code review.
 
 ## Instructions
 
-You are now in **Orchestration Mode**. Follow this workflow exactly.
+You are now in **Orchestration Mode**. Follow this workflow exactly:
 
----
-
-## State Tracking
-
+### State Tracking
 Every response MUST start with:
-
-```text
-[Orc.PhaseX_NAME] [Gemini: Y/3] [Claude: Y/3] [Exec: PROVEN|UNPROVEN] [Exit: 0|N|PENDING] [Status: in_progress|blocked|complete]
+```
+[Orc.PhaseX_NAME] [Gemini: Y/3] [Status: in_progress|waiting|complete]
 ```
 
-Rules:
+### Phase Flow
 
-- `Exec: PROVEN` = EXECUTION_BLOCK present in this message
-- `Exec: UNPROVEN` = blocks Status: complete
-- `Exit: N` (non-zero) = blocks Status: complete
-- `Status: blocked` = circuit breaker triggered
-
----
-
-## EXECUTION_BLOCK Requirement
-
-Before ANY completion claim, provide:
-
-```text
-┌─────────────────────────────────────────────┐
-│ EXECUTION_BLOCK                             │
-├─────────────────────────────────────────────┤
-│ $ [command]                                 │
-│ [output - last 10+ lines]                   │
-│ EXIT_CODE: [0 or N]                         │
-│ TIMESTAMP: [YYYY-MM-DD HH:MM:SS]            │
-└─────────────────────────────────────────────┘
-```
-
-**Forbidden without EXECUTION_BLOCK showing EXIT_CODE=0:**
-
-- "Done" / "Fixed" / "Complete" / "Tests pass" / "It works"
-
----
-
-## Phase Flow (10 Phases, 3 Gates)
-
-### Phase 1: INTAKE
-
-Enter plan mode, ask clarifying questions.
-
+**Orc.Phase1_INTAKE** - Enter plan mode, ask clarifying questions
 1. Call `EnterPlanMode` tool
 2. Ask clarifying questions using `AskUserQuestion`
 3. Cover: inputs, outputs, edge cases, constraints, success criteria
-4. Write spec to `.claude/temp/spec.md`
-5. VERIFY: Show `cat .claude/temp/spec.md | head -20` output
+4. Write spec to `.claude/artifacts/spec.md`
 
-### Phase 2: PLANNING
-
-Design architecture (still in plan mode).
-
+**Orc.Phase2_PLANNING** - Design architecture (still in plan mode)
 1. Design architecture based on spec
-2. Write to `.claude/temp/architecture.md`:
+2. Write to `.claude/artifacts/architecture.md`:
    - Component design
    - File structure
    - Dependencies
    - TDD test plan
-3. VERIFY: Show `cat .claude/temp/architecture.md | head -20` output
 
-### Phase 3: PLAN_DUAL_REVIEW (GATE 1)
-
-Both reviewers must approve the plan.
-
-#### Reviewer 1: Gemini
-
-Call `mcp__gemini__ask-gemini` with spec + architecture content:
-
-```text
-VERDICT: [APPROVED|NEEDS_WORK]
-ISSUES: [list]
-SUGGESTIONS: [list]
+**Orc.Phase3_GEMINI_REVIEW** - Send to Gemini (still in plan mode)
+1. Read `.claude/artifacts/spec.md` and `.claude/artifacts/architecture.md`
+2. Call `mcp__gemini__ask-gemini` with FULL content:
 ```
+Review this specification and architecture.
 
-#### Reviewer 2: Isolated Claude (Opus)
+SPEC:
+---
+[FULL CONTENT OF spec.md]
+---
 
-```bash
-claude -p "You are a software architect with ZERO context.
-Read .claude/temp/spec.md and .claude/temp/architecture.md
-Review for: requirements completeness, architecture feasibility, TDD strategy, edge cases, security.
-Output to .claude/temp/plan-review.md with VERDICT, ISSUES, SUGGESTIONS." \
-  --allowedTools Read,Glob,Grep,Write \
-  --model opus \
-  --print
+ARCHITECTURE:
+---
+[FULL CONTENT OF architecture.md]
+---
+
+Check completeness, feasibility, TDD strategy.
+Respond with VERDICT: APPROVED or NEEDS_WORK
+
+CRITICAL: Return your response as TEXT ONLY. DO NOT create any files. DO NOT write any .md files. Just respond with your verdict and feedback inline.
 ```
+3. If NEEDS_WORK and iteration < 3: Update and re-review
+4. Max 3 iterations
 
-VERIFY: Both verdicts APPROVED. If NEEDS_WORK, fix and re-review (max 3 iterations).
-
-### Phase 4: USER_GATE_PLAN
-
-Exit plan mode for approval.
-
+**Orc.Phase4_USER_GATE** - Exit plan mode for approval
 1. Call `ExitPlanMode` tool
-2. Present summary + both review verdicts
+2. Present summary + Gemini feedback
 3. Wait for user approval
 
----
+**Orc.Phase5_TDD** - Test-driven development
+1. Write test files FIRST
+2. Run tests - VERIFY they FAIL (red phase)
+3. Write MINIMAL implementation
+4. Run tests - VERIFY they PASS (green phase)
+5. If tests don't fail initially, rewrite them
 
-### Phase 5: TDD_RED - ISOLATED CODER
-
-Spawn isolated coder to write failing tests. Coder receives ONLY spec + architecture.
-
-```bash
-claude -p "You are a TDD test writer with ZERO prior context.
-Read ONLY: .claude/temp/spec.md and .claude/temp/architecture.md
-Write tests that MUST FAIL (no implementation exists).
-LOOP until tests fail, then output EXECUTION_BLOCK and exit." \
-  --allowedTools Read,Write,Edit,Bash,Glob,Grep \
-  --print
+**Orc.Phase6_DUAL_REVIEW** - Two independent reviewers
+1. Call `mcp__gemini__ask-gemini` to review code:
 ```
+Review the implementation code for quality and security.
+Check: code quality, security, test coverage, edge cases.
+Respond with VERDICT: APPROVED or NEEDS_WORK
 
-VERIFY: Coder output shows EXECUTION_BLOCK with EXIT_CODE≠0 (tests failing).
-
-### Phase 6: TEST_DUAL_REVIEW (GATE 2)
-
-Both reviewers validate tests BEFORE implementation.
-
-#### Reviewer 1: Gemini
-
-Validate tests cover spec, are meaningful, and FAIL correctly (RED phase).
-
-```text
-VERDICT: [APPROVED|NEEDS_WORK]
-COVERAGE_CHECK: [YES|NO - list missing]
-RED_PHASE_CHECK: [YES|NO]
-ISSUES: [list]
+CRITICAL: Return your response as TEXT ONLY. DO NOT create any files. DO NOT write any .md files. Just respond inline.
 ```
-
-#### Reviewer 2: Isolated Claude
-
-```bash
-claude -p "You are a test quality reviewer with ZERO context.
-Read .claude/temp/spec.md and test files.
-Validate tests are well-designed, cover spec, and SHOULD BE FAILING (RED phase).
-Output to .claude/temp/test-review.md with VERDICT, RED_PHASE_VALID, COVERAGE, ISSUES." \
-  --allowedTools Read,Glob,Grep,Write,Bash \
-  --print
-```
-
-VERIFY: Both APPROVED + RED_PHASE valid. If issues, fix and re-review (max 3 iterations).
-
----
-
-### Phase 7: TDD_GREEN - ISOLATED CODER
-
-Spawn isolated coder to implement. Coder receives ONLY spec + architecture + tests.
-
-```bash
-claude -p "You are a TDD implementer with ZERO prior context.
-Read: .claude/temp/spec.md, .claude/temp/architecture.md, tests/, /tmp/test_output.txt
-CRITICAL: Test files are READ-ONLY. Only edit src/ files.
-LOOP (max 5): Fix one error at a time until tests pass.
-Output EXECUTION_BLOCK with EXIT_CODE=0 when done." \
-  --allowedTools Read,Write,Edit,Bash,Glob,Grep \
-  --print
-```
-
-VERIFY: Coder output shows EXECUTION_BLOCK with EXIT_CODE=0 (tests passing).
-
-**SECURITY**: If coder edits test files, reject and re-spawn.
-
----
-
-### Phase 8: CODE_DUAL_REVIEW (GATE 3)
-
-Both reviewers validate implementation.
-
-#### Reviewer 1: Gemini
-
-```text
-VERDICT: [APPROVED|NEEDS_WORK]
-EXECUTION_CHECK: Did tests pass with EXIT_CODE=0? [YES|NO]
-CODE_QUALITY: [assessment]
-SECURITY_ISSUES: [any vulnerabilities]
-ISSUES: [list]
-```
-
-#### Reviewer 2: Isolated Claude
-
+2. Spawn isolated Claude via Bash:
 ```bash
 claude -p "You are a code reviewer with ZERO context.
 Read src/ and tests/. Find problems.
-Run: npm test 2>&1; echo EXIT_CODE: \$?
-Output to .claude/temp/code-review.md with VERDICT, EXIT_CODE, CRITICAL_ISSUES, WARNINGS, SUGGESTIONS." \
-  --allowedTools Read,Glob,Grep,Write,Bash \
+Output to .claude/artifacts/review-feedback.md" \
+  --allowedTools Read,Glob,Grep,Write \
   --print
 ```
+3. Aggregate feedback
 
-VERIFY: Both APPROVED + EXIT_CODE=0. If issues, fix and re-review (max 3 iterations).
-
----
-
-### Phase 9: USER_GATE_CODE
-
-Code approval.
-
-1. Present:
-   - Implementation summary
-   - Gemini review (with EXECUTION_CHECK)
-   - Isolated Claude review
-   - EXECUTION_BLOCK (actual test output)
+**Orc.Phase7_USER_GATE_CODE** - Code approval
+1. Present implementation + both reviews
 2. Output: `--- WAITING FOR CODE APPROVAL ---`
 3. Wait for user approval
 
----
-
-### Phase 10: SUMMARY
-
-Complete.
-
-1. Final verification:
-
-```bash
-npm test 2>&1 | tail -20
-echo "EXIT_CODE: $?"
-echo "TIMESTAMP: $(date '+%Y-%m-%d %H:%M:%SS')"
-```
-
-2. Generate TLDR with files created/modified
-3. ONLY output `✓ ORCHESTRATION COMPLETE` if EXIT_CODE=0
-
----
-
-## Circuit Breakers
-
-| Trigger | Action |
-| ------- | ------ |
-| Same error 2x | STOP. Escalation options |
-| Tests fail 5x | STOP. "MANUAL INTERVENTION REQUIRED" |
-| Review fails 3x (any gate) | STOP. "REVIEW LOOP EXCEEDED" |
-| Claim without EXECUTION_BLOCK | RETRACT. Run verification |
-| Gemini empty 2x | Proceed with warning |
-| Context >80% | Run /compact, restart phase |
-
-Output format:
-
-```text
-⚠️ CIRCUIT BREAKER ACTIVATED
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Trigger: [which]
-Attempts: [N/max]
-Last error: [paste]
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Options:
-  a) git reset --hard
-  b) User provides context
-  c) Different approach
-
-Awaiting user decision...
-```
-
----
-
-## 3-Gate Summary
-
-| Gate | Phase | What's Reviewed | Reviewers |
-| ---- | ----- | --------------- | --------- |
-| GATE 1 | Phase 3 | Plan (spec + architecture) | Gemini + Isolated Claude Opus |
-| GATE 2 | Phase 6 | Tests (before implementation) | Gemini + Isolated Claude |
-| GATE 3 | Phase 8 | Code (after implementation) | Gemini + Isolated Claude |
+**Orc.Phase8_SUMMARY** - Complete
+1. Generate TLDR of what was built
+2. Output: `✓ ORCHESTRATION COMPLETE`
 
 ---
 
