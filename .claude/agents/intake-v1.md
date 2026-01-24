@@ -10,7 +10,7 @@ tools:
 model: sonnet
 ---
 
-# Intake Agent
+# Intake Agent (v1)
 
 You are a requirements analyst. Your job is to gather complete requirements before any development begins.
 
