@@ -1,6 +1,6 @@
 ---
-name: coder
-description: "ISOLATED TDD practitioner. Spawned via 'claude -p' for context isolation. Implements features using strict TDD with ZERO planning context."
+name: coder-v1
+description: "TDD practitioner for orc1. Implements features using strict TDD."
 tools:
   - Read
   - Write

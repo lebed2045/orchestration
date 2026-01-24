@@ -1,6 +1,23 @@
-# /orchestrate - Orchestrated Development Workflow
+# /orc1 - Orchestrated Development Workflow v1
 
-Activate the 8-phase orchestrated development workflow with TDD, Gemini review, and dual code review.
+**Version 1**: 8-phase workflow with Gemini review. Orchestrator writes code directly.
+
+Uses agents: `coder-v1`, `planner-v1`, `intake-v1`, `fresh-reviewer-v1`
+
+---
+
+## VSCODE COMPATIBILITY (CRITICAL)
+
+**VSCode plugin has a bug with parallel tool calls. To avoid "API Error: 400":**
+
+1. **DO NOT use Task tool with Explore agent** - It makes parallel calls that crash
+2. **Explore manually** - Use Read, Grep, Glob directly, ONE AT A TIME
+3. **Sequential tool calls only** - Never batch multiple tool calls in one response during exploration
+4. **Wait for each result** - Before making next tool call
+
+This applies to ALL phases, especially INTAKE when understanding the codebase.
+
+---
 
 ## Instructions
 
@@ -18,18 +35,18 @@ Every response MUST start with:
 1. Call `EnterPlanMode` tool
 2. Ask clarifying questions using `AskUserQuestion`
 3. Cover: inputs, outputs, edge cases, constraints, success criteria
-4. Write spec to `.claude/artifacts/spec.md`
+4. Write spec to `.claude/temp/spec.md`
 
 **Orc.Phase2_PLANNING** - Design architecture (still in plan mode)
 1. Design architecture based on spec
-2. Write to `.claude/artifacts/architecture.md`:
+2. Write to `.claude/temp/architecture.md`:
    - Component design
    - File structure
    - Dependencies
    - TDD test plan
 
 **Orc.Phase3_GEMINI_REVIEW** - Send to Gemini (still in plan mode)
-1. Read `.claude/artifacts/spec.md` and `.claude/artifacts/architecture.md`
+1. Read `.claude/temp/spec.md` and `.claude/temp/architecture.md`
 2. Call `mcp__gemini__ask-gemini` with FULL content:
 ```
 Review this specification and architecture.
@@ -77,7 +94,7 @@ CRITICAL: Return your response as TEXT ONLY. DO NOT create any files. DO NOT wri
 ```bash
 claude -p "You are a code reviewer with ZERO context.
 Read src/ and tests/. Find problems.
-Output to .claude/artifacts/review-feedback.md" \
+Output to .claude/temp/review-feedback.md" \
   --allowedTools Read,Glob,Grep,Write \
   --print
 ```
