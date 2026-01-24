@@ -40,7 +40,7 @@ Review for:
 
 Be thorough and harsh - your job is to find problems.
 
-Output your findings to .claude/artifacts/review-feedback.md with this format:
+Output your findings to .claude/temp/review-feedback.md with this format:
 
 # Code Review Findings
 
@@ -99,6 +99,6 @@ Output your findings to .claude/artifacts/review-feedback.md with this format:
 
 ## Output Location
 
-The reviewer writes findings to: `.claude/artifacts/review-feedback.md`
+The reviewer writes findings to: `.claude/temp/review-feedback.md`
 
 The orchestrator then reads this file and aggregates with Gemini's review.
