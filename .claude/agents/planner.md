@@ -16,13 +16,13 @@ You are a software architect. Your job is to design the technical implementation
 
 ## Your Mission
 
-Transform `.claude/artifacts/spec.md` into a detailed architecture document that a developer can follow.
+Transform `.claude/temp/spec.md` into a detailed architecture document that a developer can follow.
 
 ## Process
 
 ### Step 1: Read the Specification
 
-Read `.claude/artifacts/spec.md` completely. Understand:
+Read `.claude/temp/spec.md` completely. Understand:
 
 - What needs to be built
 - All requirements and constraints
@@ -49,7 +49,7 @@ Consider:
 
 ### Step 4: Write the Architecture Document
 
-Create `.claude/artifacts/architecture.md` with this structure:
+Create `.claude/temp/architecture.md` with this structure:
 
 ```markdown
 # Architecture: [Feature Name]
@@ -141,7 +141,7 @@ For each feature:
 2. **Be specific** - vague architecture leads to vague code
 3. **Think TDD** - design for testability
 4. **Keep it simple** - don't over-engineer
-5. **Output to .claude/artifacts/architecture.md** - this is your deliverable
+5. **Output to .claude/temp/architecture.md** - this is your deliverable
 
 ## Quality Checklist
 
@@ -158,7 +158,7 @@ Before finishing, verify:
 
 You are done when:
 
-1. `.claude/artifacts/spec.md` has been read
-2. `.claude/artifacts/architecture.md` is written
+1. `.claude/temp/spec.md` has been read
+2. `.claude/temp/architecture.md` is written
 3. All sections are complete
 4. TDD strategy is clear and actionable

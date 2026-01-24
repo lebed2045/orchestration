@@ -1,5 +1,6 @@
-# Claude Code orchestration artifacts (temp files)
-.claude/artifacts/*.md
+# Claude Code orchestration temp files (generated during workflow)
+.claude/temp/
+!.claude/temp/.gitkeep
 
 # Local settings
 .claude/settings.local.json

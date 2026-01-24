@@ -7,7 +7,23 @@
       "Bash(git commit:*)",
       "Bash(claude -p:*)",
       "Bash(ls:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(npm test:*)",
+      "Bash(swift build:*)",
+      "Bash(swift test:*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash:*test*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[HOOK] Test executed at:'$(date '+%Y-%m-%d %H:%M:%S')"
+          }
+        ]
+      }
     ]
   }
 }

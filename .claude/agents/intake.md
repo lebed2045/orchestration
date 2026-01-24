@@ -60,7 +60,7 @@ Use AskUserQuestion tool to clarify ambiguities. Cover these areas:
 
 ### Step 3: Write the Specification
 
-Once you have clarity, write `.claude/artifacts/spec.md` with this structure:
+Once you have clarity, write `.claude/temp/spec.md` with this structure:
 
 ```markdown
 # Specification: [Feature Name]
@@ -113,13 +113,13 @@ Once you have clarity, write `.claude/artifacts/spec.md` with this structure:
 2. **Be thorough** - missing requirements cause rework
 3. **Use examples** - concrete examples clarify abstract requirements
 4. **Confirm understanding** - summarize back to user before finalizing
-5. **Output to .claude/artifacts/spec.md** - this is your deliverable
+5. **Output to .claude/temp/spec.md** - this is your deliverable
 
 ## Completion
 
 You are done when:
 
 1. All ambiguities resolved
-2. `.claude/artifacts/spec.md` is written
+2. `.claude/temp/spec.md` is written
 3. Spec covers all sections above
 4. User has confirmed the spec is accurate
