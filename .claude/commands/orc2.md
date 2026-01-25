@@ -135,8 +135,44 @@ VERIFY: Both verdicts APPROVED before proceeding.
 
 Present plan for user approval (already out of plan mode from Phase 3).
 
-1. Present summary + both review verdicts
-2. Wait for user approval
+**MUST PRESENT** (not just "should I proceed?"):
+
+1. **Artifact paths**: Show full paths to spec.md and architecture.md
+2. **Spec summary**: Key requirements (3-5 bullet points)
+3. **Architecture summary**: Components, files to create/modify
+4. **TDD plan**: What tests will be written
+5. **Both review verdicts**: Gemini + Isolated Claude
+
+Output format:
+
+```text
+┌─────────────────────────────────────────────┐
+│ PLAN SUMMARY                                │
+├─────────────────────────────────────────────┤
+│ Spec: .claude/temp/spec.md                  │
+│ Architecture: .claude/temp/architecture.md  │
+│ Plan Review: .claude/temp/plan-review.md    │
+├─────────────────────────────────────────────┤
+│ REQUIREMENTS:                               │
+│ • [requirement 1]                           │
+│ • [requirement 2]                           │
+│ • ...                                       │
+├─────────────────────────────────────────────┤
+│ FILES TO CREATE/MODIFY:                     │
+│ • [file1] - [purpose]                       │
+│ • [file2] - [purpose]                       │
+├─────────────────────────────────────────────┤
+│ TDD PLAN:                                   │
+│ • [test 1]                                  │
+│ • [test 2]                                  │
+├─────────────────────────────────────────────┤
+│ GEMINI VERDICT: [APPROVED|NEEDS_WORK]       │
+│ CLAUDE VERDICT: [APPROVED|NEEDS_WORK]       │
+└─────────────────────────────────────────────┘
+```
+
+6. Output: `--- WAITING FOR PLAN APPROVAL ---`
+7. Wait for user approval
 
 ---
 
