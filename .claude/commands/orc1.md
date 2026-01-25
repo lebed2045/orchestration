@@ -72,8 +72,39 @@ CRITICAL: Return your response as TEXT ONLY. DO NOT create any files. DO NOT wri
 
 **Orc.Phase4_USER_GATE** - Exit plan mode for approval
 1. Call `ExitPlanMode` tool
-2. Present summary + Gemini feedback
-3. Wait for user approval
+2. **MUST PRESENT** (not just "should I proceed?"):
+   - **Artifact paths**: Show full paths to spec.md and architecture.md
+   - **Spec summary**: Key requirements (3-5 bullet points)
+   - **Architecture summary**: Components, files to create/modify
+   - **TDD plan**: What tests will be written
+   - **Gemini verdict**: APPROVED or NEEDS_WORK with feedback
+3. Output format:
+```text
+┌─────────────────────────────────────────────┐
+│ PLAN SUMMARY                                │
+├─────────────────────────────────────────────┤
+│ Spec: .claude/temp/spec.md                  │
+│ Architecture: .claude/temp/architecture.md  │
+├─────────────────────────────────────────────┤
+│ REQUIREMENTS:                               │
+│ • [requirement 1]                           │
+│ • [requirement 2]                           │
+│ • ...                                       │
+├─────────────────────────────────────────────┤
+│ FILES TO CREATE/MODIFY:                     │
+│ • [file1] - [purpose]                       │
+│ • [file2] - [purpose]                       │
+├─────────────────────────────────────────────┤
+│ TDD PLAN:                                   │
+│ • [test 1]                                  │
+│ • [test 2]                                  │
+├─────────────────────────────────────────────┤
+│ GEMINI VERDICT: [APPROVED|NEEDS_WORK]       │
+│ [feedback if any]                           │
+└─────────────────────────────────────────────┘
+```
+4. Output: `--- WAITING FOR PLAN APPROVAL ---`
+5. Wait for user approval
 
 **Orc.Phase5_TDD** - Test-driven development
 1. Write test files FIRST
