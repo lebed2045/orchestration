@@ -10,7 +10,8 @@
       "Bash(git rm:*)",
       "Bash(npm test:*)",
       "Bash(swift build:*)",
-      "Bash(swift test:*)"
+      "Bash(swift test:*)",
+      "Bash(aerospace list-windows:*)"
     ]
   },
   "hooks": {
