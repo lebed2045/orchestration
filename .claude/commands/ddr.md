@@ -13,6 +13,7 @@ COMPLEXITY_THRESHOLD: 3    # Score 1-5, delegate if ≤3
 MAX_O3_ATTEMPTS: 2
 SPLIT_FACTOR: 3
 MAX_DEPTH: 5
+LOG_DIR: .claude/temp      # Persistent logs
 ```
 
 ---
@@ -158,15 +159,25 @@ Write `.claude/temp/ddr-task.md` with enriched context.
 
 **3A.2 Call /o3 (Isolated)**
 
-Spawn subprocess for context isolation:
+Try subprocess first, fallback to Task agent if it fails:
 
 ```bash
+# Primary: subprocess (preferred for isolation)
 claude -p "Execute this task following /o3 workflow:
 $(cat .claude/temp/ddr-task.md)
 
-When done, output DDR_RESULT block with SUCCESS or FAILURE + reflection." \
+When done, output O3_RESULT block." \
   --allowedTools Read,Write,Edit,Bash,Glob,Grep \
   --print
+```
+
+If subprocess fails (API error, VSCode bug), use Task agent:
+
+```text
+Task tool with subagent_type="general-purpose":
+- Read .claude/temp/ddr-task.md
+- Execute TDD workflow
+- Output DDR_RESULT block when done
 ```
 
 **3A.3 Parse Result**
@@ -298,6 +309,89 @@ Then proceed to Phase 3B (JIT decomposition).
 ```
 
 Parent DDR uses this to validate child DDR success.
+
+---
+
+## Phase 6: LOGGING (Required)
+
+**Every DDR execution MUST log and update the card.**
+
+**6.1 Write Log File**
+
+Create `.claude/temp/ddr-[card].log` with full execution trace:
+
+```bash
+# Log file structure
+mkdir -p .claude/temp
+cat >> .claude/temp/ddr-[card].log << 'EOF'
+================================================================================
+DDR EXECUTION: [card]
+STARTED: [timestamp]
+DEPTH: [N]
+================================================================================
+
+[CONTEXT_SCAN output]
+[COMPLEXITY_SCORE output]
+[DECISION: DELEGATE or DECOMPOSE]
+
+--- EXECUTION ---
+[All tool calls and outputs]
+[O3_RESULT or subtask results]
+
+--- RESULT ---
+[DDR_RESULT block]
+
+FINISHED: [timestamp]
+================================================================================
+EOF
+```
+
+**6.2 Append to Card**
+
+Append execution summary to the original card:
+
+```bash
+cat >> .claude/pm/[card].md << 'EOF'
+
+---
+
+## Execution Log
+
+| Run | Date | Status | Artifacts |
+|-----|------|--------|-----------|
+| 1 | [date] | [SUCCESS/FAILURE] | [files] |
+
+### How to Verify
+```bash
+[test command, e.g., npm test]
+```
+
+### Reflection
+[What was learned, issues encountered]
+EOF
+```
+
+**6.3 Final User Output**
+
+After completion, ALWAYS output:
+
+```text
+┌─────────────────────────────────────────────┐
+│ DDR COMPLETE                                │
+├─────────────────────────────────────────────┤
+│ Card: [name]                                │
+│ Status: [SUCCESS|FAILURE]                   │
+│ Log: .claude/temp/ddr-[card].log            │
+├─────────────────────────────────────────────┤
+│ HOW TO VERIFY:                              │
+│ $ [test command]                            │
+│ $ [additional commands if needed]           │
+├─────────────────────────────────────────────┤
+│ ARTIFACTS CREATED:                          │
+│ • [file 1]                                  │
+│ • [file 2]                                  │
+└─────────────────────────────────────────────┘
+```
 
 ---
 
