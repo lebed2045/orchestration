@@ -6,9 +6,9 @@ This project contains orchestrated development workflows. Use the commands below
 
 | Command | Version | Agents | Description |
 |---------|---------|--------|-------------|
-| `/orc1` | v1 | `*-v1` | 8-phase workflow, Gemini review, orchestrator implements |
-| `/orc2` | v2 | `*-v2` | 10-phase workflow, 3-gate dual-review, isolated coder |
-| `/o3` | v3 | `*-v1` | 6-phase anti-regression workflow with BASELINE + SMOKE_TEST |
+| `/o1` | v1 | `*-v1` | 8-phase workflow, Gemini review, orchestrator implements |
+| `/o2` | v2 | `*-v2` | 10-phase workflow, 3-gate dual-review, isolated coder |
+| `/o3` | v3 | `*-v3` | 10-phase, 3-gate, isolated coder + anti-regression (BASELINE, SMOKE_TEST) |
 
 **The command files contain the full workflow. CLAUDE.md only has general rules.**
 
@@ -65,12 +65,12 @@ Before ANY completion claim, you MUST provide:
 ```text
 .claude/
 ├── commands/
-│   ├── orc1.md           # v1 workflow
-│   ├── orc2.md           # v2 workflow
+│   ├── o1.md             # v1 workflow
+│   ├── o2.md             # v2 workflow
 │   └── o3.md             # v3 anti-regression workflow
 ├── agents/
-│   ├── *-v1.md           # Agents for orc1, o3
-│   └── *-v2.md           # Agents for orc2
+│   ├── *-v1.md           # Agents for o1
+│   └── *-v3.md           # Agents for o3
 └── settings.local.json   # Hooks configuration
 ```
 
