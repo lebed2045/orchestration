@@ -12,9 +12,53 @@
 LOC_THRESHOLD: 50          # Lines of code - delegate if ≤50, decompose if >50
 MAX_WF3_ATTEMPTS: 2
 SPLIT_FACTOR: 3
-MAX_DEPTH: 5
+MAX_DEPTH: 2               # Prefer wide over deep (industry best practice)
 LOG_DIR: .claude/temp      # Persistent logs
 ```
+
+---
+
+## Naming Convention (WBS Standard)
+
+**Format**: `[epic]-[N].[name]-[N].[name].md`
+
+- Dash (`-`) before sequence numbers
+- Dot (`.`) before names
+- Full ancestry in filename (self-documenting)
+
+**Folder Structure**:
+```
+.claude/pm/
+└── ecom/
+    ├── ecom.md                          ← Epic overview
+    ├── ecom-1.user-mgmt.md              ← L1: Feature 1
+    ├── ecom-1.user-mgmt-1.model.md      ← L2: Subtask 1.1
+    ├── ecom-1.user-mgmt-2.auth.md       ← L2: Subtask 1.2
+    ├── ecom-1.user-mgmt-3.profile.md    ← L2: Subtask 1.3
+    ├── ecom-2.products.md               ← L1: Feature 2
+    ├── ecom-3.cart.md                   ← L1: Feature 3
+    └── ecom-4.checkout.md               ← L1: Feature 4
+```
+
+**Reading**: `ecom-1.user-mgmt-2.auth` = ecom → L1:1 (user-mgmt) → L2:2 (auth)
+
+---
+
+## Git Behavior
+
+**On SUCCESS**: Commit immediately (preserves work)
+```bash
+git add -A && git commit -m "WIP: [card-name]"
+```
+
+**On FAILURE**: Rollback uncommitted changes
+```bash
+git reset --hard HEAD
+```
+
+**Commit messages**:
+- Subtask: `WIP: ecom-1.user-mgmt-1.model`
+- Feature complete: `feat: ecom-1.user-mgmt complete`
 
 ---
 
@@ -255,11 +299,20 @@ Wait for user approval before proceeding.
 
 **3B.4 Write All Subtask Cards**
 
-After approval, create all 3 cards:
+After approval, create all 3 cards using naming convention:
 
-`.claude/pm/[card]-sub1.md`:
+If parent is `ecom-1.user-mgmt.md`, children are:
+- `ecom-1.user-mgmt-1.model.md`
+- `ecom-1.user-mgmt-2.auth.md`
+- `ecom-1.user-mgmt-3.profile.md`
+
+Card template:
+
 ```markdown
-# [card]-sub1: [Title]
+# ecom-1.user-mgmt-1.model
+
+## Parent
+ecom-1.user-mgmt
 
 ## Goal
 [Atomic goal]
@@ -267,27 +320,31 @@ After approval, create all 3 cards:
 ## Requirements
 - [specific]
 
-## Parent
-Card: .claude/pm/[card].md
-Subtask: 1 of 3
-
 ## Test
 1. [verification]
 
-## Produces (for Sub2)
+## Produces (for -2.auth)
 - [artifact 1]
 - [artifact 2]
 ```
 
-Repeat for `-sub2.md` and `-sub3.md` with appropriate dependencies.
-
 **3B.5 Execute Sub1 (Isolated)**
 
 ```bash
-claude -p "Run /ddr workflow on: .claude/pm/[card]-sub1.md
+claude -p "Run /ddr workflow on: .claude/pm/[epic]/[card]-1.[name].md
 Output DDR_RESULT when done." \
   --allowedTools Read,Write,Edit,Bash,Glob,Grep \
   --print
+```
+
+**On SUCCESS**: Commit immediately
+```bash
+git add -A && git commit -m "WIP: [card]-1.[name]"
+```
+
+**On FAILURE**: Rollback
+```bash
+git reset --hard HEAD
 ```
 
 **3B.6 PRECONDITION_CHECK for Sub2**
@@ -481,9 +538,11 @@ Output: DDR_RESULT block" \
 
 | Limit | Value | On Exceed |
 |-------|-------|-----------|
-| Max depth | 5 | STOP, ask user |
-| Max subtasks | 15 | STOP, too complex |
+| Max depth | 2 | STOP - scope too big, ask user to split epic |
+| Max subtasks | 9 | STOP, too complex (3×3 max) |
 | WF3 failures | 2 per card | Reflect + split |
+
+**Why max depth 2?** Industry best practice (NASA, PMI) recommends 3-5 WBS levels. L0=Epic, L1=Feature, L2=Subtask. If L2 needs splitting, the original card scope was too ambitious.
 
 ---
 
@@ -491,9 +550,9 @@ Output: DDR_RESULT block" \
 
 | Trigger | Action |
 |---------|--------|
-| No PM folder | Create `.claude/pm/` |
+| No PM folder | Create `.claude/pm/[epic]/` |
 | Card not found | List available |
-| Depth > 5 | Escalate to user |
+| Depth > 2 | STOP - "Scope too large, split epic first" |
 | WF3 fails 2x | Reflect + split |
 | PRECONDITION_CHECK fails | Return to previous subtask |
 
