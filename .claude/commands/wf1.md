@@ -1,4 +1,4 @@
-# /o1 - Orchestrated Development Workflow v1
+# /wf1 - Workflow v1
 
 **Version 1**: 8-phase workflow with Gemini review. Orchestrator writes code directly.
 

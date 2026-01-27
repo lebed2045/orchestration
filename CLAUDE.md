@@ -6,9 +6,10 @@ This project contains orchestrated development workflows. Use the commands below
 
 | Command | Version | Agents | Description |
 |---------|---------|--------|-------------|
-| `/o1` | v1 | `*-v1` | 8-phase workflow, Gemini review, orchestrator implements |
-| `/o2` | v2 | `*-v2` | 10-phase workflow, 3-gate dual-review, isolated coder |
-| `/o3` | v3 | `*-v3` | 10-phase, 3-gate, isolated coder + anti-regression (BASELINE, SMOKE_TEST) |
+| `/wf1` | v1 | `*-v1` | 8-phase workflow, Gemini review, orchestrator implements |
+| `/wf2` | v2 | inline | 10-phase workflow, 3-gate dual-review, isolated coder |
+| `/wf3` | v3 | `*-v3` | 10-phase, 3-gate, isolated coder + anti-regression |
+| `/ddr` | - | uses wf3 | Meta-orchestrator: Divide, Delegate, Reflect |
 
 **The command files contain the full workflow. CLAUDE.md only has general rules.**
 
@@ -65,12 +66,13 @@ Before ANY completion claim, you MUST provide:
 ```text
 .claude/
 ├── commands/
-│   ├── o1.md             # v1 workflow
-│   ├── o2.md             # v2 workflow
-│   └── o3.md             # v3 anti-regression workflow
+│   ├── wf1.md            # v1 workflow
+│   ├── wf2.md            # v2 workflow (inline prompts)
+│   ├── wf3.md            # v3 anti-regression workflow
+│   └── ddr.md            # Meta-orchestrator
 ├── agents/
-│   ├── *-v1.md           # Agents for o1
-│   └── *-v3.md           # Agents for o3
+│   ├── *-v1.md           # Agents for wf1
+│   └── *-v3.md           # Agents for wf3
 └── settings.local.json   # Hooks configuration
 ```
 

@@ -1,10 +1,10 @@
-# /o2 - Orchestrated Development Workflow v2
+# /wf2 - Workflow v2
 
 **Version 2**: 10-phase workflow with 3-gate dual-review + isolated coder architecture.
 
 **Note**: Uses inline prompts via `claude -p`, not separate agent files.
 
-Key differences from v1 (`/o1`):
+Key differences from v1 (`/wf1`):
 - 3 review gates (Plan, Tests, Code) with dual reviewers each
 - Coder spawned via `claude -p` for context isolation
 - Orchestrator never writes code directly

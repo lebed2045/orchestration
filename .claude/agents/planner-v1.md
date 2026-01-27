@@ -1,6 +1,6 @@
 ---
 name: planner-v1
-description: "Software architect for orc1. Creates architecture with TDD strategy."
+description: "Software architect for wf1. Creates architecture with TDD strategy."
 tools:
   - Read
   - Glob

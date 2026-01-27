@@ -1,6 +1,6 @@
 ---
 name: fresh-reviewer-v3
-description: "ISOLATED code reviewer for o3. Invoked via Bash 'claude -p'. Anti-regression aware."
+description: "ISOLATED code reviewer for wf3. Invoked via Bash 'claude -p'. Anti-regression aware."
 tools: []
 model: sonnet
 ---
@@ -118,6 +118,6 @@ VERDICT: [APPROVED|NEEDS_WORK]
 
 ## Output Location
 
-The reviewer writes findings to: `.claude/temp/review-feedback.md`
+The reviewer writes findings to: `.claude/temp/code-review.md`
 
 The orchestrator then reads this file and aggregates with Gemini's review.

@@ -1,6 +1,6 @@
 ---
 name: coder-v1
-description: "TDD practitioner for orc1. Implements features using strict TDD: write failing tests first, then implement."
+description: "TDD practitioner for wf1. Implements features using strict TDD: write failing tests first, then implement."
 tools:
   - Read
   - Write

@@ -1,6 +1,6 @@
 # /ddr - Divide Delegate Reflect
 
-**DDR** is a meta-orchestrator for PM cards. Assesses complexity, delegates to `/o3`, recursively decomposes on failure.
+**DDR** is a meta-orchestrator for PM cards. Assesses complexity, delegates to `/wf3`, recursively decomposes on failure.
 
 **PM Folder**: `.claude/pm/`
 
@@ -10,7 +10,7 @@
 
 ```yaml
 LOC_THRESHOLD: 50          # Lines of code - delegate if ≤50, decompose if >50
-MAX_O3_ATTEMPTS: 2
+MAX_WF3_ATTEMPTS: 2
 SPLIT_FACTOR: 3
 MAX_DEPTH: 5
 LOG_DIR: .claude/temp      # Persistent logs
@@ -61,7 +61,7 @@ LOG_DIR: .claude/temp      # Persistent logs
     ▼         ▼
 ┌────────┐  ┌──────────────┐
 │DELEGATE│  │DESIGN SUB1   │ ← Just-in-Time (not waterfall)
-│ to /o3 │  │Execute Sub1  │
+│ to /wf3 │  │Execute Sub1  │
 └───┬────┘  │Verify → Sub2 │
     │       └──────┬───────┘
 ┌───┴───┐          │
@@ -142,7 +142,7 @@ Estimate total lines of code needed (new + modified + tests).
 ```
 
 **Decision logic:**
-- `TOTAL ≤ 50` → DELEGATE to /o3
+- `TOTAL ≤ 50` → DELEGATE to /wf3
 - `TOTAL > 50` → DECOMPOSE into 3 subtasks
 
 ---
@@ -153,16 +153,16 @@ Estimate total lines of code needed (new + modified + tests).
 
 Write `.claude/temp/ddr-task.md` with enriched context.
 
-**3A.2 Call /o3 (Isolated)**
+**3A.2 Call /wf3 (Isolated)**
 
 Try subprocess first, fallback to Task agent if it fails:
 
 ```bash
 # Primary: subprocess (preferred for isolation)
-claude -p "Execute this task following /o3 workflow:
+claude -p "Execute this task following /wf3 workflow:
 $(cat .claude/temp/ddr-task.md)
 
-When done, output O3_RESULT block." \
+When done, output WF3_RESULT block." \
   --allowedTools Read,Write,Edit,Bash,Glob,Grep \
   --print
 ```
@@ -318,7 +318,7 @@ Repeat 3B.5-3B.6 for Sub2, then Sub3.
 
 ---
 
-## Phase 4: REFLECT_SPLIT (O3 Failed)
+## Phase 4: REFLECT_SPLIT (WF3 Failed)
 
 **4.1 Capture Reflection**
 
@@ -328,7 +328,7 @@ Repeat 3B.5-3B.6 for Sub2, then Sub3.
 ├─────────────────────────────────────────────┤
 │ Card: [name]                                │
 │ Attempts: [N]                               │
-│ Reason: [from O3]                           │
+│ Reason: [from WF3]                           │
 │ Blocker: [specific]                         │
 │ Learning: [insight]                         │
 └─────────────────────────────────────────────┘
@@ -388,7 +388,7 @@ DEPTH: [N]
 
 --- EXECUTION ---
 [All tool calls and outputs]
-[O3_RESULT or subtask results]
+[WF3_RESULT or subtask results]
 
 --- RESULT ---
 [DDR_RESULT block]
@@ -483,7 +483,7 @@ Output: DDR_RESULT block" \
 |-------|-------|-----------|
 | Max depth | 5 | STOP, ask user |
 | Max subtasks | 15 | STOP, too complex |
-| O3 failures | 2 per card | Reflect + split |
+| WF3 failures | 2 per card | Reflect + split |
 
 ---
 
@@ -494,7 +494,7 @@ Output: DDR_RESULT block" \
 | No PM folder | Create `.claude/pm/` |
 | Card not found | List available |
 | Depth > 5 | Escalate to user |
-| O3 fails 2x | Reflect + split |
+| WF3 fails 2x | Reflect + split |
 | PRECONDITION_CHECK fails | Return to previous subtask |
 
 ---

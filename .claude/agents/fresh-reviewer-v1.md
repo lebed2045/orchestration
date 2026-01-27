@@ -1,6 +1,6 @@
 ---
 name: fresh-reviewer-v1
-description: "Code reviewer for orc1. Invoked via Bash claude -p for isolated context."
+description: "Code reviewer for wf1. Invoked via Bash claude -p for isolated context."
 tools: []
 model: sonnet
 ---

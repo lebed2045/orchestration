@@ -1,6 +1,6 @@
 ---
 name: coder-v3
-description: "ISOLATED TDD practitioner for o3. Spawned via 'claude -p'. Anti-regression aware."
+description: "ISOLATED TDD practitioner for wf3. Spawned via 'claude -p'. Anti-regression aware."
 tools:
   - Read
   - Write

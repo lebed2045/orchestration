@@ -1,6 +1,6 @@
 ---
 name: intake-v3
-description: "Requirements analyst for o3. Asks clarifying questions. Captures BASELINE before changes."
+description: "Requirements analyst for wf3. Asks clarifying questions. Captures BASELINE before changes."
 tools:
   - Read
   - Glob
