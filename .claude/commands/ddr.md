@@ -9,7 +9,7 @@
 ## Config
 
 ```yaml
-COMPLEXITY_THRESHOLD: 3    # Score 1-5, delegate if ≤3
+LOC_THRESHOLD: 50          # Lines of code - delegate if ≤50, decompose if >50
 MAX_O3_ATTEMPTS: 2
 SPLIT_FACTOR: 3
 MAX_DEPTH: 5
@@ -51,12 +51,12 @@ LOG_DIR: .claude/temp      # Persistent logs
 └────────┬─────────┘
          ▼
 ┌──────────────────┐
-│ 2. COMPLEXITY    │ Score 1-5 (not LOC)
+│ 2. LOC_ESTIMATE  │ Estimate lines of code needed
 └────────┬─────────┘
          │
     ┌────┴────┐
     │         │
-   ≤3        >3
+   ≤50       >50
     │         │
     ▼         ▼
 ┌────────┐  ┌──────────────┐
@@ -121,37 +121,33 @@ Output:
 
 ---
 
-## Phase 2: COMPLEXITY_SCORE
+## Phase 2: LOC_ESTIMATE
 
-**NOT LOC.** Score based on concrete factors:
+Estimate total lines of code needed (new + modified + tests).
 
-| Factor | Weight | Score 1-5 |
-|--------|--------|-----------|
-| Files to touch | High | 1=1-2, 2=3-5, 3=6-10, 4=11-20, 5=>20 |
-| New dependencies | Medium | 1=0, 2=1, 3=2, 4=3-4, 5=>4 |
-| Unknowns/risks | High | 1=0, 2=1, 3=2, 4=3, 5=>3 |
-| Cross-cutting | Medium | 1=isolated, 3=2 systems, 5=many |
-
-**Formula**: `(files*2 + deps + unknowns*2 + cross) / 6`
+**Be conservative** — this is for testing recursive decomposition.
 
 ```text
 ┌─────────────────────────────────────────────┐
-│ COMPLEXITY_SCORE                            │
+│ LOC_ESTIMATE                                │
 ├─────────────────────────────────────────────┤
-│ Files to touch: [N] → score [1-5]           │
-│ New dependencies: [N] → score [1-5]         │
-│ Unknowns: [N] → score [1-5]                 │
-│ Cross-cutting: [desc] → score [1-5]         │
+│ New code: ~[N] lines                        │
+│ Modifications: ~[N] lines                   │
+│ Tests: ~[N] lines                           │
 │ ─────────────────────────────               │
-│ WEIGHTED SCORE: [1-5]                       │
-│ THRESHOLD: 3                                │
+│ TOTAL: ~[N] lines                           │
+│ THRESHOLD: 50 lines                         │
 │ DECISION: [DELEGATE|DECOMPOSE]              │
 └─────────────────────────────────────────────┘
 ```
 
+**Decision logic:**
+- `TOTAL ≤ 50` → DELEGATE to /o3
+- `TOTAL > 50` → DECOMPOSE into 3 subtasks
+
 ---
 
-## Phase 3A: DELEGATE (Score ≤ 3)
+## Phase 3A: DELEGATE (LOC ≤ 50)
 
 **3A.1 Prepare**
 
@@ -190,7 +186,7 @@ Proceed to Phase 5 (DDR_RESULT).
 
 ---
 
-## Phase 3B: DECOMPOSE (Score > 3) - Just-in-Time
+## Phase 3B: DECOMPOSE (LOC > 50) - Just-in-Time
 
 **CRITICAL: Do NOT pre-write all subtask cards. One at a time.**
 
@@ -400,7 +396,7 @@ After completion, ALWAYS output:
 Every response starts with:
 
 ```text
-[DDR] Card: [name] | Depth: [N] | Score: [1-5] | Status: [phase]
+[DDR] Card: [name] | Depth: [N] | LOC: [N] | Status: [phase]
 ```
 
 ---
