@@ -1,6 +1,6 @@
 ---
 name: intake-v1
-description: "Requirements analyst for orc1. Asks clarifying questions until spec is clear."
+description: "Requirements analyst for wf1. Asks clarifying questions until spec is clear."
 tools:
   - Read
   - Glob

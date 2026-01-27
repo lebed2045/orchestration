@@ -1,6 +1,6 @@
 ---
 name: planner-v3
-description: "Software architect for o3. Creates architecture with TDD + anti-regression strategy."
+description: "Software architect for wf3. Creates architecture with TDD + anti-regression strategy."
 tools:
   - Read
   - Glob

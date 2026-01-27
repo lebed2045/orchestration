@@ -1,4 +1,4 @@
-# /o3 - Anti-Regression Orchestrator v3
+# /wf3 - Workflow v3 (Anti-Regression)
 
 **Version 3**: Full workflow with anti-regression guarantees. Combines isolated coder + dual reviewers + regression tracking.
 
@@ -112,7 +112,7 @@ NEVER output these without preceding PROOF BLOCKS:
 Every response MUST start with:
 
 ```text
-[O3.PhaseX] [Baseline: SET|UNSET] [Regression: SAFE|DETECTED|UNKNOWN] [Status: in_progress|blocked|complete]
+[WF3.PhaseX] [Baseline: SET|UNSET] [Regression: SAFE|DETECTED|UNKNOWN] [Status: in_progress|blocked|complete]
 ```
 
 ---
@@ -394,11 +394,11 @@ Only output completion if ALL conditions met:
 └─────────────────────────────────────────────┘
 ```
 
-**Then output O3_RESULT block (required for DDR parsing):**
+**Then output WF3_RESULT block (required for DDR parsing):**
 
 ```text
 ┌─────────────────────────────────────────────┐
-│ O3_RESULT                                   │
+│ WF3_RESULT                                   │
 ├─────────────────────────────────────────────┤
 │ Task: [description from spec]               │
 │ Status: SUCCESS                             │
@@ -445,11 +445,11 @@ Options:
 Awaiting user decision...
 ```
 
-**Then output O3_RESULT block (required for DDR parsing):**
+**Then output WF3_RESULT block (required for DDR parsing):**
 
 ```text
 ┌─────────────────────────────────────────────┐
-│ O3_RESULT                                   │
+│ WF3_RESULT                                   │
 ├─────────────────────────────────────────────┤
 │ Task: [description from spec]               │
 │ Status: FAILURE                             │
