@@ -186,22 +186,78 @@ Proceed to Phase 5 (DDR_RESULT).
 
 ---
 
-## Phase 3B: DECOMPOSE (LOC > 50) - Just-in-Time
+## Phase 3B: DECOMPOSE (LOC > 50)
 
-**CRITICAL: Do NOT pre-write all subtask cards. One at a time.**
+**Design all 3 subtasks upfront, get user validation, then execute sequentially.**
 
-**3B.1 Design Subtask 1 Only**
+**3B.1 Design All 3 Subtasks**
 
 | Subtask | Purpose |
 |---------|---------|
 | Sub1 | Foundation — independently testable, unblocks Sub2 |
+| Sub2 | Core logic — builds on Sub1 artifacts |
+| Sub3 | Integration — connects components, final tests |
 
-Ask user to validate Sub1 design only.
+**3B.2 Clarify Uncertainties**
 
-**3B.2 Write Sub1 Card**
+If ANY aspect of the decomposition is unclear, ask the user via `AskUserQuestion`.
 
-Create `.claude/pm/[card]-sub1.md`:
+**Clarification depth by subtask:**
 
+| Subtask | Depth | What to clarify |
+|---------|-------|-----------------|
+| Sub1 | **Detailed** | Requirements, edge cases, file locations, naming, test strategy |
+| Sub2 | Light | High-level approach, dependencies on Sub1 output |
+| Sub3 | Light | Integration points, final acceptance criteria |
+
+Example questions:
+- Sub1: "Should User model include email validation? Where should it live?"
+- Sub2: "Sub2 will use bcrypt - any preference on salt rounds?"
+- Sub3: "Sub3 integrates middleware - should it also add rate limiting?"
+
+**Skip clarification if:**
+- Card requirements are explicit and unambiguous
+- Technical decisions are standard (use card's ## Technical section)
+
+**3B.3 Present Decomposition Plan**
+
+Output for user validation:
+
+```text
+┌─────────────────────────────────────────────┐
+│ DECOMPOSITION PLAN                          │
+├─────────────────────────────────────────────┤
+│ Parent Card: [name]                         │
+│ Estimated LOC: [N] (threshold: 50)          │
+├─────────────────────────────────────────────┤
+│ SUB1: [title]                               │
+│ Goal: [atomic goal]                         │
+│ LOC estimate: ~[N]                          │
+│ Produces: [artifacts for Sub2]              │
+├─────────────────────────────────────────────┤
+│ SUB2: [title]                               │
+│ Goal: [atomic goal]                         │
+│ Requires: [artifacts from Sub1]             │
+│ LOC estimate: ~[N]                          │
+│ Produces: [artifacts for Sub3]              │
+├─────────────────────────────────────────────┤
+│ SUB3: [title]                               │
+│ Goal: [atomic goal]                         │
+│ Requires: [artifacts from Sub2]             │
+│ LOC estimate: ~[N]                          │
+│ Produces: [final deliverables]              │
+└─────────────────────────────────────────────┘
+```
+
+Output: `--- WAITING FOR DECOMPOSITION APPROVAL ---`
+
+Wait for user approval before proceeding.
+
+**3B.4 Write All Subtask Cards**
+
+After approval, create all 3 cards:
+
+`.claude/pm/[card]-sub1.md`:
 ```markdown
 # [card]-sub1: [Title]
 
@@ -213,7 +269,7 @@ Create `.claude/pm/[card]-sub1.md`:
 
 ## Parent
 Card: .claude/pm/[card].md
-Subtask: 1 of 3 (JIT)
+Subtask: 1 of 3
 
 ## Test
 1. [verification]
@@ -223,7 +279,9 @@ Subtask: 1 of 3 (JIT)
 - [artifact 2]
 ```
 
-**3B.3 Recurse on Sub1 (Isolated)**
+Repeat for `-sub2.md` and `-sub3.md` with appropriate dependencies.
+
+**3B.5 Execute Sub1 (Isolated)**
 
 ```bash
 claude -p "Run /ddr workflow on: .claude/pm/[card]-sub1.md
@@ -232,7 +290,7 @@ Output DDR_RESULT when done." \
   --print
 ```
 
-**3B.4 PRECONDITION_CHECK for Sub2**
+**3B.6 PRECONDITION_CHECK for Sub2**
 
 After Sub1 completes, verify artifacts exist:
 
@@ -254,11 +312,9 @@ ls [expected_file_1] && ls [expected_file_2]
 
 If BLOCKED, return to Sub1 with feedback.
 
-**3B.5 Design & Execute Sub2**
+**3B.7 Execute Sub2, then Sub3**
 
-Only NOW design Sub2 based on actual Sub1 output.
-
-Repeat 3B.1-3B.4 for Sub2, then Sub3.
+Repeat 3B.5-3B.6 for Sub2, then Sub3.
 
 ---
 
