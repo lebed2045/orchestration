@@ -25,12 +25,14 @@ Workflows also enforce:
 
 ## Available Workflows
 
-| Command | Description | Best For |
-|---------|-------------|----------|
-| `/wf1` | Basic workflow with Gemini review | Simple features, learning the system |
-| `/wf2` | Dual review + isolated coder | Production code, team standards |
-| `/wf3` | Full anti-regression with smoke tests | Critical fixes, zero-tolerance for breakage |
-| `/ddr` | Meta-workflow for PM cards | Large features, backlog processing |
+| Command | Phases | Gates | Reviewers | Description |
+|---------|--------|-------|-----------|-------------|
+| `/wf1` | 8 | 1 | Gemini | Basic workflow, orchestrator implements |
+| `/wf2` | 10 | 3 | Gemini + Claude | Dual review + isolated coder |
+| `/wf3` | 10 | 3 | Gemini + Claude | Anti-regression (baseline, smoke test) |
+| `/wf4` | 8 | 2 | Gemini + Codex + Claude | Autonomous (infer, auto-fix, triple review) |
+| `/wf5` | 10 | 3 | Gemini + Codex + Claude | wf3 + Codex (triple review in Gate 1) |
+| `/ddr` | - | - | uses wf3 | Meta-orchestrator for PM cards |
 
 ---
 
@@ -147,6 +149,72 @@ The most rigorous workflow. Everything from wf2 plus anti-regression tracking.
 
 ---
 
+### /wf4 - Autonomous Workflow (8 phases, 2 gates)
+
+Maximum autonomy. Infers requirements from codebase, auto-fixes on review feedback.
+
+**Philosophy**:
+
+| Old Behavior (wf1-3) | New Behavior (wf4) |
+|----------------------|-------------------|
+| Ask about inputs/outputs/edge cases | Infer from codebase + task |
+| "Should I update the plan?" | Just update it |
+| "Should I proceed?" | Proceed unless blocked |
+| Wait for approval at every gate | Auto-approve after triple review |
+
+**Key features**:
+- **Triple review**: Gemini + Codex + Isolated Claude
+- **Auto-fix loops**: On NEEDS_WORK, update and re-run reviewers (no asking)
+- **Inferred requirements**: Reads codebase patterns instead of asking questions
+- **0-1 human interactions** typical (vs 3-5 in wf3)
+
+**Human involvement only for**:
+1. Multiple valid approaches with significant trade-offs
+2. Destructive operations (delete files, breaking changes)
+3. Ambiguity that cannot be resolved from codebase
+4. Circuit breaker activated (2x same error)
+
+**Flow**:
+1. Baseline Capture
+2. Autonomous Intake - Infer requirements, document assumptions
+3. Autonomous Planning - Design architecture
+4. **GATE 1: Triple Review Plan** - Gemini + Codex + Claude (auto-fix loop)
+5. TDD Red - Write failing tests
+6. TDD Green - Implement
+7. **GATE 2: Triple Review Code** - Gemini + Codex + Claude (auto-fix loop)
+8. Completion
+
+**Agents**: `intake-v4`, `planner-v4`, `coder-v4`, `fresh-reviewer-v4`
+
+```bash
+/wf4 Add caching to the API endpoints
+```
+
+---
+
+### /wf5 - Triple Review Workflow (10 phases, 3 gates)
+
+Based on wf3 with Codex added as third reviewer in Gate 1 (Plan review).
+
+**Key difference from wf3**: Adds Codex reviewer to Gate 1 for triple review of the plan. Gates 2 and 3 remain dual review.
+
+**Flow**: Same as wf3, but Phase 4 has three reviewers:
+- Gemini reviews spec + architecture
+- Codex reviews spec + architecture
+- Isolated Claude reviews spec + architecture
+
+All three must return APPROVED before proceeding to user approval.
+
+**When to use**: When you want wf3's rigor but with an additional AI perspective on the plan.
+
+**Agents**: Uses `*-v3` agents (same as wf3)
+
+```bash
+/wf5 Implement OAuth2 flow with refresh tokens
+```
+
+---
+
 ### /ddr - Divide Delegate Reflect
 
 A meta-workflow for processing PM cards. It doesn't implement directly - it orchestrates /wf3.
@@ -216,19 +284,24 @@ Each subtask runs through /wf3 independently. Sub2 waits for Sub1's artifacts.
 
 ## Comparison Table
 
-| Feature | wf1 | wf2 | wf3 | ddr |
-|---------|-----|-----|-----|-----|
-| Phases | 8 | 10 | 10 | Recursive |
-| Review gates | 1 | 3 | 3 | Uses wf3 |
-| Gemini review | Yes | Yes | Yes | Yes |
-| Isolated coder | No | Yes | Yes | Yes |
-| Dual reviewers | No | Yes | Yes | Yes |
-| Baseline capture | No | No | Yes | Yes |
-| Regression tracking | No | No | Yes | Yes |
-| Smoke testing | No | No | Yes | Yes |
-| Warning tracking | No | No | Yes | Yes |
-| Auto-decomposition | No | No | No | Yes |
-| PM card support | No | No | No | Yes |
+| Feature | wf1 | wf2 | wf3 | wf4 | wf5 |
+|---------|-----|-----|-----|-----|-----|
+| Phases | 8 | 10 | 10 | 8 | 10 |
+| Review gates | 1 | 3 | 3 | 2 | 3 |
+| Gemini review | Yes | Yes | Yes | Yes | Yes |
+| Codex review | No | No | No | Yes | Gate 1 only |
+| Isolated coder | No | Yes | Yes | Yes | Yes |
+| Reviewers per gate | 1 | 2 | 2 | 3 | 3/2/2 |
+| Baseline capture | No | No | Yes | Yes | Yes |
+| Regression tracking | No | No | Yes | Yes | Yes |
+| Smoke testing | No | No | Yes | Yes | Yes |
+| Auto-fix on feedback | No | No | No | Yes | No |
+| Infer requirements | No | No | No | Yes | No |
+| **Test falsifiability check** | Yes | Yes | Yes | Yes | Yes |
+| **Auto-stage tests** | Yes | Yes | Yes | Yes | Yes |
+| **Ask before staging impl** | Yes | Yes | Yes | Yes | Yes |
+| Human interactions | Many | 3-5 | 3-5 | 0-1 | 3-5 |
+| Autonomy level | Low | Medium | Medium | Maximum | Medium |
 
 ---
 
@@ -237,19 +310,16 @@ Each subtask runs through /wf3 independently. Sub2 waits for Sub1's artifacts.
 ```
 .claude/
 ├── commands/
-│   ├── wf1.md            # Basic workflow
-│   ├── wf2.md            # Dual review workflow
-│   ├── wf3.md            # Anti-regression workflow
+│   ├── wf1.md            # Basic workflow (8 phases, Gemini only)
+│   ├── wf2.md            # Dual review workflow (10 phases)
+│   ├── wf3.md            # Anti-regression workflow (10 phases)
+│   ├── wf4.md            # Autonomous workflow (8 phases, triple review)
+│   ├── wf5.md            # Triple review workflow (10 phases, wf3 + Codex)
 │   └── ddr.md            # Meta-orchestrator
 ├── agents/
-│   ├── intake-v1.md      # Requirements (wf1)
-│   ├── planner-v1.md     # Architecture (wf1)
-│   ├── coder-v1.md       # TDD implementation (wf1)
-│   ├── fresh-reviewer-v1.md  # Code review (wf1)
-│   ├── intake-v3.md      # Requirements + baseline (wf3)
-│   ├── planner-v3.md     # Architecture + regression strategy (wf3)
-│   ├── coder-v3.md       # TDD + regression tracking (wf3)
-│   └── fresh-reviewer-v3.md  # Review + regression check (wf3)
+│   ├── *-v1.md           # Agents for wf1
+│   ├── *-v3.md           # Agents for wf3, wf5
+│   └── *-v4.md           # Agents for wf4 (autonomous)
 ├── pm/                   # PM cards for DDR
 │   ├── 01-feature.md
 │   └── 02-auth-system.md
@@ -323,8 +393,9 @@ Replace with: "Running verification now..." then show actual output.
 
 ## Version Policy
 
-- **wf1, wf2** - Frozen, never modified
-- **wf3** - Current experimental version
-- **Future** - New features become wf4, wf5, etc.
+- **wf1, wf2, wf3** - Stable, rarely modified
+- **wf4** - Autonomous workflow with triple review (Gemini + Codex + Claude)
+- **wf5** - wf3 + Codex in Gate 1 (triple review for planning)
+- **Future** - New features become wf6, wf7, etc.
 
 This ensures reproducibility. A workflow that worked yesterday works the same today.

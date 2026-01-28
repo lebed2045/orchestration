@@ -19,6 +19,35 @@ This applies to ALL phases, especially INTAKE when understanding the codebase.
 
 ---
 
+## Git Staging Discipline
+
+**Tests get staged after test review. Implementation requires user permission.**
+
+| Phase | Action | Git Staging |
+|-------|--------|-------------|
+| TDD (write tests) | Write tests | Not staged yet |
+| TDD (test review) | Review tests | **Auto-stage tests** after APPROVED |
+| TDD (implement) | Write implementation | Not staged yet |
+| CODE_REVIEW | Review code | **Ask user** before staging |
+| Completion | Done | **Never auto-commit** |
+
+**After test review approval:**
+
+```bash
+git add tests/  # or specific test files
+echo "✓ Tests staged after test review approval"
+```
+
+**After code review, ask user:**
+
+```text
+Tests are staged. Implementation is ready.
+- Stage implementation? [y/n]
+- Commit all? [y/n]
+```
+
+---
+
 ## Instructions
 
 You are now in **Orchestration Mode**. Follow this workflow exactly:
@@ -106,12 +135,46 @@ CRITICAL: Return your response as TEXT ONLY. DO NOT create any files. DO NOT wri
 4. Output: `--- WAITING FOR PLAN APPROVAL ---`
 5. Wait for user approval
 
-**Orc.Phase5_TDD** - Test-driven development
+**Orc.Phase5_TDD_RED** - Write failing tests
 1. Write test files FIRST
 2. Run tests - VERIFY they FAIL (red phase)
-3. Write MINIMAL implementation
-4. Run tests - VERIFY they PASS (green phase)
-5. If tests don't fail initially, rewrite them
+3. If tests don't fail initially, rewrite them
+
+**Orc.Phase5b_TEST_REVIEW** - Review tests before implementation
+
+Call `mcp__gemini__ask-gemini` to review tests:
+
+```text
+Review the test files for quality and falsifiability.
+
+Validate:
+1. COVERAGE: Tests cover ALL requirements in spec
+2. RED_PHASE: Tests are currently FAILING (no implementation)
+3. FALSIFIABILITY: Tests CANNOT pass with trivial implementation like 'return true'
+
+FALSIFIABILITY examples:
+- BAD: expect(login()).toBeTruthy() - passes with 'return true'
+- GOOD: expect(login('user','pass')).toEqual({token: expect.any(String), userId: 'user'})
+
+Output:
+VERDICT: APPROVED or NEEDS_WORK
+COVERAGE_CHECK: YES/NO
+RED_PHASE_CHECK: YES/NO
+FALSIFIABILITY_CHECK: YES/NO
+ISSUES: [list]
+```
+
+**After APPROVED:**
+
+```bash
+git add tests/  # Auto-stage tests
+echo "✓ Tests staged after review approval"
+```
+
+**Orc.Phase5c_TDD_GREEN** - Implement to pass tests
+1. Write MINIMAL implementation
+2. Run tests - VERIFY they PASS (green phase)
+3. Test files are READ-ONLY at this point
 
 **Orc.Phase6_DUAL_REVIEW** - Two independent reviewers
 1. Call `mcp__gemini__ask-gemini` to review code:

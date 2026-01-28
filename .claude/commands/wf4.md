@@ -83,6 +83,35 @@ Same as wf3 - these are non-negotiable:
 
 ---
 
+## Git Staging Discipline
+
+**Tests get staged automatically after test review. Implementation requires user permission.**
+
+| Phase | Action | Git Staging |
+|-------|--------|-------------|
+| TDD_RED | Write tests | Not staged yet |
+| TEST_REVIEW (Gate 1.5) | Review tests | **Auto-stage tests** after APPROVED |
+| TDD_GREEN | Write implementation | Not staged yet |
+| CODE_REVIEW (Gate 2) | Review code | **Ask user** before staging |
+| Completion | Done | **Never auto-commit** |
+
+**After test review approval:**
+
+```bash
+git add tests/  # or specific test files
+echo "✓ Tests staged after test review approval"
+```
+
+**After Gate 2, ask user:**
+
+```text
+Tests are staged. Implementation is ready.
+- Stage implementation? [y/n]
+- Commit all? [y/n]
+```
+
+---
+
 ## State Tracking
 
 Every response MUST start with:
@@ -93,7 +122,7 @@ Every response MUST start with:
 
 ---
 
-## Phase Flow (8 Phases, 1 Gate)
+## Phase Flow (8 Phases, 2 Gates + Test Review)
 
 ### Phase 1: BASELINE_CAPTURE
 
@@ -281,6 +310,69 @@ LOOP until tests fail, then output EXECUTION_BLOCK." \
 ```
 
 VERIFY: EXECUTION_BLOCK shows EXIT_CODE≠0 (tests failing).
+
+---
+
+### Phase 5b: TEST_TRIPLE_REVIEW (AUTO-FIX)
+
+**ALL THREE reviewers must approve tests before implementation.**
+
+**Test review validates THREE things:**
+
+1. **COVERAGE** - Tests cover all spec requirements
+2. **RED_PHASE** - Tests actually fail (no implementation yet)
+3. **FALSIFIABILITY** - Tests cannot pass with trivial implementation (e.g., `return true`)
+
+#### Reviewer 1: Gemini
+
+```text
+Review tests for coverage, red phase, and falsifiability.
+VERDICT: APPROVED or NEEDS_WORK
+COVERAGE_CHECK: YES/NO
+RED_PHASE_CHECK: YES/NO
+FALSIFIABILITY_CHECK: YES/NO - can tests pass with 'return true'?
+ISSUES: [list]
+```
+
+#### Reviewer 2: Codex
+
+Call `mcp__codex-cli__codex`:
+
+```text
+Review the test files.
+
+Validate:
+1. COVERAGE: Tests cover ALL requirements in spec
+2. RED_PHASE: Tests are currently FAILING
+3. FALSIFIABILITY: Tests CANNOT pass with trivial implementation
+
+FALSIFIABILITY examples:
+- BAD: expect(login()).toBeTruthy() - passes with 'return true'
+- GOOD: expect(login('user','pass')).toEqual({token: expect.any(String)})
+
+Output: VERDICT, COVERAGE_CHECK, RED_PHASE_CHECK, FALSIFIABILITY_CHECK, ISSUES
+```
+
+#### Reviewer 3: Isolated Claude
+
+```bash
+claude -p "Review test files for coverage and falsifiability.
+Validate tests cannot pass with trivial implementation.
+Output: VERDICT, FALSIFIABILITY_VALID, ISSUES" \
+  --allowedTools Read,Glob,Grep,Bash \
+  --print
+```
+
+#### AUTO-FIX LOOP (max 3 iterations)
+
+If NEEDS_WORK: fix tests and re-run reviewers (no asking).
+
+**After all APPROVED:**
+
+```bash
+git add tests/  # Auto-stage tests
+echo "✓ Tests staged after test review approval"
+```
 
 ---
 
