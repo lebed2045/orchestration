@@ -9,7 +9,8 @@ This project contains orchestrated development workflows. Use the commands below
 | `/wf1` | v1 | `*-v1` | 8-phase workflow, Gemini review, orchestrator implements |
 | `/wf2` | v2 | inline | 10-phase workflow, 3-gate dual-review, isolated coder |
 | `/wf3` | v3 | `*-v3` | 10-phase, 3-gate, isolated coder + anti-regression |
-| `/wf4` | v4 | `*-v4` | 8-phase, 1-gate, autonomous (infer, auto-fix, minimal human) |
+| `/wf4` | v4 | `*-v4` | 8-phase, 2-gate, autonomous (infer, auto-fix, triple review) |
+| `/wf5` | v5 | `*-v3` | 10-phase, 3-gate, wf3 + Codex (triple review in Gate 1) |
 | `/ddr` | - | uses wf3 | Meta-orchestrator: Divide, Delegate, Reflect |
 
 **The command files contain the full workflow. CLAUDE.md only has general rules.**

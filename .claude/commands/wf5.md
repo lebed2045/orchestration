@@ -1,6 +1,6 @@
-# /wf3 - Workflow v3 (Anti-Regression)
+# /wf5 - Workflow v5 (Triple Review)
 
-**Version 3**: Full workflow with anti-regression guarantees. Combines isolated coder + dual reviewers + regression tracking.
+**Version 5**: Anti-regression workflow with triple review (Gemini + Codex + Claude). Based on wf3 with added Codex reviewer.
 
 **Core principle**: NEVER claim "done" without EXECUTION PROOF + REGRESSION CHECK.
 
@@ -162,11 +162,22 @@ Design architecture (still in plan mode).
    - **Smoke test plan**
 3. VERIFY: Show `cat .claude/temp/architecture.md | head -30` output
 
-### Phase 4: PLAN_DUAL_REVIEW (GATE 1)
+### Phase 4: PLAN_TRIPLE_REVIEW (GATE 1)
 
-Both reviewers must approve the plan.
+**ALL THREE reviewers must approve the plan.**
 
-**IMPORTANT: Exit plan mode FIRST to allow `claude -p` subprocess.**
+**BLOCKING GATE**: DO NOT proceed to Phase 5 until all 3 verdicts are shown.
+
+⚠️ **GATE CHECK** - Before asking user for approval, you MUST have:
+
+- [ ] Gemini VERDICT shown in output
+- [ ] Codex VERDICT shown in output
+- [ ] Isolated Claude VERDICT shown in output
+- [ ] All 3 = APPROVED (or iterate max 3x)
+
+**If you find yourself asking user "approve?" without showing all 3 verdicts → STOP, you skipped the gate.**
+
+**IMPORTANT: Exit plan mode FIRST to allow subprocess calls.**
 
 1. Call `ExitPlanMode` tool (temporary - to run reviewers)
 
@@ -175,13 +186,55 @@ Both reviewers must approve the plan.
 Call `mcp__gemini__ask-gemini` with spec + architecture content:
 
 ```text
+Working directory: [pwd]
+
+Review the following plan for a software implementation task.
+
+Spec: [paste .claude/temp/spec.md content or path]
+Architecture: [paste .claude/temp/architecture.md content or path]
+
+Evaluate:
+1. Requirements completeness
+2. Architecture feasibility
+3. TDD strategy adequacy
+4. Regression prevention strategy
+
+Output format:
 VERDICT: [APPROVED|NEEDS_WORK]
 REGRESSION_STRATEGY: [adequate|missing]
 ISSUES: [list]
 SUGGESTIONS: [list]
 ```
 
-#### Reviewer 2: Isolated Claude
+#### Reviewer 2: Codex
+
+Call `mcp__codex-cli__codex` tool:
+
+```text
+prompt: "Review the plan files for a software implementation task.
+
+Read these files:
+- .claude/temp/spec.md
+- .claude/temp/architecture.md
+
+Evaluate:
+1. Requirements completeness - are all user needs captured?
+2. Architecture feasibility - is the design sound and implementable?
+3. TDD strategy - are tests well-planned?
+4. Regression strategy - how will we prevent breaking existing functionality?
+
+Output format:
+VERDICT: [APPROVED|NEEDS_WORK]
+ARCHITECTURE_SOUND: [YES|NO - reason]
+TDD_ADEQUATE: [YES|NO - reason]
+REGRESSION_STRATEGY: [adequate|missing]
+ISSUES: [numbered list]
+SUGGESTIONS: [numbered list]"
+
+workingDirectory: [project root]
+```
+
+#### Reviewer 3: Isolated Claude
 
 ```bash
 claude -p "You are a software architect with ZERO context.
@@ -193,14 +246,26 @@ Output to .claude/temp/plan-review.md with VERDICT, ISSUES, SUGGESTIONS." \
   --print
 ```
 
-#### If NEEDS_WORK (max 3 iterations):
+#### If ANY reviewer returns NEEDS_WORK (max 3 iterations)
 
 1. Call `EnterPlanMode` tool
 2. Fix issues in spec/architecture
 3. Call `ExitPlanMode` tool
-4. Re-run both reviewers
+4. Re-run ALL THREE reviewers
 
-VERIFY: Both verdicts APPROVED before proceeding.
+**VERIFY**: All 3 verdicts APPROVED before proceeding.
+
+```text
+┌─────────────────────────────────────────────┐
+│ GATE 1 CHECKPOINT                           │
+├─────────────────────────────────────────────┤
+│ Gemini:  [APPROVED|NEEDS_WORK]              │
+│ Codex:   [APPROVED|NEEDS_WORK]              │
+│ Claude:  [APPROVED|NEEDS_WORK]              │
+├─────────────────────────────────────────────┤
+│ GATE STATUS: [PASS|BLOCKED]                 │
+└─────────────────────────────────────────────┘
+```
 
 ### Phase 5: USER_GATE_PLAN
 
@@ -213,7 +278,7 @@ Present plan for user approval.
 3. **Architecture summary**: Components, files to create/modify
 4. **TDD plan**: What tests will be written
 5. **Regression strategy**: How we'll prevent regressions
-6. **Both review verdicts**: Gemini + Isolated Claude
+6. **All 3 review verdicts**: Gemini + Codex + Isolated Claude
 
 Output format:
 
@@ -241,6 +306,7 @@ Output format:
 │ • [test 1]                                  │
 ├─────────────────────────────────────────────┤
 │ GEMINI VERDICT: [APPROVED|NEEDS_WORK]       │
+│ CODEX VERDICT:  [APPROVED|NEEDS_WORK]       │
 │ CLAUDE VERDICT: [APPROVED|NEEDS_WORK]       │
 └─────────────────────────────────────────────┘
 ```
@@ -481,7 +547,7 @@ User frustration with honest "not done" > false "done".
 
 | Gate | Phase | What's Reviewed | Reviewers |
 |------|-------|-----------------|-----------|
-| GATE 1 | Phase 4 | Plan (spec + architecture + regression strategy) | Gemini + Isolated Claude |
+| GATE 1 | Phase 4 | Plan (spec + architecture + regression strategy) | Gemini + Codex + Isolated Claude |
 | GATE 2 | Phase 7 | Tests (before implementation, must FAIL) | Gemini + Isolated Claude |
 | GATE 3 | Phase 9 | Code + REGRESSION_DELTA + SMOKE_TEST | Gemini + Isolated Claude |
 
