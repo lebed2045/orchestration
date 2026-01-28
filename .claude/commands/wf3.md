@@ -107,6 +107,35 @@ NEVER output these without preceding PROOF BLOCKS:
 
 ---
 
+## Git Staging Discipline
+
+**Tests get staged automatically after Gate 2 approval. Implementation requires user permission.**
+
+| Phase | Action | Git Staging |
+|-------|--------|-------------|
+| TDD_RED | Write tests | Not staged yet |
+| TEST_REVIEW (Gate 2) | Review tests | **Auto-stage tests** after APPROVED |
+| TDD_GREEN | Write implementation | Not staged yet |
+| CODE_REVIEW (Gate 3) | Review code | **Ask user** before staging |
+| Completion | Done | **Never auto-commit** |
+
+**After Gate 2 approval:**
+
+```bash
+git add tests/  # or specific test files
+echo "✓ Tests staged after Gate 2 approval"
+```
+
+**After Gate 3, ask user:**
+
+```text
+Tests are staged. Implementation is ready.
+- Stage implementation? [y/n]
+- Commit all? [y/n]
+```
+
+---
+
 ## State Tracking
 
 Every response MUST start with:
@@ -270,29 +299,61 @@ VERIFY: Coder output shows EXECUTION_BLOCK with EXIT_CODE≠0 (tests failing).
 
 Both reviewers validate tests BEFORE implementation.
 
+**Gate 2 validates THREE things:**
+
+1. **COVERAGE** - Tests cover all spec requirements
+2. **RED_PHASE** - Tests actually fail (no implementation yet)
+3. **FALSIFIABILITY** - Tests cannot pass with trivial implementation (e.g., `return true`)
+
 #### Reviewer 1: Gemini
 
-Validate tests cover spec, are meaningful, and FAIL correctly (RED phase).
+Validate tests cover spec, fail correctly, and are falsifiable.
 
 ```text
 VERDICT: [APPROVED|NEEDS_WORK]
-COVERAGE_CHECK: [YES|NO - list missing]
-RED_PHASE_CHECK: [YES|NO]
+COVERAGE_CHECK: [YES|NO - list missing requirements]
+RED_PHASE_CHECK: [YES|NO - tests fail as expected]
+FALSIFIABILITY_CHECK: [YES|NO - can tests pass with trivial impl?]
 ISSUES: [list]
 ```
+
+**FALSIFIABILITY examples:**
+
+- BAD: `expect(login()).toBeTruthy()` - passes with `return true`
+- GOOD: `expect(login('user','pass')).toEqual({token: expect.any(String), userId: 'user'})`
 
 #### Reviewer 2: Isolated Claude
 
 ```bash
 claude -p "You are a test quality reviewer with ZERO context.
 Read .claude/temp/spec.md and test files.
-Validate tests are well-designed, cover spec, and SHOULD BE FAILING (RED phase).
-Output to .claude/temp/test-review.md with VERDICT, RED_PHASE_VALID, COVERAGE, ISSUES." \
+
+Validate:
+1. COVERAGE: Tests cover ALL requirements in spec
+2. RED_PHASE: Tests are currently FAILING (no implementation)
+3. FALSIFIABILITY: Tests CANNOT pass with trivial implementation like 'return true' or hardcoded values
+
+Output to .claude/temp/test-review.md:
+- VERDICT: APPROVED or NEEDS_WORK
+- COVERAGE: list of spec requirements and which test covers each
+- RED_PHASE_VALID: YES/NO
+- FALSIFIABILITY_VALID: YES/NO (explain if NO)
+- ISSUES: specific problems to fix" \
   --allowedTools Read,Glob,Grep,Write,Bash \
   --print
 ```
 
-VERIFY: Both APPROVED + RED_PHASE valid.
+**VERIFY**: Both APPROVED + all three checks pass.
+
+**After Gate 2 APPROVED:**
+
+```bash
+# Auto-stage test files
+git add tests/  # or specific test file paths
+echo "✓ Tests staged after Gate 2 approval"
+```
+
+If issues, fix and re-review (max 3 iterations).
 
 ---
 
