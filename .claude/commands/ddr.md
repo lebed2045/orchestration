@@ -9,7 +9,7 @@
 ## Config
 
 ```yaml
-LOC_THRESHOLD: 50          # Lines of code - delegate if ≤50, decompose if >50
+LOC_THRESHOLD: 300         # Lines of code - delegate if ≤300, decompose if >300
 MAX_WF3_ATTEMPTS: 2
 SPLIT_FACTOR: 3
 MAX_DEPTH: 2               # Prefer wide over deep (industry best practice)
