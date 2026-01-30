@@ -264,6 +264,21 @@ Write your review to .claude/temp/gate-1-reviews.md (append)" \
   --print
 ```
 
+#### BLOCKING: Verify Gate 1 Review File
+
+**Before proceeding, MUST verify all 4 reviewers are recorded:**
+
+```bash
+# BLOCKING VERIFICATION - do not proceed without this
+echo "=== Gate 1 Review File Verification ==="
+cat .claude/temp/gate-1-reviews.md
+echo ""
+echo "Checking for all 4 reviewers..."
+grep -c "REVIEWER:" .claude/temp/gate-1-reviews.md | xargs -I {} test {} -ge 4 && echo "✓ All 4 reviewers recorded" || echo "✗ MISSING REVIEWERS - CANNOT PROCEED"
+```
+
+**If verification fails:** Re-run missing reviewer(s) and append to file.
+
 #### Gate 1 Checkpoint
 
 ```text
@@ -275,6 +290,7 @@ Write your review to .claude/temp/gate-1-reviews.md (append)" \
 │ Opus:   [APPROVED|NEEDS_WORK]               │
 │ Sonnet: [APPROVED|NEEDS_WORK]               │
 ├─────────────────────────────────────────────┤
+│ Review file verified: [YES|NO]              │
 │ GATE STATUS: [PASS|BLOCKED]                 │
 │ Review file: .claude/temp/gate-1-reviews.md │
 └─────────────────────────────────────────────┘
@@ -286,6 +302,7 @@ Write your review to .claude/temp/gate-1-reviews.md (append)" \
 2. Fix issues in spec/architecture
 3. Call `ExitPlanMode` tool
 4. Re-run ALL FOUR reviewers
+5. **Re-verify gate file has all 4 entries**
 
 ---
 
@@ -485,6 +502,21 @@ Write your review to .claude/temp/gate-2-reviews.md (append)" \
   --print
 ```
 
+#### BLOCKING: Verify Gate 2 Review File
+
+**Before proceeding, MUST verify all 4 reviewers are recorded:**
+
+```bash
+# BLOCKING VERIFICATION - do not proceed without this
+echo "=== Gate 2 Review File Verification ==="
+cat .claude/temp/gate-2-reviews.md
+echo ""
+echo "Checking for all 4 reviewers..."
+grep -c "REVIEWER:" .claude/temp/gate-2-reviews.md | xargs -I {} test {} -ge 4 && echo "✓ All 4 reviewers recorded" || echo "✗ MISSING REVIEWERS - CANNOT PROCEED"
+```
+
+**If verification fails:** Re-run missing reviewer(s) and append to file.
+
 #### Gate 2 Checkpoint
 
 ```text
@@ -500,6 +532,7 @@ Write your review to .claude/temp/gate-2-reviews.md (append)" \
 │ RED_PHASE:     [4/4 YES]                    │
 │ FALSIFIABILITY:[4/4 YES]                    │
 ├─────────────────────────────────────────────┤
+│ Review file verified: [YES|NO]              │
 │ GATE STATUS: [PASS|BLOCKED]                 │
 │ Review file: .claude/temp/gate-2-reviews.md │
 └─────────────────────────────────────────────┘
@@ -669,6 +702,21 @@ Output SMOKE_TEST block:
 └─────────────────────────────────────────────┘
 ```
 
+#### BLOCKING: Verify Gate 3 Review File
+
+**Before proceeding, MUST verify all 4 reviewers are recorded:**
+
+```bash
+# BLOCKING VERIFICATION - do not proceed without this
+echo "=== Gate 3 Review File Verification ==="
+cat .claude/temp/gate-3-reviews.md
+echo ""
+echo "Checking for all 4 reviewers..."
+grep -c "REVIEWER:" .claude/temp/gate-3-reviews.md | xargs -I {} test {} -ge 4 && echo "✓ All 4 reviewers recorded" || echo "✗ MISSING REVIEWERS - CANNOT PROCEED"
+```
+
+**If verification fails:** Re-run missing reviewer(s) and append to file.
+
 #### Gate 3 Checkpoint
 
 ```text
@@ -683,16 +731,41 @@ Output SMOKE_TEST block:
 │ SMOKE_TEST: [PASS|FAIL]                     │
 │ REGRESSION_DELTA: [SAFE|REGRESSION]         │
 ├─────────────────────────────────────────────┤
+│ Review file verified: [YES|NO]              │
 │ GATE STATUS: [PASS|BLOCKED]                 │
 │ Review file: .claude/temp/gate-3-reviews.md │
 └─────────────────────────────────────────────┘
 ```
 
-VERIFY: All 4 APPROVED + REGRESSION_DELTA=SAFE + SMOKE_TEST=PASS.
+VERIFY: All 4 APPROVED + REGRESSION_DELTA=SAFE + SMOKE_TEST=PASS + Review file verified.
 
 ---
 
 ### Phase 10: COMPLETION + RETROSPECTIVE
+
+**BLOCKING: Before ANY completion claim, MUST verify gate files exist:**
+
+```bash
+# BLOCKING VERIFICATION - CANNOT proceed to completion without this
+echo "=== Gate File Verification for Retrospective ==="
+echo ""
+echo "Gate 1 file:"
+ls -la .claude/temp/gate-1-reviews.md 2>/dev/null && echo "✓ EXISTS" || echo "✗ MISSING - CANNOT COMPLETE"
+echo ""
+echo "Gate 2 file:"
+ls -la .claude/temp/gate-2-reviews.md 2>/dev/null && echo "✓ EXISTS" || echo "✗ MISSING - CANNOT COMPLETE"
+echo ""
+echo "Gate 3 file:"
+ls -la .claude/temp/gate-3-reviews.md 2>/dev/null && echo "✓ EXISTS" || echo "✗ MISSING - CANNOT COMPLETE"
+echo ""
+echo "Reviewer counts:"
+echo "Gate 1: $(grep -c 'REVIEWER:' .claude/temp/gate-1-reviews.md 2>/dev/null || echo 0) reviewers"
+echo "Gate 2: $(grep -c 'REVIEWER:' .claude/temp/gate-2-reviews.md 2>/dev/null || echo 0) reviewers"
+echo "Gate 3: $(grep -c 'REVIEWER:' .claude/temp/gate-3-reviews.md 2>/dev/null || echo 0) reviewers"
+```
+
+**If ANY gate file is missing or has <4 reviewers:**
+STOP. Go back to that gate and re-run reviewers with file output.
 
 Only output completion if ALL conditions met:
 
@@ -701,6 +774,7 @@ Only output completion if ALL conditions met:
 - [ ] REGRESSION_DELTA shows SAFE
 - [ ] SMOKE_TEST shows PASS
 - [ ] All 4 reviewers APPROVED at all 3 gates
+- [ ] **All 3 gate files exist with 4 reviewers each** (NEW)
 
 #### Completion Checklist
 
@@ -718,9 +792,28 @@ Only output completion if ALL conditions met:
 └─────────────────────────────────────────────┘
 ```
 
-#### REVIEWER_RETROSPECTIVE (REQUIRED)
+#### REVIEWER_RETROSPECTIVE (MANDATORY - CANNOT SKIP)
 
-Parse all gate review files and generate:
+**This block is REQUIRED before WF6_RESULT. If you output WF6_RESULT without REVIEWER_RETROSPECTIVE, the workflow is INCOMPLETE.**
+
+**Step 1: Read all gate files:**
+
+```bash
+echo "=== Parsing Gate Files for Retrospective ==="
+echo ""
+echo "--- GATE 1 ---"
+cat .claude/temp/gate-1-reviews.md
+echo ""
+echo "--- GATE 2 ---"
+cat .claude/temp/gate-2-reviews.md
+echo ""
+echo "--- GATE 3 ---"
+cat .claude/temp/gate-3-reviews.md
+```
+
+**Step 2: Extract verdicts and issues from each reviewer in each gate.**
+
+**Step 3: Generate the REVIEWER_RETROSPECTIVE block:**
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -807,6 +900,8 @@ Output: `✓ ORCHESTRATION COMPLETE`
 | Tests fail 5x | STOP. "MANUAL INTERVENTION REQUIRED" |
 | Review fails 3x (any gate) | STOP. "REVIEW LOOP EXCEEDED" |
 | SMOKE_TEST FAIL | STOP. Cannot claim done |
+| **Gate file missing/incomplete** | **STOP. Go back and re-run gate with file output** |
+| **WF6_RESULT without RETROSPECTIVE** | **RETRACT. Generate RETROSPECTIVE first** |
 
 Output format:
 
