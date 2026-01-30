@@ -11,6 +11,7 @@ This project contains orchestrated development workflows. Use the commands below
 | `/wf3` | v3 | `*-v3` | 10-phase, 3-gate, isolated coder + anti-regression |
 | `/wf4` | v4 | `*-v4` | 8-phase, 2-gate, autonomous (infer, auto-fix, triple review) |
 | `/wf5` | v5 | `*-v3` | 10-phase, 3-gate, wf3 + Codex (triple review in Gate 1) |
+| `/wf6` | v6 | `*-v3` | 10-phase, 3-gate, quad review (Gemini+Codex+Opus+Sonnet) + retrospective |
 | `/ddr` | - | uses wf3 | Meta-orchestrator: Divide, Delegate, Reflect |
 
 **The command files contain the full workflow. CLAUDE.md only has general rules.**
@@ -72,6 +73,8 @@ Before ANY completion claim, you MUST provide:
 │   ├── wf2.md            # v2 workflow (inline prompts)
 │   ├── wf3.md            # v3 anti-regression workflow
 │   ├── wf4.md            # v4 autonomous workflow
+│   ├── wf5.md            # v5 triple review workflow
+│   ├── wf6.md            # v6 quad review + retrospective
 │   └── ddr.md            # Meta-orchestrator
 ├── agents/
 │   ├── *-v1.md           # Agents for wf1
@@ -88,7 +91,10 @@ Before ANY completion claim, you MUST provide:
 ├── architecture.md       # Technical design
 ├── plan-review.md        # Plan review output
 ├── test-review.md        # Test review output
-└── code-review.md        # Code review output
+├── code-review.md        # Code review output
+├── gate-1-reviews.md     # Gate 1 quad reviews (wf6)
+├── gate-2-reviews.md     # Gate 2 quad reviews (wf6)
+└── gate-3-reviews.md     # Gate 3 quad reviews (wf6)
 ```
 
 ---
