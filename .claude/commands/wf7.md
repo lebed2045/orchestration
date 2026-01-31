@@ -1,6 +1,6 @@
 # /wf7 - Workflow v7 (Token-Optimized)
 
-**Version 7**: Token-optimized with parallel TDD_RED and sequential reviews.
+**Version 7**: Token-optimized with parallel TDD_RED and parallel reviews (Codex + Gemini).
 
 **Core principle**: 75% fewer reviewer calls than wf6 while maintaining quality.
 
@@ -8,14 +8,14 @@ Based on wf6 retrospective: Codex most useful, Gemini occasional value, Sonnet/O
 
 ---
 
-## VSCODE COMPATIBILITY (CRITICAL)
+## VSCODE COMPATIBILITY
 
-**VSCode plugin has a bug with parallel tool calls. To avoid "API Error: 400":**
+**VSCode plugin has a bug with Task tool parallel calls. To avoid "API Error: 400":**
 
 1. **DO NOT use Task tool with Explore agent** - It makes parallel calls that crash
-2. **Explore manually** - Use Read, Grep, Glob directly, ONE AT A TIME
-3. **Sequential tool calls only** - Never batch multiple tool calls in one response
-4. **Wait for each result** - Before making next tool call
+2. **Explore manually** - Use Read, Grep, Glob directly
+
+**MCP tools (Codex, Gemini) CAN run in parallel** - The bug only affects Task tool subagents.
 
 ---
 
@@ -137,7 +137,7 @@ Design architecture (still in plan mode).
 
 ---
 
-### Phase 4: GATE 1 - PLAN_REVIEW (Codex + Gemini)
+### Phase 4: GATE 1 - PLAN_REVIEW (Codex + Gemini in PARALLEL)
 
 **Exit plan mode to run reviewers.**
 
@@ -149,9 +149,11 @@ echo "# Gate 1: Plan Review" > .claude/temp/gate-1-reviews.md
 echo "Generated: $(date)" >> .claude/temp/gate-1-reviews.md
 ```
 
-#### Reviewer 1: Codex (runs first)
+#### Run BOTH Reviewers in Parallel
 
-Call `mcp__codex-cli__codex`:
+**MUST call BOTH tools in a single message for parallel execution. Do NOT call just one.**
+
+**Tool 1: Codex** - Call `mcp__codex-cli__codex`:
 
 | Parameter | Value |
 |-----------|-------|
@@ -178,11 +180,7 @@ ISSUES_CAUGHT: [numbered list or "none"]
 SUGGESTIONS: [numbered list or "none"]
 ```
 
-**Append Codex output to gate file.**
-
-#### Reviewer 2: Gemini (runs second)
-
-Call `mcp__gemini__ask-gemini`:
+**Tool 2: Gemini** - Call `mcp__gemini__ask-gemini` (in same message as Tool 1):
 
 ```text
 Working directory: [pwd]
@@ -191,24 +189,20 @@ Review the plan for a software implementation task.
 
 Read: .claude/temp/spec.md and .claude/temp/architecture.md
 
-Also read Codex's review in .claude/temp/gate-1-reviews.md
-
 Evaluate:
 1. Requirements completeness
 2. Architecture feasibility
 3. TDD strategy adequacy
 4. Regression prevention strategy
-5. Did Codex miss anything?
 
 Output format:
 REVIEWER: Gemini
 VERDICT: [APPROVED|NEEDS_WORK]
-CODEX_MISSED: [issues Codex didn't catch, or "none"]
 ISSUES_CAUGHT: [numbered list or "none"]
 SUGGESTIONS: [numbered list or "none"]
 ```
 
-**Append Gemini output to gate file.**
+**IMPORTANT: Both tools MUST be called in the SAME message. After BOTH return, append outputs to gate file.**
 
 #### BLOCKING: Verify Gate 1 Review File
 
@@ -387,9 +381,9 @@ Output REGRESSION_DELTA comparing to baseline.
 
 ---
 
-### Phase 8: GATE 2 - CODE_REVIEW (Codex + Gemini + CodeSmell)
+### Phase 8: GATE 2 - CODE_REVIEW (CodeSmell → Codex + Gemini in PARALLEL)
 
-**Triple check: Codex reviews first, then Gemini, then CodeSmell.**
+**CodeSmell first, then Codex + Gemini run in parallel.**
 
 Initialize gate review file:
 
@@ -398,7 +392,7 @@ echo "# Gate 2: Code Review" > .claude/temp/gate-2-reviews.md
 echo "Generated: $(date)" >> .claude/temp/gate-2-reviews.md
 ```
 
-#### Step 1: CodeSmell Check
+#### Step 1: CodeSmell Check (runs first, blocking)
 
 ```bash
 # Run on each modified file
@@ -413,9 +407,11 @@ grep -E "Score:|PASS|FAIL" /tmp/codesmell.txt
 
 **If any file scores < 60, STOP and refactor before continuing.**
 
-#### Step 2: Codex Review (runs first)
+#### Step 2: Codex + Gemini Reviews (run in PARALLEL)
 
-Call `mcp__codex-cli__codex`:
+**After CodeSmell passes, MUST call BOTH tools in a single message for parallel execution. Do NOT call just one.**
+
+**Tool 1: Codex** - Call `mcp__codex-cli__codex`:
 
 | Parameter | Value |
 |-----------|-------|
@@ -441,11 +437,7 @@ SECURITY_ISSUES: [list or "none"]
 ISSUES_CAUGHT: [numbered list or "none"]
 ```
 
-**Append to gate file.**
-
-#### Step 3: Gemini Review (runs second)
-
-Call `mcp__gemini__ask-gemini`:
+**Tool 2: Gemini** - Call `mcp__gemini__ask-gemini` (in same message as Tool 1):
 
 ```text
 Working directory: [pwd]
@@ -454,19 +446,15 @@ Review the implementation code for quality and security.
 
 Read: src/ files, tests/, .claude/temp/spec.md
 
-Also read Codex's review in .claude/temp/gate-2-reviews.md
-
 Check:
 1. Code quality
 2. Security issues (OWASP top 10)
 3. Test coverage
 4. Regression status
-5. Did Codex miss anything?
 
 Output format:
 REVIEWER: Gemini
 VERDICT: [APPROVED|NEEDS_WORK]
-CODEX_MISSED: [issues Codex didn't catch, or "none"]
 EXECUTION_CHECK: [YES|NO - tests pass?]
 REGRESSION_CHECK: [YES|NO - warnings increased?]
 CODE_QUALITY: [assessment]
@@ -474,7 +462,7 @@ SECURITY_ISSUES: [list or "none"]
 ISSUES_CAUGHT: [numbered list or "none"]
 ```
 
-**Append to gate file.**
+**IMPORTANT: Both tools MUST be called in the SAME message. After BOTH return, append outputs to gate file.**
 
 #### SMOKE_TEST
 
@@ -660,10 +648,10 @@ User frustration with honest "not done" > false "done".
 
 ## 2-Gate Summary
 
-| Gate | Phase | What's Reviewed | Reviewers |
-|------|-------|-----------------|-----------|
-| GATE 1 | Phase 4 | Plan (spec + architecture) | Codex → Gemini |
-| GATE 2 | Phase 8 | Code + CodeSmell + REGRESSION_DELTA | CodeSmell → Codex → Gemini |
+| Gate   | Phase   | What's Reviewed                      | Reviewers                    |
+|--------|---------|--------------------------------------|------------------------------|
+| GATE 1 | Phase 4 | Plan (spec + architecture)           | Codex ∥ Gemini (parallel)    |
+| GATE 2 | Phase 8 | Code + CodeSmell + REGRESSION_DELTA  | CodeSmell → (Codex ∥ Gemini) |
 
 ---
 
