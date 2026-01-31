@@ -1,10 +1,10 @@
-# /wf7 - Workflow v7 (Token-Optimized)
+# /wf8 - Workflow v8 (Autonomous)
 
-**Version 7**: Token-optimized with parallel TDD_RED and parallel reviews (Codex + Gemini).
+**Version 8**: Fully autonomous wf7 - no human gates, auto-commits on success.
 
-**Core principle**: 75% fewer reviewer calls than wf6 while maintaining quality.
+**Core principle**: Same quality as wf7, zero human intervention.
 
-Based on wf6 retrospective: Codex most useful, Gemini occasional value, Sonnet/Opus redundant in reviews.
+Based on wf7: Parallel Codex + Gemini reviews, CodeSmell, but removes USER_GATE_PLAN and adds auto-commit.
 
 ---
 
@@ -71,8 +71,8 @@ Based on wf6 retrospective: Codex most useful, Gemini occasional value, Sonnet/O
 | TDD_RED | Write tests | Not staged yet |
 | After TDD_RED | Merge tests | **Auto-stage tests** |
 | TDD_GREEN | Write implementation | Not staged yet |
-| CODE_REVIEW (Gate 2) | Review code | **Ask user** before staging |
-| Completion | Done | **Never auto-commit** |
+| CODE_REVIEW (Gate 2/2) | Review code | **Auto-stage if approved** |
+| Completion | Done + tests pass | **Auto-commit** |
 
 ---
 
@@ -81,12 +81,12 @@ Based on wf6 retrospective: Codex most useful, Gemini occasional value, Sonnet/O
 Every response MUST start with:
 
 ```text
-[WF7.PhaseX] [Baseline: SET|UNSET] [Regression: SAFE|DETECTED|UNKNOWN] [Status: in_progress|blocked|complete]
+[WF8.PhaseX] [Baseline: SET|UNSET] [Regression: SAFE|DETECTED|UNKNOWN] [Status: in_progress|blocked|complete]
 ```
 
 ---
 
-## Phase Flow (9 Phases, 2 Gates)
+## Phase Flow (8 Phases, 2 Gates, 0 Human Gates)
 
 ### Phase 1: BASELINE_CAPTURE
 
@@ -109,21 +109,26 @@ echo "GIT_SHA: $(git rev-parse HEAD)"
 
 ---
 
-### Phase 2: INTAKE
+### Phase 2: INTAKE (Autonomous)
 
-Enter plan mode, ask clarifying questions.
+**Infer requirements from codebase and user task. NO questions asked.**
 
-1. Call `EnterPlanMode` tool
-2. Ask clarifying questions using `AskUserQuestion`
-3. Cover: issue, expected behavior, reproduction steps
+1. Read the user's task/request
+2. Explore relevant codebase files
+3. Infer requirements from:
+   - Existing code patterns
+   - Similar implementations
+   - Test patterns
 4. Write spec to `.claude/temp/spec.md` (include BASELINE_BLOCK)
 5. VERIFY: Show `cat .claude/temp/spec.md | head -30` output
+
+**If truly blocked (missing critical info), output one targeted question, then continue.**
 
 ---
 
 ### Phase 3: PLANNING
 
-Design architecture (still in plan mode).
+Design architecture based on inferred spec.
 
 1. Design architecture based on spec
 2. Write to `.claude/temp/architecture.md`:
@@ -137,15 +142,12 @@ Design architecture (still in plan mode).
 
 ---
 
-### Phase 4: GATE 1 - PLAN_REVIEW (Codex + Gemini in PARALLEL)
+### Phase 4: GATE 1/2 - PLAN_REVIEW (Codex + Gemini in PARALLEL)
 
-**Exit plan mode to run reviewers.**
-
-1. Call `ExitPlanMode` tool
-2. Initialize gate review file:
+Initialize gate review file:
 
 ```bash
-echo "# Gate 1: Plan Review" > .claude/temp/gate-1-reviews.md
+echo "# Gate 1/2: Plan Review" > .claude/temp/gate-1-reviews.md
 echo "Generated: $(date)" >> .claude/temp/gate-1-reviews.md
 ```
 
@@ -204,10 +206,10 @@ SUGGESTIONS: [numbered list or "none"]
 
 **IMPORTANT: Both tools MUST be called in the SAME message. After BOTH return, append outputs to gate file.**
 
-#### BLOCKING: Verify Gate 1 Review File
+#### BLOCKING: Verify Gate 1/2 Review File
 
 ```bash
-echo "=== Gate 1 Review File Verification ==="
+echo "=== Gate 1/2 Review File Verification ==="
 cat .claude/temp/gate-1-reviews.md
 echo ""
 grep -c "REVIEWER:" .claude/temp/gate-1-reviews.md | xargs -I {} test {} -ge 2 && echo "✓ Both reviewers recorded" || echo "✗ MISSING REVIEWERS"
@@ -230,70 +232,12 @@ grep -c "REVIEWER:" .claude/temp/gate-1-reviews.md | xargs -I {} test {} -ge 2 &
 
 **If ANY reviewer returns NEEDS_WORK (max 3 iterations):**
 
-1. Call `EnterPlanMode` tool
-2. Fix issues in spec/architecture
-3. Call `ExitPlanMode` tool
-4. Re-run BOTH reviewers
+1. Fix issues in spec/architecture (no user approval needed)
+2. Re-run BOTH reviewers
 
 ---
 
-### Phase 5: USER_GATE_PLAN
-
-Present plan for user approval.
-
-**MUST include these tables:**
-
-#### TLDR: Files Summary
-
-```text
-| File | Action | Purpose |
-|------|--------|---------|
-| [path] | CREATE/MODIFY/DELETE | [brief purpose] |
-```
-
-#### Implementation Details
-
-```text
-| Component | What Will Be Made | Lines Est. |
-|-----------|-------------------|------------|
-| [name] | [description] | ~[N] |
-```
-
-**MUST PRESENT:**
-
-1. Artifact paths: spec.md, architecture.md, gate-1-reviews.md
-2. Spec summary: Key requirements (3-5 bullet points)
-3. Architecture summary: Components, files to create/modify
-4. TDD plan: What tests will be written
-5. Regression strategy: How we'll prevent regressions
-6. Both review verdicts
-
-```text
-┌─────────────────────────────────────────────┐
-│ PLAN SUMMARY                                │
-├─────────────────────────────────────────────┤
-│ Spec: .claude/temp/spec.md                  │
-│ Architecture: .claude/temp/architecture.md  │
-│ Reviews: .claude/temp/gate-1-reviews.md     │
-├─────────────────────────────────────────────┤
-│ BASELINE:                                   │
-│ • Tests: [N] passing                        │
-│ • Warnings: [N]                             │
-│ • Git SHA: [hash]                           │
-├─────────────────────────────────────────────┤
-│ REVIEW VERDICTS:                            │
-│ Codex:  [APPROVED|NEEDS_WORK]               │
-│ Gemini: [APPROVED|NEEDS_WORK]               │
-└─────────────────────────────────────────────┘
-```
-
-Output: `--- WAITING FOR PLAN APPROVAL ---`
-
-Wait for user approval.
-
----
-
-### Phase 6: TDD_RED (Orchestrator + Codex)
+### Phase 5: TDD_RED (Orchestrator + Codex)
 
 **Parallel test writing: Orchestrator writes tests, then Codex writes additional tests.**
 
@@ -361,7 +305,7 @@ echo "✓ Tests staged after TDD_RED"
 
 ---
 
-### Phase 7: TDD_GREEN (Orchestrator)
+### Phase 6: TDD_GREEN (Orchestrator)
 
 Orchestrator implements directly.
 
@@ -381,14 +325,14 @@ Output REGRESSION_DELTA comparing to baseline.
 
 ---
 
-### Phase 8: GATE 2 - CODE_REVIEW (CodeSmell → Codex + Gemini in PARALLEL)
+### Phase 7: GATE 2/2 - CODE_REVIEW (CodeSmell → Codex + Gemini in PARALLEL)
 
 **CodeSmell first, then Codex + Gemini run in parallel.**
 
 Initialize gate review file:
 
 ```bash
-echo "# Gate 2: Code Review" > .claude/temp/gate-2-reviews.md
+echo "# Gate 2/2: Code Review" > .claude/temp/gate-2-reviews.md
 echo "Generated: $(date)" >> .claude/temp/gate-2-reviews.md
 ```
 
@@ -405,7 +349,7 @@ echo "=== CodeSmell Results ==="
 grep -E "Score:|PASS|FAIL" /tmp/codesmell.txt
 ```
 
-**If any file scores < 60, STOP and refactor before continuing.**
+**If any file scores < 60, refactor and re-check (no user approval needed).**
 
 #### Step 2: Codex + Gemini Reviews (run in PARALLEL)
 
@@ -485,10 +429,10 @@ echo "Warnings: $(grep -ci warn /tmp/smoke.txt || echo 0)"
 └─────────────────────────────────────────────┘
 ```
 
-#### BLOCKING: Verify Gate 2 Review File
+#### BLOCKING: Verify Gate 2/2 Review File
 
 ```bash
-echo "=== Gate 2 Review File Verification ==="
+echo "=== Gate 2/2 Review File Verification ==="
 cat .claude/temp/gate-2-reviews.md
 echo ""
 grep -c "REVIEWER:" .claude/temp/gate-2-reviews.md | xargs -I {} test {} -ge 2 && echo "✓ Both reviewers recorded" || echo "✗ MISSING REVIEWERS"
@@ -515,11 +459,15 @@ grep -c "REVIEWER:" .claude/temp/gate-2-reviews.md | xargs -I {} test {} -ge 2 &
 
 **All must pass: CodeSmell ≥60 + Codex APPROVED + Gemini APPROVED + SMOKE_TEST PASS + REGRESSION_DELTA SAFE**
 
+**If ANY check fails (max 3 iterations):**
+1. Fix issues (no user approval needed)
+2. Re-run failed checks
+
 ---
 
-### Phase 9: COMPLETION
+### Phase 8: COMPLETION + AUTO_COMMIT
 
-Only output completion if ALL conditions met:
+Only proceed if ALL conditions met:
 
 - [ ] BASELINE_BLOCK captured at start
 - [ ] EXECUTION_BLOCK shows EXIT_CODE=0
@@ -535,11 +483,11 @@ Only output completion if ALL conditions met:
 ```bash
 echo "=== Gate File Verification ==="
 echo ""
-echo "Gate 1:"
+echo "Gate 1/2:"
 ls -la .claude/temp/gate-1-reviews.md 2>/dev/null && echo "✓ EXISTS" || echo "✗ MISSING"
 echo "Reviewers: $(grep -c 'REVIEWER:' .claude/temp/gate-1-reviews.md 2>/dev/null || echo 0)"
 echo ""
-echo "Gate 2:"
+echo "Gate 2/2:"
 ls -la .claude/temp/gate-2-reviews.md 2>/dev/null && echo "✓ EXISTS" || echo "✗ MISSING"
 echo "Reviewers: $(grep -c 'REVIEWER:' .claude/temp/gate-2-reviews.md 2>/dev/null || echo 0)"
 ```
@@ -561,24 +509,52 @@ echo "Reviewers: $(grep -c 'REVIEWER:' .claude/temp/gate-2-reviews.md 2>/dev/nul
 └─────────────────────────────────────────────┘
 ```
 
-#### WF7_RESULT Block
+#### AUTO_COMMIT (Autonomous)
+
+**If all checks pass, automatically commit:**
+
+```bash
+# Stage all changes
+git add -A
+
+# Generate commit message from spec
+TASK_SUMMARY=$(head -5 .claude/temp/spec.md | grep -v "^#" | head -1)
+
+# Commit
+git commit -m "$(cat <<EOF
+feat: ${TASK_SUMMARY}
+
+- Tests: all passing
+- CodeSmell: ≥60 on all files
+- Reviews: Codex + Gemini approved
+- Regression: SAFE
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+EOF
+)"
+
+echo "✓ Auto-committed"
+git log -1 --oneline
+```
+
+#### WF8_RESULT Block
 
 ```text
 ┌─────────────────────────────────────────────┐
-│ WF7_RESULT                                  │
+│ WF8_RESULT                                  │
 ├─────────────────────────────────────────────┤
 │ Task: [description from spec]               │
 │ Status: SUCCESS                             │
+│ Commit: [SHA]                               │
 │ Artifacts: [files created/modified]         │
 │ Tests: [N passed, 0 failed]                 │
 │ Regression: SAFE                            │
-│ Token savings vs wf6: ~75%                  │
-│ Reviewers used: 4 (was 12 in wf6)           │
+│ Human gates: 0                              │
 │ TIMESTAMP: [YYYY-MM-DD HH:MM:SS]            │
 └─────────────────────────────────────────────┘
 ```
 
-Output: `✓ ORCHESTRATION COMPLETE`
+Output: `✓ ORCHESTRATION COMPLETE (autonomous)`
 
 ---
 
@@ -590,11 +566,11 @@ Output: `✓ ORCHESTRATION COMPLETE`
 | Claim without EXECUTION_BLOCK | RETRACT. Run verification |
 | REGRESSION_DELTA = REGRESSION | STOP. Fix regression first |
 | Warnings increased | STOP. Fix warnings first |
-| CodeSmell < 60 | STOP. Refactor before continuing |
+| CodeSmell < 60 | Refactor and re-check (auto) |
 | Same error 2x | STOP. Escalate to user |
 | Tests fail 5x | STOP. "MANUAL INTERVENTION REQUIRED" |
 | Review fails 3x (any gate) | STOP. "REVIEW LOOP EXCEEDED" |
-| SMOKE_TEST FAIL | STOP. Cannot claim done |
+| SMOKE_TEST FAIL | STOP. Cannot commit |
 | Gate file missing | STOP. Re-run gate reviewers |
 
 Output format:
@@ -614,14 +590,15 @@ Options:
 Awaiting user decision...
 ```
 
-**Then output WF7_RESULT block with Status: FAILURE:**
+**Then output WF8_RESULT block with Status: FAILURE:**
 
 ```text
 ┌─────────────────────────────────────────────┐
-│ WF7_RESULT                                  │
+│ WF8_RESULT                                  │
 ├─────────────────────────────────────────────┤
 │ Task: [description from spec]               │
 │ Status: FAILURE                             │
+│ Commit: none                                │
 │ Artifacts: [files created/modified so far]  │
 │ Tests: [N passed, M failed]                 │
 │ Regression: [SAFE|DETECTED]                 │
@@ -646,26 +623,28 @@ User frustration with honest "not done" > false "done".
 
 ---
 
-## 2-Gate Summary
+## 2-Gate Summary (No Human Gates)
 
-| Gate   | Phase   | What's Reviewed                      | Reviewers                    |
-|--------|---------|--------------------------------------|------------------------------|
-| GATE 1 | Phase 4 | Plan (spec + architecture)           | Codex ∥ Gemini (parallel)    |
-| GATE 2 | Phase 8 | Code + CodeSmell + REGRESSION_DELTA  | CodeSmell → (Codex ∥ Gemini) |
+| Gate     | Phase   | What's Reviewed                      | Reviewers                    |
+|----------|---------|--------------------------------------|------------------------------|
+| GATE 1/2 | Phase 4 | Plan (spec + architecture)           | Codex ∥ Gemini (parallel)    |
+| GATE 2/2 | Phase 7 | Code + CodeSmell + REGRESSION_DELTA  | CodeSmell → (Codex ∥ Gemini) |
+
+**Human gates: 0** (fully autonomous)
 
 ---
 
-## Comparison: wf7 vs wf6
+## Comparison: wf8 vs wf7
 
-| Aspect | wf6 | wf7 |
+| Aspect | wf7 | wf8 |
 |--------|-----|-----|
-| Gates | 3 | 2 |
-| Reviewers per gate | 4 | 2-3 |
-| Total reviewer calls | 12 | 4 |
-| Test writing | 1 coder | Orchestrator + Codex |
-| Test review gate | Yes (4 reviewers) | No (parallel write) |
-| CodeSmell | No | Yes |
-| Token usage | Baseline | ~75% reduction |
+| Phases | 9 | 8 |
+| Human gates | 1 (USER_GATE_PLAN) | 0 |
+| AI gates | 2 | 2 |
+| Auto-commit | No | Yes |
+| Reviewers | Codex + Gemini | Codex + Gemini |
+| CodeSmell | Yes | Yes |
+| Autonomy | Semi | Full |
 
 ---
 
