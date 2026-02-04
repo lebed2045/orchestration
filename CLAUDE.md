@@ -15,6 +15,7 @@ This project contains orchestrated development workflows. Use the commands below
 | `/wf7` | v7 | inline | 9-phase, 2-gate, token-optimized (Codex+Gemini+CodeSmell), 75% less tokens |
 | `/wf8` | v8 | inline | 8-phase, 2-gate, autonomous wf7 (no human gates, auto-commit) |
 | `/ddr` | - | uses wf3 | Meta-orchestrator: Divide, Delegate, Reflect |
+| `/ddr2` | - | uses wf8 | Autonomous DDR: no human gates, auto-splits, auto-commits |
 
 **The command files contain the full workflow. CLAUDE.md only has general rules.**
 
@@ -79,7 +80,8 @@ Before ANY completion claim, you MUST provide:
 │   ├── wf6.md            # v6 quad review + retrospective
 │   ├── wf7.md            # v7 token-optimized (Codex+Gemini+CodeSmell)
 │   ├── wf8.md            # v8 autonomous (wf7 + no human gates + auto-commit)
-│   └── ddr.md            # Meta-orchestrator
+│   ├── ddr.md            # Meta-orchestrator
+│   └── ddr2.md           # Autonomous DDR (uses wf8)
 ├── agents/
 │   ├── *-v1.md           # Agents for wf1
 │   ├── *-v3.md           # Agents for wf3
