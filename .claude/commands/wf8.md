@@ -237,64 +237,34 @@ grep -c "REVIEWER:" .claude/temp/gate-1-reviews.md | xargs -I {} test {} -ge 2 &
 
 ---
 
-### Phase 5: TDD_RED (Orchestrator + Codex)
+### Phase 5: TDD_RED — ISOLATED CODER
 
-**Parallel test writing: Orchestrator writes tests, then Codex writes additional tests.**
+**Spawn isolated coder subprocess to write failing tests.**
 
-#### Step 1: Orchestrator writes tests
+```bash
+claude -p "You are a TDD test writer with ZERO prior context.
 
-Write RED tests directly based on spec and architecture:
-- At least 1 test per requirement
+Read ONLY:
+- .claude/temp/spec.md
+- .claude/temp/architecture.md
+
+Write RED tests:
+- At least 1 test per requirement in spec
 - Tests MUST FAIL (no implementation exists)
-- Include falsifiability checks (tests cannot pass with `return true`)
+- Tests must be FALSIFIABLE (cannot pass with trivial 'return true')
 
-Run tests to verify they fail:
-
-```bash
+After writing tests, run them to verify they fail:
+\`\`\`bash
 npm test 2>&1 | tee /tmp/tdd-red.txt
-echo "EXIT_CODE: $?"
-# Must be non-zero (tests failing)
+echo \"EXIT_CODE: \$?\"
+\`\`\`
+
+Output EXECUTION_BLOCK showing EXIT_CODE≠0 (tests failing)." \
+  --allowedTools Read,Write,Edit,Bash,Glob,Grep \
+  --print
 ```
 
-#### Step 2: Codex writes additional tests
-
-Call `mcp__codex-cli__codex`:
-
-| Parameter | Value |
-|-----------|-------|
-| prompt | See below |
-| workingDirectory | Project root |
-
-```text
-Read .claude/temp/spec.md and .claude/temp/architecture.md
-
-Review the existing tests that were just written.
-
-Write at least 1 additional RED test that covers:
-- Edge cases the existing tests missed
-- Boundary conditions
-- Error handling paths
-
-Tests MUST FAIL (no implementation exists yet).
-Ensure tests are FALSIFIABLE (cannot pass with trivial implementation like 'return true').
-
-Output:
-- The test code you wrote
-- EXECUTION_BLOCK showing tests fail
-```
-
-#### Step 3: Merge and verify
-
-1. Merge Codex's tests into test files
-2. Dedup any overlapping tests
-3. Run all tests to verify RED phase:
-
-```bash
-npm test 2>&1 | tee /tmp/tdd-red-merged.txt
-echo "EXIT_CODE: $?"
-```
-
-**EXECUTION_BLOCK must show EXIT_CODE≠0 (tests failing).**
+**VERIFY**: Coder output shows EXECUTION_BLOCK with EXIT_CODE≠0.
 
 #### Auto-stage tests
 
@@ -305,23 +275,36 @@ echo "✓ Tests staged after TDD_RED"
 
 ---
 
-### Phase 6: TDD_GREEN (Orchestrator)
+### Phase 6: TDD_GREEN — ISOLATED CODER
 
-Orchestrator implements directly.
-
-1. Read merged tests
-2. Implement code to pass tests
-3. Do NOT modify test files
-4. After EVERY change, check REGRESSION_DELTA
+**Spawn isolated coder subprocess to implement code.**
 
 ```bash
-npm test 2>&1 | tee /tmp/tdd-green.txt
-echo "EXIT_CODE: $?"
+claude -p "You are a TDD implementer with ZERO prior context.
+
+Read:
+- .claude/temp/spec.md
+- .claude/temp/architecture.md
+- Test files
+- /tmp/baseline.txt (baseline metrics)
+
+CRITICAL: Test files are READ-ONLY. Only edit src/ files.
+CRITICAL: After EVERY change, check REGRESSION_DELTA against baseline.
+
+LOOP (max 5): Fix one error at a time until tests pass.
+
+After tests pass, output:
+1. EXECUTION_BLOCK showing EXIT_CODE=0
+2. REGRESSION_DELTA comparing to baseline" \
+  --allowedTools Read,Write,Edit,Bash,Glob,Grep \
+  --print
 ```
 
-**EXECUTION_BLOCK must show EXIT_CODE=0 (tests passing).**
+**VERIFY**: Coder output shows:
+- EXECUTION_BLOCK with EXIT_CODE=0
+- REGRESSION_DELTA with VERDICT=SAFE
 
-Output REGRESSION_DELTA comparing to baseline.
+**SECURITY**: If coder edits test files, reject and re-spawn.
 
 ---
 

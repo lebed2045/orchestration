@@ -4,6 +4,18 @@ Development workflows that extend Claude Code with external review, TDD enforcem
 
 ---
 
+## What's In This Repository
+
+| Component | What It Does |
+|-----------|--------------|
+| **Workflows (wf1-wf8)** | Multi-phase pipelines with review gates, TDD enforcement, proof blocks |
+| **External Reviewers** | Gemini, Codex, isolated Claude — zero-context reviewers catch what author misses |
+| **Clean Context Agents** | Coders spawned via `claude -p` with ZERO planning context — only see spec |
+| **TDD Enforcement** | RED phase (tests fail) → GREEN phase (tests pass) — no skipping |
+| **Project Manager (DDR/DDR2)** | Meta-orchestrator that recursively splits tasks, delegates to workflows, and if it fails — splits into smaller subtasks and tries again |
+
+---
+
 ## Why Workflows?
 
 Claude Code has two default modes: **Plan** (design approach, get approval) and **Execute** (write code). This works but has blind spots.
@@ -12,6 +24,7 @@ Claude Code has two default modes: **Plan** (design approach, get approval) and 
 
 **The Solution**: Add external reviewers who have zero context:
 - **Gemini** reviews artifacts via MCP tool
+- **Codex** reviews via MCP tool
 - **Fresh Claude** subprocess (`claude -p`) reviews code without knowing implementation history
 
 This catches what the original author misses.
@@ -25,14 +38,18 @@ Workflows also enforce:
 
 ## Available Workflows
 
-| Command | Phases | Gates | Reviewers | Description |
-|---------|--------|-------|-----------|-------------|
-| `/wf1` | 8 | 1 | Gemini | Basic workflow, orchestrator implements |
-| `/wf2` | 10 | 3 | Gemini + Claude | Dual review + isolated coder |
-| `/wf3` | 10 | 3 | Gemini + Claude | Anti-regression (baseline, smoke test) |
-| `/wf4` | 8 | 2 | Gemini + Codex + Claude | Autonomous (infer, auto-fix, triple review) |
-| `/wf5` | 10 | 3 | Gemini + Codex + Claude | wf3 + Codex (triple review in Gate 1) |
-| `/ddr` | - | - | uses wf3 | Meta-orchestrator for PM cards |
+| Command | Phases | Gates | Human Gates | Reviewers | Description |
+|---------|--------|-------|-------------|-----------|-------------|
+| `/wf1` | 8 | 1 | 1 | Gemini | Basic workflow, orchestrator implements |
+| `/wf2` | 10 | 3 | 1 | Gemini + Claude | Dual review + isolated coder |
+| `/wf3` | 10 | 3 | 1 | Gemini + Claude | Anti-regression (baseline, smoke test) |
+| `/wf4` | 8 | 2 | 0 | Gemini + Codex + Claude | Autonomous (infer, auto-fix, triple review) |
+| `/wf5` | 10 | 3 | 1 | Gemini + Codex + Claude | wf3 + Codex (triple review in Gate 1) |
+| `/wf6` | 10 | 3 | 1 | Gemini + Codex + Opus + Sonnet | Quad review + retrospective analysis |
+| `/wf7` | 9 | 2 | 1 | Codex + Gemini | Token-optimized, parallel reviews |
+| `/wf8` | 8 | 2 | **0** | Codex + Gemini | Fully autonomous wf7, auto-commits |
+| `/ddr` | - | - | 2 | uses wf3 | Meta-orchestrator for PM cards |
+| `/ddr2` | - | - | **0** | uses wf8 | Autonomous DDR, auto-splits, auto-commits |
 
 ---
 
