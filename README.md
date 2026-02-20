@@ -65,6 +65,7 @@ Workflows also enforce:
 | `/wf8-gc` | 8 | 2 | **0** | Codex + Gemini | Fully autonomous wf7, auto-commits |
 | `/wf9-gc` | 10 | 2 | 0 | Codex + Gemini + Agent Teams | Boris Mode + Reflections log |
 | `/wf10-gc` | 10 | 2 | 0-1 | Codex + Gemini | wf9 + optional `-h` flag |
+| `/wf11` | 8 | 2 | 0-1 | 5×Claude | Anthropic-only (no MCP tools) |
 | `/boris1-h` | - | 0 | 1 | — | Boris's original (plan iteration) |
 | `/boris2` | 10 | 2 | 0 | 2×Opus | Boris + Agent Teams (auto) |
 | `/ddr` | - | - | 2 | uses wf3-gh | Meta-orchestrator for PM cards |
@@ -513,6 +514,7 @@ Fully autonomous meta-orchestrator. No human gates, delegates to /wf8-gc.
 │   ├── wf8-gc.md         # Fully autonomous (auto-commit)
 │   ├── wf9-gc.md         # Boris Mode + Agent Teams
 │   ├── wf10-gc.md        # wf9 + optional -h flag
+│   ├── wf11.md           # Anthropic-only (no MCP tools)
 │   ├── boris1-h.md       # Boris's original (human plan iteration)
 │   ├── boris2.md         # Boris + Agent Teams (autonomous)
 │   ├── ddr.md            # Meta-orchestrator (uses wf3-gh)

@@ -20,6 +20,7 @@ Run `/wf` for quick reference table.
 | `/wf8-gc` | `-gc` | v8: Autonomous + auto-commit |
 | `/wf9-gc` | `-gc` | v9: MCP tools + auto-commit |
 | `/wf10-gc` | `-gc` | v10: wf9 + optional `-h` flag for human gate |
+| `/wf11` | — | v11: Anthropic-only (no Gemini/Codex) |
 | `/ddr` | — | Meta-orchestrator (uses wf3-gh) |
 | `/ddr2` | — | Autonomous DDR (uses wf8-gc) |
 
@@ -92,6 +93,7 @@ Before ANY completion claim, you MUST provide:
 │   ├── wf8-gc.md         # v8 autonomous
 │   ├── wf9-gc.md         # v9 MCP tools
 │   ├── wf10-gc.md        # v10 (wf9 + optional -h flag)
+│   ├── wf11.md           # v11 (Anthropic-only)
 │   ├── wf.md             # Quick reference table
 │   ├── ddr.md            # Meta-orchestrator
 │   └── ddr2.md           # Autonomous DDR
