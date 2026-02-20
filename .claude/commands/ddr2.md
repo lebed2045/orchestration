@@ -1,6 +1,6 @@
 # /ddr2 - Divide Delegate Reflect v2 (Autonomous)
 
-**DDR2** is a fully autonomous meta-orchestrator. No human gates, delegates to `/wf8`, auto-commits.
+**DDR2** is a fully autonomous meta-orchestrator. No human gates, delegates to `/wf8-gc`, auto-commits.
 
 **PM Folder**: `.claude/pm/`
 
@@ -44,7 +44,7 @@ MAX_TOTAL_LOC: 500           # Circuit breaker
    ≤50       >50
     ▼         ▼
  DELEGATE   AUTO-DECOMPOSE
- to /wf8    into 2-5 subtasks
+ to /wf8-gc    into 2-5 subtasks
     │              │
 ┌───┴───┐     Sub1→Sub2→...→SubN
 OK    FAIL         │
@@ -141,7 +141,7 @@ Write task to `.claude/temp/ddr2-task.md`.
 
 ### 3. LOC_ESTIMATE
 
-- `≤50` → Delegate to /wf8
+- `≤50` → Delegate to /wf8-gc
 - `>50` → Decompose into 2-5 subtasks (dynamic based on analysis)
 
 ---
@@ -152,7 +152,7 @@ Write task to `.claude/temp/ddr2-task.md`.
 
 ```bash
 source .claude/temp/ddr2-env.txt
-claude -p "Execute /wf8: $(cat .claude/temp/ddr2-task.md)
+claude -p "Execute /wf8-gc: $(cat .claude/temp/ddr2-task.md)
 
 IMPORTANT: Use this test command (do NOT infer):
 TEST_CMD=$TEST_CMD
@@ -208,7 +208,7 @@ echo "(Updated by each subtask)" >> .claude/temp/ddr2-context.md
 for subtask in subtasks; do
   source .claude/temp/ddr2-env.txt
 
-  claude -p "Execute /wf8: $subtask
+  claude -p "Execute /wf8-gc: $subtask
 
   IMPORTANT:
   - Test command: $TEST_CMD
@@ -321,7 +321,7 @@ echo "Failed work saved to branch: ddr2-failed-$TIMESTAMP"
 
 | Aspect | DDR | DDR2 |
 |--------|-----|------|
-| Delegates to | /wf3 | /wf8 |
+| Delegates to | /wf3-gh | /wf8-gc |
 | Human gates | 2 | **0** |
 | Commits | Manual | **Auto** |
 | Split factor | Fixed 3 | **Dynamic 2-5** |

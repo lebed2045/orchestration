@@ -1,4 +1,4 @@
-# /wf4 - Workflow v4 (Autonomous)
+# /wf4-gc - Workflow v4 (Autonomous)
 
 **Version 4**: Maximum autonomy. Infer from codebase, auto-update on feedback, minimal human involvement.
 

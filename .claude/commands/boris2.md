@@ -1,6 +1,8 @@
-# /wf10 - Workflow v9 (Boris Mode + Agent Teams)
+# /boris2 - Boris Mode + Agent Teams
 
-**Version 10**: Boris Cherny's workflow patterns + Agent Teams for parallel execution + Reflections log.
+**Tag:** `[2-O | 2-gate | teams]` — 2 Opus reviewers (staff eng + code), 2 gates, Agent Teams
+
+Boris Cherny's workflow patterns + Agent Teams for parallel execution + Reflections log.
 
 **Philosophy**: *"A good plan is really important to avoid issues down the line."* + *"Give Claude a way to verify its work — quality improves 2-3x with feedback loops."*
 
@@ -10,7 +12,7 @@ Based on Boris's actual workflow: Plan Mode → iterate → auto-execute, with A
 
 ## BORIS'S CORE PRINCIPLES (Baked In)
 
-| Principle | How wf10 Implements It |
+| Principle | How boris2 Implements It |
 |-----------|----------------------|
 | Plan Mode first | Phase 2-3: iterate plan until solid |
 | Verification is #1 | Every phase requires EXECUTION_BLOCK proof |
@@ -18,7 +20,7 @@ Based on Boris's actual workflow: Plan Mode → iterate → auto-execute, with A
 | Subagents for quality | code-simplifier + verify-app patterns |
 | PostToolUse hooks | Auto-format after edits |
 | Parallel execution | Agent Teams for TDD_RED + exploration |
-| Opus 4.5 with thinking | Recommended model for lead agent |
+| Opus 4.6 with thinking | Recommended model for lead agent |
 
 ---
 
@@ -30,10 +32,11 @@ Enable Agent Teams in your settings.json:
 {
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
-  },
-  "model": "claude-opus-4-5-20251101"
+  }
 }
 ```
+
+**Model:** Run `/model` → select "Opus 4.6" (don't hardcode model IDs).
 
 Or per-session: `claude --teammate-mode in-process`
 
@@ -92,12 +95,12 @@ Or per-session: `claude --teammate-mode in-process`
 Every response MUST start with:
 
 ```text
-[WF9.PhaseX] [Baseline: SET|UNSET] [Team: ACTIVE|SOLO] [Status: in_progress|blocked|complete]
+[boris2.PhaseX] [Baseline: SET|UNSET] [Team: ACTIVE|SOLO] [Status: in_progress|blocked|complete]
 ```
 
 ---
 
-## Phase Flow (10 Phases, 2 Gates, 1 Human Gate)
+## Phase Flow (10 Phases, 2 Gates, 0 Human Gates — Fully Autonomous)
 
 ### Phase 1: DETECT_ENV + BASELINE
 
@@ -111,12 +114,12 @@ Every response MUST start with:
    - Package manager (bun/npm/yarn/pnpm)
    - Platform-specific rules
 3. Run existing tests, capture BASELINE_BLOCK
-4. Store in `.claude/temp/wf10-env.sh`:
+4. Store in `.claude/temp/boris2-env.sh`:
 
 ```bash
 # Detect from CLAUDE.md or package.json
 mkdir -p .claude/temp
-cat > .claude/temp/wf10-env.sh << 'EOF'
+cat > .claude/temp/boris2-env.sh << 'EOF'
 TEST_CMD="bun test"
 BUILD_CMD="bun run build"
 FORMAT_CMD="bun run format"
@@ -124,13 +127,13 @@ TYPECHECK_CMD="bun run typecheck"  # or "tsc --noEmit" if not in scripts
 LINT_CMD="bun run lint"            # optional, leave empty if none
 PKG_MGR="bun"
 EOF
-source .claude/temp/wf10-env.sh
+source .claude/temp/boris2-env.sh
 $TEST_CMD 2>&1 | tee .claude/temp/baseline.txt || true
 ```
 
 **Tip:** Run `/permissions Bash(bun *) --allow` to skip approval prompts for safe commands.
 
-**Do NOT proceed without BASELINE_BLOCK and .claude/temp/wf10-env.sh.**
+**Do NOT proceed without BASELINE_BLOCK and .claude/temp/boris2-env.sh.**
 
 ---
 
@@ -147,10 +150,10 @@ $TEST_CMD 2>&1 | tee .claude/temp/baseline.txt || true
    - TDD strategy
    - File ownership (which files each teammate will edit)
    - Verification strategy
-5. **Iterate with user** — refine plan until approved
+5. **Self-review plan** — verify completeness and feasibility
 6. VERIFY: Show `cat .claude/temp/plan-draft.md | head -40`
 
-**Gate condition: User approves plan (explicit or implicit).**
+**Auto-proceed: Plan complete → move to Phase 3 (no human approval needed).**
 
 ---
 
@@ -160,7 +163,7 @@ Finalize artifacts from approved plan.
 
 1. Write `.claude/temp/spec.md`:
    - Include BASELINE_BLOCK
-   - Include .claude/temp/wf10-env.sh contents
+   - Include .claude/temp/boris2-env.sh contents
    - Requirements (finalized)
 2. Write `.claude/temp/architecture.md`:
    - Component design
@@ -208,7 +211,7 @@ Teammate 1 (Test Writer A):
 - Owns: tests/unit/[module-a].test.ts
 - Task: Write failing tests for [requirements 1-3]
 - Read: .claude/temp/spec.md, .claude/temp/architecture.md, CLAUDE.md
-- Test command: [from .claude/temp/wf10-env.sh]
+- Test command: [from .claude/temp/boris2-env.sh]
 
 Teammate 2 (Test Writer B):
 - Owns: tests/unit/[module-b].test.ts
@@ -236,7 +239,7 @@ All teammates must:
 
 ```bash
 set -o pipefail
-source .claude/temp/wf10-env.sh
+source .claude/temp/boris2-env.sh
 $TEST_CMD 2>&1 | tee .claude/temp/tdd-red.txt
 echo "EXIT_CODE: ${PIPESTATUS[0]}"
 # Must be non-zero (tests should FAIL at this point)
@@ -262,10 +265,10 @@ Read:
 - .claude/temp/spec.md
 - .claude/temp/architecture.md
 - Test files (READ-ONLY - do not edit)
-- .claude/temp/wf10-env.sh (commands)
+- .claude/temp/boris2-env.sh (commands)
 
 Commands:
-$(cat .claude/temp/wf10-env.sh)
+$(cat .claude/temp/boris2-env.sh)
 
 CRITICAL: Test files are READ-ONLY. Only edit src/ files.
 CRITICAL: Use the correct test command from env file.
@@ -292,7 +295,7 @@ After tests pass, output:
 Uses modular agent definition from `.claude/agents/code-simplifier.md`:
 
 ```bash
-source .claude/temp/wf10-env.sh
+source .claude/temp/boris2-env.sh
 
 claude -p "$(cat .claude/agents/code-simplifier.md)
 
@@ -363,7 +366,7 @@ Uses modular agent definition from `.claude/agents/verify-app.md`:
 # Run full verification suite (enhanced with typecheck + lint)
 # Use pipefail to capture actual command exit codes, not tee's
 set -o pipefail
-source .claude/temp/wf10-env.sh
+source .claude/temp/boris2-env.sh
 
 echo "=== 1. Type Check ==="
 if [ -n "$TYPECHECK_CMD" ]; then
@@ -461,16 +464,14 @@ echo "Warnings: $WARN_COUNT"
 └─────────────────────────────────────────────┘
 ```
 
-**Stage and prepare commit (ask user for commit approval):**
+**Auto-stage and auto-commit (fully autonomous):**
 
 ```bash
 git add -A
 git status
-echo ""
-echo "Ready to commit. Awaiting user approval..."
 ```
 
-**On approval, commit:**
+**Auto-commit (no approval needed):**
 
 ```bash
 TASK_SUMMARY=$(head -5 .claude/temp/spec.md | grep -v "^#" | head -1)
@@ -480,21 +481,21 @@ feat: ${TASK_SUMMARY}
 
 - TDD: RED→GREEN verified
 - Simplified: code-simplifier applied
-- Reviews: Codex + Gemini approved
+- Reviews: Staff engineer + code reviewer approved
 - Verification: verify-app passed
 - Regression: SAFE
 
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
 EOF
 )"
 
 git log -1 --oneline
 ```
 
-**WF9_RESULT Block:**
+**BORIS2_RESULT Block:**
 ```text
 ┌─────────────────────────────────────────────┐
-│ WF9_RESULT                                  │
+│ BORIS2_RESULT                               │
 ├─────────────────────────────────────────────┤
 │ Task: [description from spec]               │
 │ Status: SUCCESS                             │
@@ -516,7 +517,7 @@ Output: `✓ ORCHESTRATION COMPLETE (Boris Mode)`
 | Trigger | Action |
 |---------|--------|
 | No BASELINE_BLOCK | STOP. Capture baseline first |
-| No .claude/temp/wf10-env.sh | STOP. Detect env first |
+| No .claude/temp/boris2-env.sh | STOP. Detect env first |
 | Claim without EXECUTION_BLOCK | RETRACT. Run verification |
 | REGRESSION_DELTA = REGRESSION | **GOTO Phase 10 (REFLECT)** |
 | Teammate edits wrong file | STOP. Reassign file ownership |
@@ -653,23 +654,23 @@ Add to `.claude/settings.json`:
 
 ---
 
-## Comparison: wf10 vs wf8
+## Comparison: boris2 vs wf8-gc
 
-| Aspect | wf8 | wf10 |
+| Aspect | wf8-gc | boris2 |
 |--------|-----|-----|
 | Phases | 8 | 10 |
-| Human gates | 0 | 1 (plan approval) |
+| Human gates | 0 | 0 (fully autonomous) |
 | Agent Teams | No | Yes (TDD_RED) |
-| Plan iteration | No | Yes (Boris style) |
+| Plan iteration | No | Yes (self-review, auto-proceed) |
 | code-simplifier | No | Yes |
 | verify-app pattern | No | Yes |
 | CLAUDE.md read | Partial | Full (Phase 1) |
 | Env detection | Hardcoded | Dynamic |
-| Auto-commit | Yes | No (ask user) |
+| Auto-commit | Yes | Yes |
 
 ---
 
-## When to Use wf10
+## When to Use boris2
 
 - Complex features needing parallel exploration
 - Projects with specific CLAUDE.md rules
