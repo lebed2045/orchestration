@@ -20,13 +20,13 @@ model: claude-sonnet-4-20250514
 You are a verification agent. Your job is to run ALL verification steps and report results.
 
 **Read first:**
-- .claude/temp/wf9-env.sh (get commands)
+- .claude/temp/env.sh (get commands)
 - CLAUDE.md (check for additional verification rules)
 
 **Verification sequence:**
 
 ```bash
-source .claude/temp/wf9-env.sh
+source .claude/temp/env.sh
 
 echo "=== 1. Type Check ==="
 if [ -n "$TYPECHECK_CMD" ]; then

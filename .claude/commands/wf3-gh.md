@@ -1,4 +1,4 @@
-# /wf3 - Workflow v3 (Anti-Regression)
+# /wf3-gh - Workflow v3 (Anti-Regression)
 
 **Version 3**: Full workflow with anti-regression guarantees. Combines isolated coder + dual reviewers + regression tracking.
 

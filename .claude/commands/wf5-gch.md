@@ -1,4 +1,4 @@
-# /wf5 - Workflow v5 (Triple Review)
+# /wf5-gch - Workflow v5 (Triple Review)
 
 **Version 5**: Anti-regression workflow with triple review (Gemini + Codex + Claude). Based on wf3 with added Codex reviewer.
 

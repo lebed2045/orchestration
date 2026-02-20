@@ -1,4 +1,4 @@
-# /wf6 - Workflow v6 (Quad Review + Retrospective)
+# /wf6-gch - Workflow v6 (Quad Review + Retrospective)
 
 **Version 6**: 4 reviewers per gate (Gemini, Codex, Opus, Sonnet) with retrospective analysis.
 

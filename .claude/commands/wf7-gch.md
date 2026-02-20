@@ -1,4 +1,4 @@
-# /wf7 - Workflow v7 (Token-Optimized)
+# /wf7-gch - Workflow v7 (Token-Optimized)
 
 **Version 7**: Token-optimized with parallel TDD_RED and parallel reviews (Codex + Gemini).
 

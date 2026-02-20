@@ -1,6 +1,6 @@
 # /ddr - Divide Delegate Reflect
 
-**DDR** is a meta-orchestrator for PM cards. Assesses complexity, delegates to `/wf3`, recursively decomposes on failure.
+**DDR** is a meta-orchestrator for PM cards. Assesses complexity, delegates to `/wf3-gh`, recursively decomposes on failure.
 
 **PM Folder**: `.claude/pm/`
 
@@ -105,7 +105,7 @@ git reset --hard HEAD
     ▼         ▼
 ┌────────┐  ┌──────────────┐
 │DELEGATE│  │DESIGN SUB1   │ ← Just-in-Time (not waterfall)
-│ to /wf3 │  │Execute Sub1  │
+│ to /wf3-gh │  │Execute Sub1  │
 └───┬────┘  │Verify → Sub2 │
     │       └──────┬───────┘
 ┌───┴───┐          │
@@ -186,7 +186,7 @@ Estimate total lines of code needed (new + modified + tests).
 ```
 
 **Decision logic:**
-- `TOTAL ≤ 50` → DELEGATE to /wf3
+- `TOTAL ≤ 50` → DELEGATE to /wf3-gh
 - `TOTAL > 50` → DECOMPOSE into 3 subtasks
 
 ---
@@ -197,13 +197,13 @@ Estimate total lines of code needed (new + modified + tests).
 
 Write `.claude/temp/ddr-task.md` with enriched context.
 
-**3A.2 Call /wf3 (Isolated)**
+**3A.2 Call /wf3-gh (Isolated)**
 
 Try subprocess first, fallback to Task agent if it fails:
 
 ```bash
 # Primary: subprocess (preferred for isolation)
-claude -p "Execute this task following /wf3 workflow:
+claude -p "Execute this task following /wf3-gh workflow:
 $(cat .claude/temp/ddr-task.md)
 
 When done, output WF3_RESULT block." \

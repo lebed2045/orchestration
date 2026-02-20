@@ -4,19 +4,26 @@ This project contains orchestrated development workflows. Use the commands below
 
 ## Available Commands
 
-| Command | Version | Agents | Description |
-|---------|---------|--------|-------------|
-| `/wf1` | v1 | `*-v1` | 8-phase workflow, Gemini review, orchestrator implements |
-| `/wf2` | v2 | inline | 10-phase workflow, 3-gate dual-review, isolated coder |
-| `/wf3` | v3 | `*-v3` | 10-phase, 3-gate, isolated coder + anti-regression |
-| `/wf4` | v4 | `*-v4` | 8-phase, 2-gate, autonomous (infer, auto-fix, triple review) |
-| `/wf5` | v5 | `*-v3` | 10-phase, 3-gate, wf3 + Codex (triple review in Gate 1) |
-| `/wf6` | v6 | `*-v3` | 10-phase, 3-gate, quad review (Gemini+Codex+Opus+Sonnet) + retrospective |
-| `/wf7` | v7 | inline | 9-phase, 2-gate, token-optimized (Codex+Gemini+CodeSmell), 75% less tokens |
-| `/wf8` | v8 | inline | 8-phase, 2-gate, autonomous wf7 (no human gates, auto-commit) |
-| `/wf10` | v10 | inline | 10-phase, 2-gate, Pure Boris Mode (Claude reviews Claude) |
-| `/ddr` | - | uses wf3 | Meta-orchestrator: Divide, Delegate, Reflect |
-| `/ddr2` | - | uses wf8 | Autonomous DDR: no human gates, auto-splits, auto-commits |
+Run `/wf` for quick reference table.
+
+| Command | Suffix | Description |
+|---------|--------|-------------|
+| `/boris1-h` | `-h` | Boris's original workflow (human plan iteration) |
+| `/boris2` | — | Boris + Agent Teams (autonomous) |
+| `/wf1-gh` | `-gh` | v1: Gemini + human gate |
+| `/wf2-gh` | `-gh` | v2: Dual review + isolated coder + human gate |
+| `/wf3-gh` | `-gh` | v3: Anti-regression + human gate |
+| `/wf4-gc` | `-gc` | v4: Gemini + Codex (autonomous) |
+| `/wf5-gch` | `-gch` | v5: Triple review + human gate |
+| `/wf6-gch` | `-gch` | v6: Quad review + human gate |
+| `/wf7-gch` | `-gch` | v7: Token-optimized + human gate |
+| `/wf8-gc` | `-gc` | v8: Autonomous + auto-commit |
+| `/wf9-gc` | `-gc` | v9: MCP tools + auto-commit |
+| `/wf10-gc` | `-gc` | v10: wf9 + optional `-h` flag for human gate |
+| `/ddr` | — | Meta-orchestrator (uses wf3-gh) |
+| `/ddr2` | — | Autonomous DDR (uses wf8-gc) |
+
+**Suffix legend:** `g`=Gemini, `c`=Codex, `h`=human gate
 
 **The command files contain the full workflow. CLAUDE.md only has general rules.**
 
@@ -73,21 +80,25 @@ Before ANY completion claim, you MUST provide:
 ```text
 .claude/
 ├── commands/
-│   ├── wf1.md            # v1 workflow
-│   ├── wf2.md            # v2 workflow (inline prompts)
-│   ├── wf3.md            # v3 anti-regression workflow
-│   ├── wf4.md            # v4 autonomous workflow
-│   ├── wf5.md            # v5 triple review workflow
-│   ├── wf6.md            # v6 quad review + retrospective
-│   ├── wf7.md            # v7 token-optimized (Codex+Gemini+CodeSmell)
-│   ├── wf8.md            # v8 autonomous (wf7 + no human gates + auto-commit)
-│   ├── wf10.md           # v10 Pure Boris Mode (Claude reviews Claude)
+│   ├── boris1-h.md       # Boris's original (human plan iteration)
+│   ├── boris2.md         # Boris + Agent Teams (autonomous)
+│   ├── wf1-gh.md         # v1 (Gemini + human)
+│   ├── wf2-gh.md         # v2 (Gemini + human)
+│   ├── wf3-gh.md         # v3 anti-regression
+│   ├── wf4-gc.md         # v4 autonomous
+│   ├── wf5-gch.md        # v5 triple review
+│   ├── wf6-gch.md        # v6 quad review
+│   ├── wf7-gch.md        # v7 token-optimized
+│   ├── wf8-gc.md         # v8 autonomous
+│   ├── wf9-gc.md         # v9 MCP tools
+│   ├── wf10-gc.md        # v10 (wf9 + optional -h flag)
+│   ├── wf.md             # Quick reference table
 │   ├── ddr.md            # Meta-orchestrator
-│   └── ddr2.md           # Autonomous DDR (uses wf8)
+│   └── ddr2.md           # Autonomous DDR
 ├── agents/
 │   ├── *-v1.md           # Agents for wf1
 │   ├── *-v3.md           # Agents for wf3
-│   └── *-v4.md           # Agents for wf4 (autonomous)
+│   └── *-v4.md           # Agents for wf4
 └── settings.local.json   # Hooks configuration
 ```
 

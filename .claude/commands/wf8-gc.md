@@ -1,4 +1,4 @@
-# /wf8 - Workflow v8 (Autonomous)
+# /wf8-gc - Workflow v8 (Autonomous)
 
 **Version 8**: Fully autonomous wf7 - no human gates, auto-commits on success.
 

@@ -1,4 +1,4 @@
-# /wf2 - Workflow v2
+# /wf2-gh - Workflow v2
 
 **Version 2**: 10-phase workflow with 3-gate dual-review + isolated coder architecture.
 
