@@ -21,6 +21,7 @@ Run `/wf` for quick reference table.
 | `/wf9-gc` | `-gc` | v9: MCP tools + auto-commit |
 | `/wf10-gc` | `-gc` | v10: wf9 + optional `-h` flag for human gate |
 | `/wf11` | — | v11: Anthropic-only (no Gemini/Codex) |
+| `/wf12` | — | v12: 3 Cops (simplicity, coherence, coverage) |
 | `/ddr` | — | Meta-orchestrator (uses wf3-gh) |
 | `/ddr2` | — | Autonomous DDR (uses wf8-gc) |
 
