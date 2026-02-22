@@ -83,17 +83,40 @@ What failure should I reflect on?
 
 ## Phase 2: GENERATE ID
 
-Format: `[SCOPE]-YYMMDD-N`
+Format: `[PROJ]-[BRANCH]-[COMMIT6]-[N]`
+
+| Component | Source | Example | If absent |
+|-----------|--------|---------|-----------|
+| PROJ | 3-4 letter project code | `SIM`, `ORCH`, `GLO` | Required |
+| BRANCH | `git branch --show-current` | `ai-merge`, `master` | Omit (global/no git) |
+| COMMIT6 | `git rev-parse --short=6 HEAD` | `68817e` | Omit (no commits) |
+| N | Increment within same PROJ-BRANCH-COMMIT | `1`, `2`, `3` | Required |
+
+Examples:
+- `SIM-ai-merge-68817e-1` — sim-vibecoding, ai-merge branch, after commit 68817e
+- `ORCH-master-40e505-2` — orchestration, master, 2nd failure after that commit
+- `GLO-1` — global (no branch/commit context)
 
 ```bash
-TODAY_SHORT=$(date +%y%m%d)
+# Get components
+PROJ="GLO"  # or detect from repo name
+BRANCH=$(git branch --show-current 2>/dev/null || echo "")
+COMMIT=$(git rev-parse --short=6 HEAD 2>/dev/null || echo "")
 
-# Count existing entries for today
-GLOBAL_N=$(grep -c "^## GLO-${TODAY_SHORT}" ~/.claude/reflections/failures.md 2>/dev/null || echo 0)
-GLOBAL_N=$((GLOBAL_N + 1))
+# Build prefix
+if [ -n "$BRANCH" ] && [ -n "$COMMIT" ]; then
+  PREFIX="${PROJ}-${BRANCH}-${COMMIT}"
+elif [ -n "$BRANCH" ]; then
+  PREFIX="${PROJ}-${BRANCH}"
+else
+  PREFIX="${PROJ}"
+fi
 
-# Generate ID
-ID="GLO-${TODAY_SHORT}-${GLOBAL_N}"
+# Count existing entries with this prefix
+EXISTING=$(grep -c "^## ${PREFIX}-" ~/.claude/reflections/failures.md 2>/dev/null || echo 0)
+N=$((EXISTING + 1))
+
+ID="${PREFIX}-${N}"
 ```
 
 ---
@@ -169,7 +192,7 @@ Output: Improved rule text only.
 3. Add rule with reference ID
 
 ```markdown
-## [Rule Title] (ref: GLO-260221-1)
+## [Rule Title] (ref: GLO-1)
 [Rule text]
 ```
 
@@ -182,7 +205,7 @@ Output: Improved rule text only.
 After rule is added, create entry in `~/.claude/reflections/failures-addressed.md`:
 
 ```markdown
-## GLO-260221-1 | ADDRESSED | 2026-02-21
+## GLO-1 | ADDRESSED | 2026-02-21
 
 **What happened:** [failure]
 **Root cause:** [why]
@@ -198,7 +221,7 @@ Also log to `.claude/reflections/failures-addressed.md` if project scope.
 ## Phase 7: OUTPUT Summary
 
 ```
-✓ FAILURE ADDRESSED: GLO-260221-1
+✓ FAILURE ADDRESSED: GLO-1
 
 What happened: Claimed 4 cops when only 3 existed
 Root cause: Didn't search for actual agent definitions
@@ -226,8 +249,8 @@ Output:
 
 | ID | Date | What Happened | Scope |
 |----|------|---------------|-------|
-| GLO-260221-1 | 2026-02-21 | Wrong repo recommendation | Global |
-| PRJ-260221-1 | 2026-02-21 | Misunderstood project structure | Project |
+| GLO-1 | 2026-02-21 | Wrong repo recommendation | Global |
+| SIM-ai-merge-68817e-1 | 2026-02-21 | Misunderstood project structure | Project |
 
 Run `/reflect` to address the most recent failure.
 ```
@@ -258,10 +281,10 @@ run a search to verify the actual count. Never trust memory or prior knowledge."
 Added to ~/.claude/CLAUDE.md:142
 
 ## Logging
-✓ GLO-260221-1 → failures-addressed.md
+✓ GLO-1 → failures-addressed.md
 
 ---
-✓ FAILURE ADDRESSED: GLO-260221-1
+✓ FAILURE ADDRESSED: GLO-1
 Rule: "Verify counts by searching"
 Location: ~/.claude/CLAUDE.md:142
 Reviewed by: Gemini
@@ -294,7 +317,7 @@ Reviewed by: Gemini
 | **Action** | Adds rule to CLAUDE.md (not just logs) |
 | **Flags** | `-g` Gemini, `-c` Codex, `-gc` both |
 | **Scope** | Global + Project (if exists) |
-| **ID format** | `GLO-YYMMDD-N` / `PRJ-YYMMDD-N` |
+| **ID format** | `PROJ-BRANCH-COMMIT6-N` (branch/commit omitted if absent) |
 | **Output** | Rule added, location, reviewer |
 | **Tracking** | Moves to `failures-addressed.md` |
 | **Monitoring** | 7 days for recurrence |
