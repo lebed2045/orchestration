@@ -417,10 +417,10 @@ Example output:
 
 After research, you can:
 1. **Read the doc** and decide approach manually
-2. **Copy to docs/research/** if worth keeping permanently
+2. **Distill** key insights into CLAUDE.md rules (then delete research)
 3. **Feed to workflow**: `/wf12 <task>` and reference the research
 
-The research doc is in `.claude/research/` — ephemeral by default, move to `docs/research/` to persist.
+Research docs are **ephemeral** (gitignored). Distill lessons into rules, then discard.
 
 ---
 
