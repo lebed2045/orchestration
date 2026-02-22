@@ -2,5 +2,8 @@
 .claude/temp/
 !.claude/temp/.gitkeep
 
+# Research files (ephemeral - distill into CLAUDE.md rules, then discard)
+.claude/research/
+
 # Local settings
 .claude/settings.local.json
