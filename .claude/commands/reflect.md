@@ -10,8 +10,10 @@
 /reflect                # Address failure → add rule to CLAUDE.md
 /reflect -g             # Use Gemini to help craft better rule
 /reflect -c             # Use Codex to help craft better rule
-/reflect -gc            # Use both Gemini + Codex
-/reflect --list         # Show open failures needing addressing
+/reflect -gc            # Use both Gemini + Codex (same as -cg)
+/reflect -cg            # Same as -gc
+/reflect --list         # Show open failures (READ-ONLY, no changes)
+/reflect --dry          # Dry run: show what would be added, don't edit
 ```
 
 ---
@@ -21,7 +23,20 @@
 ```bash
 GEMINI=false
 CODEX=false
+DRY_RUN=false
+LIST_ONLY=false
 
+# Check for --list (read-only mode)
+if [[ "$ARGUMENTS" == *"--list"* ]]; then
+  LIST_ONLY=true
+fi
+
+# Check for --dry (dry run mode)
+if [[ "$ARGUMENTS" == *"--dry"* ]]; then
+  DRY_RUN=true
+fi
+
+# Check for review flags
 if [[ "$ARGUMENTS" == *"-gc"* ]] || [[ "$ARGUMENTS" == *"-cg"* ]]; then
   GEMINI=true
   CODEX=true
@@ -31,6 +46,19 @@ elif [[ "$ARGUMENTS" == *"-c"* ]]; then
   CODEX=true
 fi
 ```
+
+---
+
+## Mode Behaviors
+
+| Mode | Reads | Writes | Reviews |
+|------|-------|--------|---------|
+| `/reflect` | failures.md | CLAUDE.md, failures-addressed.md | Self |
+| `/reflect -g` | failures.md | CLAUDE.md, failures-addressed.md | Gemini |
+| `/reflect -c` | failures.md | CLAUDE.md, failures-addressed.md | Codex |
+| `/reflect -gc` | failures.md | CLAUDE.md, failures-addressed.md | Both |
+| `/reflect --list` | failures.md | **NONE** | — |
+| `/reflect --dry` | failures.md | **NONE** (shows preview) | Optional |
 
 ---
 
