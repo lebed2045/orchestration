@@ -1,4 +1,8 @@
 {
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "MCP_TIMEOUT": "120000"
+  },
   "permissions": {
     "allow": [
       "mcp__gemini__ask-gemini",
@@ -16,6 +20,15 @@
   },
   "hooks": {
     "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun run format || npm run format || true"
+          }
+        ]
+      },
       {
         "matcher": "Bash:*test*",
         "hooks": [
