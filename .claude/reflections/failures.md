@@ -1,8 +1,10 @@
 # Orchestration Workflow Failures Log
 
+> **ID format:** `ORCH-N` (sequential). Migrated from date-based format on 2026-02-23.
+
 ---
 
-## ORCH-260220-1 | 2026-02-20 12:05 | orchestration
+## ORCH-1 | 2026-02-20 | orchestration
 
 **Context:** Designing suffix naming convention for workflows
 
@@ -38,7 +40,7 @@ Line 669: | Human gates | 0 | 1 (plan approval) |
 
 ---
 
-## ORCH-260220-2 | 2026-02-20 12:10 | orchestration
+## ORCH-2 | 2026-02-20 | orchestration
 
 **Context:** Continuing suffix naming convention design
 
