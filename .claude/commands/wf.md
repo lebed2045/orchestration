@@ -20,6 +20,7 @@ Show this table and STOP. Do not execute any workflow.
 | `/wf10-gc` | G+C+CS | 2 | 0-1 | wf9 + optional `-h` flag |
 | `/wf11` | 5×Claude | 2 | 0-1 | Anthropic-only (no MCP tools) |
 | `/wf12` | 3-cops | 2 | 0-1 | Quality (simplicity, coherence, coverage) |
+| `/wf14` | 3-cops | 2 | 0-1 | Fast TDD (single-test iteration, slow suites) |
 | `/ddr` | (wf3-gh) | — | — | Meta: Divide-Delegate-Reflect |
 | `/ddr2` | (wf8-gc) | — | — | Autonomous DDR |
 
@@ -43,6 +44,7 @@ Show this table and STOP. Do not execute any workflow.
 | Maximum review coverage | `/wf6-gch` |
 | Token-efficient | `/wf7-gch` |
 | Anti-bloat, quality focus | `/wf12` |
+| Slow test suites (Unity) | `/wf14` |
 
 ---
 
