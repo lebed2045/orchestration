@@ -22,7 +22,6 @@ Run `/wf` for quick reference table.
 | `/wf10-gc` | `-gc` | v10: wf9 + optional `-h` flag for human gate |
 | `/wf11` | — | v11: Anthropic-only (no Gemini/Codex) |
 | `/wf12` | — | v12: 3 Cops (simplicity, coherence, coverage) |
-| `/wf13` | — | v13: wf12 + compact table output |
 | `/ddr` | — | Meta-orchestrator (uses wf3-gh) |
 | `/ddr2` | — | Autonomous DDR (uses wf8-gc) |
 
@@ -96,7 +95,6 @@ Before ANY completion claim, you MUST provide:
 │   ├── wf9-gc.md         # v9 MCP tools
 │   ├── wf10-gc.md        # v10 (wf9 + optional -h flag)
 │   ├── wf11.md           # v11 (Anthropic-only)
-│   ├── wf13.md           # v13 (wf12 + compact table)
 │   ├── wf.md             # Quick reference table
 │   ├── ddr.md            # Meta-orchestrator
 │   └── ddr2.md           # Autonomous DDR
