@@ -1,4 +1,8 @@
 {
+  "statusLine": {
+    "type": "command",
+    "command": "jq -r 'def bar: (.context_window.used_percentage // 0) as $p | (($p / 5) | floor) as $filled | (20 - $filled) as $empty | \"\\(\"█\" * $filled)\\(\"░\" * $empty)\"; if (.context_window.used_percentage // 0) > 80 then \"[\\(.model.display_name)] ⚠️  \\(.context_window.used_percentage)% [\\(bar)] — RUN /compact NOW\" elif (.context_window.used_percentage // 0) > 60 then \"[\\(.model.display_name)] \\(.context_window.used_percentage)% [\\(bar)]\" else \"[\\(.model.display_name)] \\(.context_window.used_percentage)% [\\(bar)]\" end'"
+  },
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
     "MCP_TIMEOUT": "120000"
