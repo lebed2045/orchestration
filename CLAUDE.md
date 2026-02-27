@@ -23,8 +23,10 @@ Run `/wf` for quick reference table.
 | `/wf11` | — | v11: Anthropic-only (no Gemini/Codex) |
 | `/wf12` | — | v12: 3 Cops (simplicity, coherence, coverage) |
 | `/wf14` | — | v14: Fast TDD (single-test iteration, slow suites) |
+| `/wf15` | — | v15: wf14 + optional `-c` `-g` `-cg` flags for MCP reviewers |
 | `/ddr` | — | Meta-orchestrator (uses wf3-gh) |
 | `/ddr2` | — | Autonomous DDR (uses wf8-gc) |
+| `/sc-audit` | — | Smart contract audit (6 parallel reviewers + blue team + LP scorecard) |
 
 **Suffix legend:** `g`=Gemini, `c`=Codex, `h`=human gate
 
@@ -96,6 +98,10 @@ Before ANY completion claim, you MUST provide:
 │   ├── wf9-gc.md         # v9 MCP tools
 │   ├── wf10-gc.md        # v10 (wf9 + optional -h flag)
 │   ├── wf11.md           # v11 (Anthropic-only)
+│   ├── wf12.md           # v12 (3 Cops)
+│   ├── wf14.md           # v14 (Fast TDD)
+│   ├── wf15.md           # v15 (wf14 + optional MCP)
+│   ├── sc-audit.md       # Smart contract audit
 │   ├── wf.md             # Quick reference table
 │   ├── ddr.md            # Meta-orchestrator
 │   └── ddr2.md           # Autonomous DDR
@@ -119,6 +125,14 @@ Before ANY completion claim, you MUST provide:
 ├── gate-2-reviews.md     # Gate 2 quad reviews (wf6)
 └── gate-3-reviews.md     # Gate 3 quad reviews (wf6)
 ```
+
+---
+
+## Terminology
+
+- "Human gate" (`-h` suffix) = any human interaction/approval step
+- "Autonomous" (no `-h`) = 0 human interaction
+- "MCP tools" (Gemini, Codex) ≠ human interaction
 
 ---
 
