@@ -9,17 +9,18 @@
   },
   "permissions": {
     "allow": [
+      "Bash",
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Agent",
+      "WebSearch",
+      "WebFetch",
       "mcp__gemini__ask-gemini",
-      "Bash(git init:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(claude -p:*)",
-      "Bash(ls:*)",
-      "Bash(git rm:*)",
-      "Bash(npm test:*)",
-      "Bash(swift build:*)",
-      "Bash(swift test:*)",
-      "Bash(aerospace list-windows:*)"
+      "mcp__codex-cli__codex",
+      "mcp__codex-cli__review"
     ]
   },
   "hooks": {
