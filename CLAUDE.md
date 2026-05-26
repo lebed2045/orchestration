@@ -6,29 +6,23 @@ This project contains orchestrated development workflows. Use the commands below
 
 Run `/wf` for quick reference table.
 
-| Command | Suffix | Description |
-|---------|--------|-------------|
-| `/boris1-h` | `-h` | Boris's original workflow (human plan iteration) |
-| `/boris2` | — | Boris + Agent Teams (autonomous) |
-| `/wf1-gh` | `-gh` | v1: Gemini + human gate |
-| `/wf2-gh` | `-gh` | v2: Dual review + isolated coder + human gate |
-| `/wf3-gh` | `-gh` | v3: Anti-regression + human gate |
-| `/wf4-gc` | `-gc` | v4: Gemini + Codex (autonomous) |
-| `/wf5-gch` | `-gch` | v5: Triple review + human gate |
-| `/wf6-gch` | `-gch` | v6: Quad review + human gate |
-| `/wf7-gch` | `-gch` | v7: Token-optimized + human gate |
-| `/wf8-gc` | `-gc` | v8: Autonomous + auto-commit |
-| `/wf9-gc` | `-gc` | v9: MCP tools + auto-commit |
-| `/wf10-gc` | `-gc` | v10: wf9 + optional `-h` flag for human gate |
-| `/wf11` | — | v11: Anthropic-only (no Gemini/Codex) |
-| `/wf12` | — | v12: 3 Cops (simplicity, coherence, coverage) |
-| `/wf14` | — | v14: Fast TDD (single-test iteration, slow suites) |
-| `/wf15` | — | v15: wf14 + optional `-c` `-g` `-cg` flags for MCP reviewers |
-| `/ddr` | — | Meta-orchestrator (uses wf3-gh) |
-| `/ddr2` | — | Autonomous DDR (uses wf8-gc) |
-| `/sc-audit` | — | Smart contract audit (6 parallel reviewers + blue team + LP scorecard) |
+### Current
 
-**Suffix legend:** `g`=Gemini, `c`=Codex, `h`=human gate
+| Command | Description |
+|---------|-------------|
+| `/boris2` | Boris + Agent Teams (autonomous) |
+| `/wf15` | Fast TDD + optional `-c` `-g` reviewers |
+| `/wf16` | Fast TDD on modern primitives (Agent + worktree + `--commit` opt-in) — **default for new work** |
+| `/ddr2` | Autonomous Divide-Delegate-Reflect |
+| `/sc-audit` | Smart contract audit (6 parallel reviewers + LP scorecard) |
+| `/research` (`/r`) | Multi-agent research (codebase + Antigravity + Codex) |
+| `/reflect` | Turn failures into rules with escalation ladder |
+
+### Legacy (in `.claude/commands/legacy/`, invoked as `/legacy:<name>`)
+
+`/legacy:boris1-h`, `/legacy:wf1-gh` … `/legacy:wf12`, `/legacy:wf14`, `/legacy:ddr`. Still runnable; superseded by current workflows. Don't add new functionality here — promote any keeper to the current set instead.
+
+**Suffix legend:** `g`=Antigravity CLI (`agy -p`, Gemini-MCP successor), `c`=Codex MCP, `h`=human gate
 
 **The command files contain the full workflow. CLAUDE.md only has general rules.**
 
@@ -85,30 +79,16 @@ Before ANY completion claim, you MUST provide:
 ```text
 .claude/
 ├── commands/
-│   ├── boris1-h.md       # Boris's original (human plan iteration)
-│   ├── boris2.md         # Boris + Agent Teams (autonomous)
-│   ├── wf1-gh.md         # v1 (Gemini + human)
-│   ├── wf2-gh.md         # v2 (Gemini + human)
-│   ├── wf3-gh.md         # v3 anti-regression
-│   ├── wf4-gc.md         # v4 autonomous
-│   ├── wf5-gch.md        # v5 triple review
-│   ├── wf6-gch.md        # v6 quad review
-│   ├── wf7-gch.md        # v7 token-optimized
-│   ├── wf8-gc.md         # v8 autonomous
-│   ├── wf9-gc.md         # v9 MCP tools
-│   ├── wf10-gc.md        # v10 (wf9 + optional -h flag)
-│   ├── wf11.md           # v11 (Anthropic-only)
-│   ├── wf12.md           # v12 (3 Cops)
-│   ├── wf14.md           # v14 (Fast TDD)
-│   ├── wf15.md           # v15 (wf14 + optional MCP)
-│   ├── sc-audit.md       # Smart contract audit
-│   ├── wf.md             # Quick reference table
-│   ├── ddr.md            # Meta-orchestrator
-│   └── ddr2.md           # Autonomous DDR
+│   ├── boris2.md         # Current — Boris + Agent Teams
+│   ├── wf15.md, wf16.md  # Current workflows
+│   ├── ddr2.md           # Current — autonomous meta-orchestrator
+│   ├── sc-audit.md       # Current — smart contract audit
+│   ├── r.md, reflect.md, wf.md
+│   └── legacy/           # Archived: wf1-wf12, wf14, boris1-h, ddr (invoked as /legacy:<name>)
 ├── agents/
-│   ├── *-v1.md           # Agents for wf1
-│   ├── *-v3.md           # Agents for wf3
-│   └── *-v4.md           # Agents for wf4
+│   ├── simplicity-cop.md, coherence-cop.md, coverage-cop.md   # 3 cops (used by wf15, wf16)
+│   ├── code-simplifier.md, plan-reviewer.md, verify-app.md    # Used by boris2
+│   └── legacy/           # coder-v1/v3/v4, intake-v1/v3/v4, planner-v1/v3/v4, fresh-reviewer-v1/v3/v4, researcher-v1
 └── settings.local.json   # Hooks configuration
 ```
 

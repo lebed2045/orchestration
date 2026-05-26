@@ -1,6 +1,6 @@
 # /research - Multi-Agent Research
 
-Research a topic using codebase exploration + optional external research (Codex/Gemini).
+Research a topic using codebase exploration + optional external research (Codex MCP / Antigravity CLI).
 
 **Philosophy**: *"Stand on shoulders of giants, don't reinvent the bicycle."*
 
@@ -10,9 +10,9 @@ Research a topic using codebase exploration + optional external research (Codex/
 
 ```bash
 /research <topic>           # Opus only (codebase patterns)
-/research -g <topic>        # Opus + Gemini (web research)
-/research -c <topic>        # Opus + Codex (web research)
-/research -gc <topic>       # Opus + Gemini + Codex (full research)
+/research -g <topic>        # Opus + Antigravity CLI (`agy -p`) — Gemini-MCP successor
+/research -c <topic>        # Opus + Codex MCP
+/research -gc <topic>       # Opus + Antigravity + Codex (full research)
 /research -cg <topic>       # Same as -gc
 ```
 
@@ -21,18 +21,18 @@ Research a topic using codebase exploration + optional external research (Codex/
 ## Flag Detection
 
 ```bash
-GEMINI=false
+AGY=false                    # `-g` flag: Antigravity CLI (`agy -p`), Gemini-MCP successor
 CODEX=false
 TOPIC="$ARGUMENTS"
 
 # Parse flags
 if [[ "$ARGUMENTS" == *"-gc"* ]] || [[ "$ARGUMENTS" == *"-cg"* ]]; then
-  GEMINI=true
+  AGY=true
   CODEX=true
   TOPIC="${ARGUMENTS//-gc/}"
   TOPIC="${TOPIC//-cg/}"
 elif [[ "$ARGUMENTS" == *"-g"* ]]; then
-  GEMINI=true
+  AGY=true
   TOPIC="${ARGUMENTS//-g/}"
 elif [[ "$ARGUMENTS" == *"-c"* ]]; then
   CODEX=true
@@ -46,7 +46,7 @@ TOPIC="${TOPIC%% }"  # trim trailing space
 FILENAME=$(echo "$TOPIC" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | sed 's/[^a-z0-9-]//g')
 
 echo "TOPIC: $TOPIC"
-echo "GEMINI: $GEMINI"
+echo "AGY (Antigravity CLI): $AGY"
 echo "CODEX: $CODEX"
 echo "OUTPUT: .claude/research/${FILENAME}.md"
 ```
@@ -103,7 +103,7 @@ Skip clarification if:
 | Agent | Researches | Focus |
 |-------|------------|-------|
 | **Opus** | Codebase | Existing patterns, conventions, constraints |
-| **Gemini** | Internet | Best practices, architecture patterns, pitfalls |
+| **Antigravity (`agy -p`)** | Internet | Best practices, architecture patterns, pitfalls |
 | **Codex** | Internet | Real-world implementations, common mistakes, expert approaches |
 
 **Combined goal**: Learn how experts build this feature/architecture, then map to our codebase.
@@ -149,11 +149,14 @@ After exploration, append findings to `/tmp/opus-research.md`:
 
 ## Phase 2: EXTERNAL_RESEARCH (Conditional)
 
-### If GEMINI=true
+### If AGY=true (Antigravity CLI — Gemini-MCP successor)
 
-Call `mcp__gemini__ask-gemini`:
+**Preflight:** `command -v agy >/dev/null && agy --version`. If missing, skip this phase and warn (Gemini CLI sunsets 2026-06-18; install via `curl -fsSL https://antigravity.google/cli/install.sh | bash`).
 
-```text
+Call `agy -p` as a Bash subprocess (not an MCP tool — `agy` is a CLI binary):
+
+```bash
+agy -p --print-timeout 5m0s "$(cat <<'EOF'
 Research best practices for: [TOPIC]
 
 I'm building this in a software project. Research:
@@ -181,9 +184,11 @@ Output format:
 
 ## Trade-offs
 [Pros/cons of approaches]
+EOF
+)" > /tmp/agy-research.md
 ```
 
-Save to `/tmp/gemini-research.md`
+Typical latency 30–60s per call. Capture stdout to `/tmp/agy-research.md`.
 
 ### If CODEX=true
 
@@ -251,7 +256,7 @@ Write to `.claude/research/${FILENAME}.md`:
 # Research: [TOPIC]
 
 Generated: [YYYY-MM-DD HH:MM]
-Agents: Opus [+ Gemini] [+ Codex]
+Agents: Opus [+ Antigravity (agy -p)] [+ Codex]
 
 ---
 
@@ -277,7 +282,7 @@ Agents: Opus [+ Gemini] [+ Codex]
 ## Expert Approaches (How Giants Do It)
 
 ### Architecture Patterns
-[From Gemini/Codex research]
+[From Antigravity/Codex research]
 
 ### Best Practices
 [Proven approaches]
@@ -317,7 +322,7 @@ Agents: Opus [+ Gemini] [+ Codex]
 
 ### Agent Contributions
 - Opus: Codebase exploration
-- Gemini: [if used]
+- Antigravity (`agy -p`): [if used]
 - Codex: [if used]
 ```
 
@@ -340,7 +345,7 @@ Output this EXACT format (substitute actual values):
 
 | Metric | Value |
 |--------|-------|
-| Agents | Opus [+ Gemini] [+ Codex] |
+| Agents | Opus [+ Antigravity] [+ Codex] |
 | Codebase files | [N] analyzed |
 | Web sources | [N] referenced |
 | Patterns found | [N] |
@@ -383,12 +388,12 @@ Example output:
 → Explores codebase for auth patterns
 → Output: `.claude/research/authentication-flow.md`
 
-### With Gemini
+### With Antigravity (`agy -p`)
 
 ```
 /research -g game bastion design
 ```
-→ Codebase + Gemini web research
+→ Codebase + Antigravity web research
 → Output: `.claude/research/game-bastion-design.md`
 
 ### Full Research
@@ -396,7 +401,7 @@ Example output:
 ```
 /research -gc microservices architecture
 ```
-→ Codebase + Gemini + Codex
+→ Codebase + Antigravity + Codex
 → Maximum coverage
 → Output: `.claude/research/microservices-architecture.md`
 

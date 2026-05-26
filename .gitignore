@@ -7,3 +7,6 @@
 
 # Local settings
 .claude/settings.local.json
+
+# Antigravity CLI local project symlinks (per-machine, points into ~/.gemini/config)
+.antigravitycli/
