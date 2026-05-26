@@ -2,50 +2,49 @@
 
 Show this table and STOP. Do not execute any workflow.
 
-## Workflow Comparison
+## Current Workflows
 
 | Command | Reviewers | Gates | H | Description |
 |---------|-----------|-------|---|-------------|
-| `/boris1-h` | — | 0 | 1 | Boris's original (plan iteration with user) |
 | `/boris2` | 2×O | 2 | 0 | Boris + Agent Teams (auto) |
-| `/wf1-gh` | G+O | 2 | 2 | Basic dual review |
-| `/wf2-gh` | G+O | 3 | 2 | Dual review + isolated coder |
-| `/wf3-gh` | G+O | 3 | 1 | Anti-regression |
-| `/wf4-gc` | G+C+O | 2 | 0 | Auto-fix on review fail |
-| `/wf5-gch` | G+C+O | 3 | 1 | Triple review |
-| `/wf6-gch` | G+C+O+S | 3 | 1 | Quad review (all 4) |
-| `/wf7-gch` | G+C+CS | 2 | 1 | Token-optimized |
-| `/wf8-gc` | G+C+CS | 2 | 0 | Autonomous + auto-commit |
-| `/wf9-gc` | G+C+CS | 2 | 0 | MCP tools + auto-commit |
-| `/wf10-gc` | G+C+CS | 2 | 0-1 | wf9 + optional `-h` flag |
-| `/wf11` | 5×Claude | 2 | 0-1 | Anthropic-only (no MCP tools) |
-| `/wf12` | 3-cops | 2 | 0-1 | Quality (simplicity, coherence, coverage) |
-| `/wf14` | 3-cops | 2 | 0-1 | Fast TDD (single-test iteration, slow suites) |
-| `/ddr` | (wf3-gh) | — | — | Meta: Divide-Delegate-Reflect |
-| `/ddr2` | (wf8-gc) | — | — | Autonomous DDR |
+| `/wf15` | 3-cops + opt MCP | 2 | 0-1 | Fast TDD + optional `-c` `-g` reviewers |
+| `/wf16` | 3-cops + opt reviewer | 2 | 0-1 | Fast TDD on modern primitives (Agent + worktree). Default for new work. |
+| `/ddr2` | (wf-current) | — | — | Autonomous Divide-Delegate-Reflect |
+| `/sc-audit` | — | — | — | Smart contract audit (parallel reviewers + LP scorecard) |
+| `/research` (`/r`) | — | — | — | Multi-agent research (codebase + Antigravity + Codex) |
+| `/reflect` | — | — | — | Turn failures into rules (escalation ladder) |
+
+## Legacy Workflows (`/legacy:<name>`)
+
+Older generations, still runnable but superseded. Use `/legacy:wf3-gh` to invoke.
+
+| Legacy command | Successor | Reason archived |
+|---|---|---|
+| `/legacy:boris1-h` | `/boris2` | Manual plan iteration replaced by Agent Teams |
+| `/legacy:wf1-gh` … `/legacy:wf11` | `/wf15` / `/wf16` | Pre-3-cops, pre-modern-primitives |
+| `/legacy:wf12` | `/wf15` / `/wf16` | 3-cops base — superseded by fast-iteration variants |
+| `/legacy:wf14` | `/wf15` / `/wf16` | Fast TDD without reviewers — superseded by wf15 (adds MCP option) |
+| `/legacy:ddr` | `/ddr2` | Manual gates → autonomous |
 
 ## Suffix Legend
 
 | Suffix | Meaning |
 |--------|---------|
-| `-g` | uses Gemini |
-| `-c` | uses Codex |
-| `-h` | has human gate |
+| `-g` | Antigravity CLI (`agy -p`) reviewer — Gemini-MCP successor (Gemini CLI sunsets 2026-06-18) |
+| `-c` | Codex MCP reviewer |
+| `-h` | human gate |
 | no suffix | Anthropic-only + autonomous |
 
 ## Quick Pick
 
 | Need | Use |
 |------|-----|
-| Simple task, human plan | `/boris1-h` |
 | Full auto, Anthropic-only | `/boris2` |
-| Full auto, MCP tools | `/wf8-gc` or `/wf9-gc` |
-| Auto with optional review | `/wf10-gc -h` |
-| Maximum review coverage | `/wf6-gch` |
-| Token-efficient | `/wf7-gch` |
-| Anti-bloat, quality focus | `/wf12` |
-| Slow test suites (Unity) | `/wf14` |
+| Modern Claude Code (Agent + worktree) — **default for new work** | `/wf16` |
+| Slow suites + external reviewers | `/wf15 -cg` |
+| Recursive task decomposition | `/ddr2` |
+| Smart contract review | `/sc-audit` |
 
 ---
 
-**Tip:** Run `/wf` anytime to see this reference.
+**Tip:** Run `/wf` anytime to see this reference. Legacy commands at `/legacy:<name>`.
