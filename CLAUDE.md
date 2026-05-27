@@ -10,20 +10,19 @@ Run `/wf` for quick reference table.
 
 | Command | Description |
 |---------|-------------|
-| `/wf` | The workflow. Fast TDD on modern primitives (Agent + worktree + tier-auto). Prints `wf v16 (2026-05-26)` as its first line on every invocation. |
-| `/sc-audit` | Smart contract audit (6 parallel reviewers + LP scorecard) |
+| `/wf` | The workflow. Fast TDD on modern primitives (Agent + worktree + tier-auto). Prints `wf v16 (26-may-2026)` as its first line on every invocation. |
 | `/research` (`/r`) | Multi-agent research (codebase + Antigravity + Codex) |
 | `/reflect` | Turn failures into rules with escalation ladder |
 
-### Legacy (in `.claude/commands/legacy/`, invoked as `/legacy:<name>`)
+### Legacy (archived in `legacy/`, NOT invocable as slash commands)
 
-`/legacy:wf1-gh` … `/legacy:wf12`, `/legacy:wf14`, `/legacy:wf15`, `/legacy:boris1-h`, `/legacy:boris2`, `/legacy:ddr`, `/legacy:ddr2`. Still runnable; superseded by `/wf`. Don't add new functionality here — promote any keeper to the current set instead.
+Older generations live in `legacy/commands/` and `legacy/agents/` at the repo root — outside `.claude/` so Claude Code doesn't auto-register them. They're kept for **evolutionary context only**: an AI coder reading this repo can see how the workflows progressed (wf1 → wf3 anti-regression → wf6 quad-review → wf12 3-cops → wf16 modern primitives → wf16 renamed to `/wf`). Do not reference them as `/legacy:wfX` — that namespace no longer exists. If you need to revive one, copy the file back into `.claude/commands/` and update its content.
 
 ### Bumping the `/wf` version banner
 
 When the workflow body in `.claude/commands/wf.md` changes meaningfully, update **both** lines at the top of the file:
 - `**WF_VERSION:** \`v17\`` (bump from v16)
-- `**WF_COMMITTED:** \`YYYY-MM-DD\`` (today's date in ISO)
+- `**WF_COMMITTED:** \`DD-mmm-YYYY\`` (lowercase month abbreviation, e.g. `27-may-2026`)
 
 The mandatory first-line banner the workflow prints is derived from these two values. If they drift apart, the rule fails.
 
@@ -85,14 +84,15 @@ Before ANY completion claim, you MUST provide:
 .claude/
 ├── commands/
 │   ├── wf.md             # The workflow (was wf16). Prints version banner on invocation.
-│   ├── sc-audit.md       # Smart contract audit
-│   ├── r.md, reflect.md  # Research + reflection utilities
-│   └── legacy/           # Archived: wf1-wf12, wf14, wf15, boris1-h, boris2, ddr, ddr2
+│   └── r.md, reflect.md  # Research + reflection utilities
 ├── agents/
 │   ├── simplicity-cop.md, coherence-cop.md, coverage-cop.md   # 3 cops (used by /wf)
-│   ├── code-simplifier.md, plan-reviewer.md, verify-app.md    # Used by legacy:boris2
-│   └── legacy/           # coder-v1/v3/v4, intake-v1/v3/v4, planner-v1/v3/v4, fresh-reviewer-v1/v3/v4, researcher-v1
+│   └── code-simplifier.md, plan-reviewer.md, verify-app.md    # Helpers (used by archived boris2)
 └── settings.local.json   # Hooks configuration
+
+legacy/                   # Archived for AI-coder evolutionary context — NOT auto-loaded by Claude Code
+├── commands/             # wf1-wf12, wf14, wf15, boris1-h, boris2, ddr, ddr2, sc-audit
+└── agents/               # coder-v1/v3/v4, intake-v*, planner-v*, fresh-reviewer-v*, researcher-v1
 ```
 
 **Temporary (gitignored):**
