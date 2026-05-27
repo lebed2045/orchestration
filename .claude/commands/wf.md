@@ -1,8 +1,8 @@
 # /wf — Fast-Iteration TDD (Tier-Auto, Split-TDD, No-Worktree Default)
 
-**WF_VERSION:** `v16` · **WF_COMMITTED:** `2026-05-26` · **Tag:** `[tier-auto | split-tdd | optional MCP | rewind-discard | no-auto-commit]`
+**WF_VERSION:** `v16` · **WF_COMMITTED:** `26-may-2026` · **Tag:** `[tier-auto | split-tdd | optional MCP | rewind-discard | no-auto-commit]`
 
-**First line of every run must be, verbatim:** `wf v16 (2026-05-26)` — derived from the two values above. Bump both when the workflow body changes meaningfully.
+**First line of every run must be, verbatim:** `wf v16 (26-may-2026)` — derived from the two values above. Bump both when the workflow body changes meaningfully.
 
 `-g` = Antigravity CLI (`agy -p`, Gemini-MCP successor; Gemini CLI sunsets 2026-06-18). `-c` = Codex MCP. No-flag default: tier-auto, split TDD, no worktree, no reviewers, no gate, no commit.
 
@@ -576,11 +576,11 @@ Spawning fresh agent with clean context + failure summary.
 | Add a function, fix one logic bug in one file | `--tier=small` | One coder + coverage cop is enough |
 | Multi-file feature, refactor, new module | `--tier=full` (default) | Full ceremony justified |
 | Slow test suite (Unity/.NET), risky migration | `--tier=full -cg` | Add MCP perspectives |
-| One-shot exploration, can't define quick test | use `/legacy:wf12` or `/legacy:wf14` instead | `/wf` requires a quick test |
+| One-shot exploration, can't define quick test | refactor task to define one, or run free-form | `/wf` requires a quick test |
 
 ## Legacy generations
 
-Older generations (`wf1`–`wf12`, `wf14`, `wf15`) live in `.claude/commands/legacy/` and resolve as `/legacy:wfNN`. Reach for them only when `/wf` can't fit the case — `/legacy:wf15` retains the `claude -p` subprocess semantics, `/legacy:wf12` ships the full 3-cops review without tier-auto, etc.
+Older generations (`wf1`–`wf12`, `wf14`, `wf15`, plus `boris1-h`, `boris2`, `ddr`, `ddr2`) live in `legacy/` at the repo root — archived for evolutionary context only, not auto-loaded by Claude Code as commands.
 
 ---
 

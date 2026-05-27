@@ -16,12 +16,11 @@ Restart Claude Code and the commands appear.
 
 | Command | What it does |
 |---|---|
-| `/wf` | The workflow. Tier-auto TDD on modern primitives. Prints `wf v16 (2026-05-26)` as its first line. |
-| `/sc-audit` | Smart contract audit — parallel reviewers + LP scorecard. |
+| `/wf` | The workflow. Tier-auto TDD on modern primitives. Prints `wf v16 (26-may-2026)` as its first line. |
 | `/research` (`/r`) | Codebase + Antigravity CLI + Codex MCP research. |
 | `/reflect` | Turn recurring failures into rules. |
 
-Older generations live in `.claude/commands/legacy/` and resolve as `/legacy:wf3-gh`, `/legacy:wf12`, etc.
+Older generations are archived in [legacy/](legacy/) (outside `.claude/` so Claude Code doesn't auto-register them as commands). They're kept in the repo as evolutionary context for AI coders reading the codebase, not for invocation.
 
 ## Why bother
 
