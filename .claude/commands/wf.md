@@ -1,8 +1,8 @@
 # /wf — Fast-Iteration TDD (Tier-Auto, Split-TDD, No-Worktree Default)
 
-**WF_VERSION:** `v16` · **WF_COMMITTED:** `26-may-2026` · **Tag:** `[tier-auto | split-tdd | optional MCP | rewind-discard | no-auto-commit]`
+**WF_VERSION:** `v17` · **WF_COMMITTED:** `07-jun-2026` · **Tag:** `[tier-auto | split-tdd | optional MCP | rewind-discard | no-auto-commit]`
 
-**First line of every run must be, verbatim:** `wf v16 (26-may-2026)` — derived from the two values above. Bump both when the workflow body changes meaningfully.
+**First line of every run must be, verbatim:** `wf v17 (07-jun-2026)` — derived from the two values above. Bump both when the workflow body changes meaningfully.
 
 `-g` = Antigravity CLI (`agy -p`, Gemini-MCP successor; Gemini CLI sunsets 2026-06-18). `-c` = Codex MCP. No-flag default: tier-auto, split TDD, no worktree, no reviewers, no gate, no commit.
 
@@ -185,8 +185,8 @@ echo "TASK: $TASK"
 **Skip if both `CODEX_REVIEW=false` AND `AGY_REVIEW=false`** (always true for micro tier).
 
 ```text
-# -c (Codex MCP) — tool-namespace check
-ToolSearch({query: "select:mcp__codex-cli__codex,mcp__codex-cli__review", max_results: 2})
+# -c (Codex MCP) — tool-namespace check (official `codex mcp-server`: 2 tools, `codex` + `codex-reply`)
+ToolSearch({query: "select:mcp__codex-cli__codex,mcp__codex-cli__codex-reply", max_results: 2})
 
 # -g (Antigravity CLI) — binary presence check (NOT an MCP; agy is a subprocess like `claude -p`)
 command -v agy >/dev/null && agy --version
@@ -313,7 +313,7 @@ Otherwise: same as v1 (self-review + optional external reviewers). For `small` t
 
 | Flag | Surface | Invocation pattern |
 |---|---|---|
-| `-c` | MCP tool call | `mcp__codex-cli__review` (or `mcp__codex-cli__codex` for free-form ask) |
+| `-c` | MCP tool call | `mcp__codex-cli__codex` with a review-style prompt ending in `End with one line: VERDICT: APPROVED or VERDICT: NEEDS_WORK <reason>.` Model + reasoning effort inherit from `~/.codex/config.toml` — do not pass `model` or reasoning override unless you need to deviate. |
 | `-g` | CLI subprocess | `agy -p --print-timeout 5m0s "<prompt>"` (run via Bash tool; capture stdout; parse for `APPROVED` / `NEEDS_WORK`) |
 
 For `-g`: prepend the reviewer prompt with explicit verdict instructions, e.g. `"... End with one line: VERDICT: APPROVED or VERDICT: NEEDS_WORK <reason>."` Orchestrator greps the last line for the verdict token. Typical latency: 30–60s per call; budget accordingly.
