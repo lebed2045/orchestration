@@ -4,7 +4,7 @@
 
 **First line of every run must be, verbatim:** `wf v17 (07-jun-2026)` — derived from the two values above. Bump both when the workflow body changes meaningfully.
 
-`-g` = Antigravity CLI (`agy -p`, Gemini-MCP successor; Gemini CLI sunsets 2026-06-18). `-c` = Codex MCP. No-flag default: tier-auto, split TDD, no worktree, no reviewers, no gate, no commit.
+`-g` = Antigravity via agy bridge MCP (`mcp__agy__agy_ask`, Gemini 3.5 Flash). `-c` = Codex MCP. No-flag default: tier-auto, split TDD, no worktree, no reviewers, no gate, no commit.
 
 ## Usage
 
@@ -25,11 +25,11 @@
 | `--no-worktree` | Work on current branch | **DEFAULT** |
 | `--worktree` | Force-create isolated git worktree (steipete-counter: only when you want it) | |
 | `-c` | Add Codex MCP reviewer at both gates | opt-in |
-| `-g` | Add Antigravity CLI reviewer (`agy -p`) at both gates — successor to Gemini MCP (Gemini CLI sunsets 2026-06-18) | opt-in |
+| `-g` | Add Antigravity reviewer (`mcp__agy__agy_ask` bridge, Gemini 3.5 Flash) at both gates | opt-in |
 | `-h` | Human gate via `AskUserQuestion` after RED | opt-in |
 | `--commit` | ff-only merge to main on success | opt-in |
-| `--allow-mcp-downgrade` | Continue if requested reviewer is missing (Codex MCP or `agy` binary) | **DEFAULT** (was abort in v16.1) |
-| `--abort-on-missing-mcp` | Old behavior: abort if `-c` Codex MCP or `-g` `agy` binary is missing | opt-in |
+| `--allow-mcp-downgrade` | Continue if requested reviewer is missing (Codex MCP or agy bridge MCP) | **DEFAULT** (was abort in v16.1) |
+| `--abort-on-missing-mcp` | Old behavior: abort if `-c` Codex MCP or `-g` agy bridge MCP is missing | opt-in |
 | `--cops-model=<m>` | Override cop model (default: inherit session model) | opt-in |
 | `--coder-model=<m>` | Override coder model (default: inherit session model) | opt-in |
 | `--effort=<level>` | Reasoning effort (default: inherit session setting) | opt-in |
@@ -66,7 +66,7 @@
 TIER="auto"
 HUMAN_GATE=false
 CODEX_REVIEW=false
-AGY_REVIEW=false                    # `-g` flag: Antigravity CLI (`agy -p`), Gemini-MCP successor
+AGY_REVIEW=false                    # `-g` flag: Antigravity via agy bridge MCP (mcp__agy__agy_ask)
 AUTO_COMMIT=false
 ALLOW_MCP_DOWNGRADE=true            # default flipped vs v16.1
 ABORT_ON_MISSING_MCP=false          # opt-in to revert to v16.1 strict behavior
@@ -188,13 +188,13 @@ echo "TASK: $TASK"
 # -c (Codex MCP) — tool-namespace check (official `codex mcp-server`: 2 tools, `codex` + `codex-reply`)
 ToolSearch({query: "select:mcp__codex-cli__codex,mcp__codex-cli__codex-reply", max_results: 2})
 
-# -g (Antigravity CLI) — binary presence check (NOT an MCP; agy is a subprocess like `claude -p`)
-command -v agy >/dev/null && agy --version
+# -g (Antigravity via agy bridge MCP) — tool-namespace check (bridge: 3 tools, agy_ask/agy_continue/agy_status)
+ToolSearch({query: "select:mcp__agy__agy_ask,mcp__agy__agy_status", max_results: 2})
 ```
 
-Antigravity CLI (`agy`) replaces the Gemini MCP path. Gemini CLI / Gemini Code Assist IDE stops serving AI Pro/Ultra requests on 2026-06-18 — Antigravity CLI is Google's named successor (binary installs to `~/.local/bin/agy`; install via `curl -fsSL https://antigravity.google/cli/install.sh | bash`).
+The `-g` reviewer runs through the **agy bridge MCP** (`mcp__agy__agy_ask`, Gemini 3.5 Flash) — register once with `claude mcp add agy -- ~/.claude/mcp-servers/agy-bridge/.venv/bin/python ~/.claude/mcp-servers/agy-bridge/server.py`, then restart Claude Code. The bridge wraps `agy` and reads its transcript files, working around the `agy -p` headless-stdout bug.
 
-On MISSING: ABORT by default; `--allow-mcp-downgrade` continues with the missing flag forced false. For `-g`, "missing" means `command -v agy` returns non-zero.
+On MISSING: ABORT by default; `--allow-mcp-downgrade` continues with the missing flag forced false. For `-g`, "missing" means the `mcp__agy__agy_ask` tool is not loaded.
 
 ---
 
@@ -314,9 +314,9 @@ Otherwise: same as v1 (self-review + optional external reviewers). For `small` t
 | Flag | Surface | Invocation pattern |
 |---|---|---|
 | `-c` | MCP tool call | `mcp__codex-cli__codex` with a review-style prompt ending in `End with one line: VERDICT: APPROVED or VERDICT: NEEDS_WORK <reason>.` Model + reasoning effort inherit from `~/.codex/config.toml` — do not pass `model` or reasoning override unless you need to deviate. |
-| `-g` | CLI subprocess | `agy -p --print-timeout 5m0s "<prompt>"` (run via Bash tool; capture stdout; parse for `APPROVED` / `NEEDS_WORK`) |
+| `-g` | MCP tool call | `mcp__agy__agy_ask` with `prompt="<review prompt>"` (Gemini 3.5 Flash via the agy bridge; returns the model's text directly — parse it for `APPROVED` / `NEEDS_WORK`) |
 
-For `-g`: prepend the reviewer prompt with explicit verdict instructions, e.g. `"... End with one line: VERDICT: APPROVED or VERDICT: NEEDS_WORK <reason>."` Orchestrator greps the last line for the verdict token. Typical latency: 30–60s per call; budget accordingly.
+For `-g`: end the reviewer prompt with explicit verdict instructions, e.g. `"... End with one line: VERDICT: APPROVED or VERDICT: NEEDS_WORK <reason>."` Orchestrator greps the returned text's last line for the verdict token. Typical latency: 30–60s per call; budget accordingly.
 
 Aggregate block:
 

@@ -10,7 +10,7 @@ Research a topic using codebase exploration + optional external research (Codex 
 
 ```bash
 /research <topic>           # Opus only (codebase patterns)
-/research -g <topic>        # Opus + Antigravity CLI (`agy -p`) — Gemini-MCP successor
+/research -g <topic>        # Opus + Antigravity via agy bridge MCP (`mcp__agy__agy_ask`)
 /research -c <topic>        # Opus + Codex MCP
 /research -gc <topic>       # Opus + Antigravity + Codex (full research)
 /research -cg <topic>       # Same as -gc
@@ -21,7 +21,7 @@ Research a topic using codebase exploration + optional external research (Codex 
 ## Flag Detection
 
 ```bash
-AGY=false                    # `-g` flag: Antigravity CLI (`agy -p`), Gemini-MCP successor
+AGY=false                    # `-g` flag: Antigravity via agy bridge MCP (`mcp__agy__agy_ask`)
 CODEX=false
 TOPIC="$ARGUMENTS"
 
@@ -103,7 +103,7 @@ Skip clarification if:
 | Agent | Researches | Focus |
 |-------|------------|-------|
 | **Opus** | Codebase | Existing patterns, conventions, constraints |
-| **Antigravity (`agy -p`)** | Internet | Best practices, architecture patterns, pitfalls |
+| **Antigravity (agy bridge MCP)** | Internet | Best practices, architecture patterns, pitfalls |
 | **Codex** | Internet | Real-world implementations, common mistakes, expert approaches |
 
 **Combined goal**: Learn how experts build this feature/architecture, then map to our codebase.
@@ -149,14 +149,14 @@ After exploration, append findings to `/tmp/opus-research.md`:
 
 ## Phase 2: EXTERNAL_RESEARCH (Conditional)
 
-### If AGY=true (Antigravity CLI — Gemini-MCP successor)
+### If AGY=true (Antigravity via the `agy` bridge MCP)
 
-**Preflight:** `command -v agy >/dev/null && agy --version`. If missing, skip this phase and warn (Gemini CLI sunsets 2026-06-18; install via `curl -fsSL https://antigravity.google/cli/install.sh | bash`).
+**Preflight:** confirm the bridge tool is loaded: `ToolSearch({query: "select:mcp__agy__agy_ask", max_results: 1})`. If missing, skip this phase and warn (register the bridge once with `claude mcp add agy -- ~/.claude/mcp-servers/agy-bridge/.venv/bin/python ~/.claude/mcp-servers/agy-bridge/server.py`, then restart Claude Code).
 
-Call `agy -p` as a Bash subprocess (not an MCP tool — `agy` is a CLI binary):
+Call the `mcp__agy__agy_ask` MCP tool (Gemini 3.5 Flash via the agy bridge — it returns the model's final answer directly; no stdout parsing):
 
-```bash
-agy -p --print-timeout 5m0s "$(cat <<'EOF'
+```text
+mcp__agy__agy_ask  prompt="
 Research best practices for: [TOPIC]
 
 I'm building this in a software project. Research:
@@ -184,11 +184,10 @@ Output format:
 
 ## Trade-offs
 [Pros/cons of approaches]
-EOF
-)" > /tmp/agy-research.md
+"
 ```
 
-Typical latency 30–60s per call. Capture stdout to `/tmp/agy-research.md`.
+Typical latency 30–60s per call. Save the tool's returned text to `/tmp/agy-research.md`.
 
 ### If CODEX=true
 
@@ -256,7 +255,7 @@ Write to `.claude/research/${FILENAME}.md`:
 # Research: [TOPIC]
 
 Generated: [YYYY-MM-DD HH:MM]
-Agents: Opus [+ Antigravity (agy -p)] [+ Codex]
+Agents: Opus [+ Antigravity (agy bridge MCP)] [+ Codex]
 
 ---
 
@@ -322,7 +321,7 @@ Agents: Opus [+ Antigravity (agy -p)] [+ Codex]
 
 ### Agent Contributions
 - Opus: Codebase exploration
-- Antigravity (`agy -p`): [if used]
+- Antigravity (agy bridge MCP): [if used]
 - Codex: [if used]
 ```
 
@@ -388,7 +387,7 @@ Example output:
 → Explores codebase for auth patterns
 → Output: `.claude/research/authentication-flow.md`
 
-### With Antigravity (`agy -p`)
+### With Antigravity (agy bridge MCP)
 
 ```
 /research -g game bastion design

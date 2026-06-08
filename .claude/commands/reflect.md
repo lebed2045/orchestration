@@ -138,10 +138,10 @@ DO search for actual definitions before claiming.
 PROVE grep/search output showing exact count.
 ```
 
-### If `-g` flag (Gemini Review):
+### If `-g` flag (Antigravity Review via agy bridge MCP):
 
 ```
-mcp__gemini__ask-gemini "
+mcp__agy__agy_ask  prompt="
 Review this failure and proposed WHEN/DO/PROVE rule:
 
 FAILURE: [what]
