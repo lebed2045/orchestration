@@ -2,7 +2,6 @@
 
 name: code-simplifier
 color: cyan
-model: claude-sonnet-4-20250514
 
 ## Tools Allowed
 - Read

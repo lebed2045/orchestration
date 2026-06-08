@@ -2,7 +2,6 @@
 
 name: verify-app
 color: green
-model: claude-sonnet-4-20250514
 
 ## Tools Allowed
 - Read

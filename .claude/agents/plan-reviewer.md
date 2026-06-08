@@ -2,7 +2,6 @@
 
 name: plan-reviewer
 color: yellow
-model: claude-opus-4-5-20251101
 
 ## Tools Allowed
 - Read
