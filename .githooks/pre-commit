@@ -1,0 +1,8 @@
+#!/bin/sh
+# pre-commit — keep wf.md's banner honest automatically.
+# If this commit touches the workflow file, stamp today's date + propagate the
+# version + sync the global copy, then re-stage so the stamped version is what
+# actually gets committed.
+git diff --cached --name-only | grep -qx ".claude/commands/wf.md" || exit 0
+"$(git rev-parse --show-toplevel)/.githooks/stamp-wf.sh"
+git add ".claude/commands/wf.md"

@@ -1,8 +1,8 @@
 # /wf — Fast-Iteration TDD (Tier-Auto, Split-TDD, No-Worktree Default)
 
-**WF_VERSION:** `v17` · **WF_COMMITTED:** `07-jun-2026` · **Tag:** `[tier-auto | split-tdd | optional MCP | rewind-discard | no-auto-commit]`
+**WF_VERSION:** `v17` · **WF_COMMITTED:** `09-jun-2026` · **Tag:** `[tier-auto | split-tdd | optional MCP | rewind-discard | no-auto-commit]`
 
-**First line of every run must be, verbatim:** `wf v17 (07-jun-2026)` — derived from the two values above. Bump both when the workflow body changes meaningfully.
+**First line of every run must be, verbatim:** `wf v17 (09-jun-2026)` — derived from the two values above. Bump both when the workflow body changes meaningfully.
 
 `-g` = Antigravity via agy bridge MCP (`mcp__agy__agy_ask`, Gemini 3.5 Flash). `-c` = Codex MCP. No-flag default: tier-auto, split TDD, no worktree, no reviewers, no gate, no commit.
 
@@ -510,7 +510,7 @@ If `AUTO_COMMIT=true`: `git merge --ff-only $WT_BRANCH` from `$MAIN_REPO`, then 
 
 If `AUTO_COMMIT=false` (default): print worktree path + branch + the exact merge commands user should run. No merge happens automatically.
 
-Output: `ORCHESTRATION COMPLETE (wf v16, tier=$TIER)`
+Output: `ORCHESTRATION COMPLETE (wf v17, tier=$TIER)`
 
 ---
 
