@@ -1,8 +1,8 @@
 # /wf — Fast-Iteration TDD (Tier-Auto, Split-TDD, No-Worktree Default)
 
-**WF_VERSION:** `v17` · **WF_COMMITTED:** `09-jun-2026` · **Tag:** `[tier-auto | split-tdd | optional MCP | rewind-discard | no-auto-commit]`
+**WF_VERSION:** `v19` · **WF_COMMITTED:** `10-jun-2026` · **Tag:** `[tier-auto | split-tdd | optional MCP | rewind-discard | no-auto-commit | evidence-graded-gates]`
 
-**First line of every run must be, verbatim:** `wf v17 (09-jun-2026)` — derived from the two values above. Bump both when the workflow body changes meaningfully.
+**First line of every run must be, verbatim:** `wf v19 (10-jun-2026)` — derived from the two values above. Bump both when the workflow body changes meaningfully.
 
 `-g` = Antigravity via agy bridge MCP (`mcp__agy__agy_ask`, Gemini 3.5 Flash). `-c` = Codex MCP. No-flag default: tier-auto, split TDD, no worktree, no reviewers, no gate, no commit.
 
@@ -17,9 +17,9 @@
 | Flag | Effect | Default? |
 |---|---|---|
 | `--tier=auto` | Heuristic picks micro/small/full from task text | **DEFAULT** |
-| `--tier=micro` | 1-line/comment/rename — skip plan mode, no cops, no gates | |
-| `--tier=small` | 1-file feature/fix — optional plan mode, coverage-cop only | |
-| `--tier=full` | Multi-file feature — plan mode + 3 cops + (optional) worktree | |
+| `--tier=micro` | 1-line/comment/rename — skip plan mode, no cop agents, no plan gate; Phase 8a signals run (batch-size/dup can block) | |
+| `--tier=small` | 1-file feature/fix — optional plan mode, coverage + metrics cops | |
+| `--tier=full` | Multi-file feature — plan mode + 4 cops + (optional) worktree | |
 | `--split-tdd` | TWO zero-context agents: RED then GREEN | **DEFAULT** |
 | `--unified-tdd` | ONE agent does RED+GREEN in SAME context (steipete catch-rate) | |
 | `--no-worktree` | Work on current branch | **DEFAULT** |
@@ -39,7 +39,7 @@
 **Combinable.** Examples:
 - `/wf fix typo in README` → auto picks `micro` → 1 agent, no worktree, no ceremony
 - `/wf implement email validator` → auto picks `small` → 1 split-TDD pair + coverage cop
-- `/wf implement OAuth refresh flow` → auto picks `full` → split TDD + 3 cops, still no worktree unless `--worktree`
+- `/wf implement OAuth refresh flow` → auto picks `full` → split TDD + 4 cops, still no worktree unless `--worktree`
 - `/wf --tier=full --worktree -cg --commit implement payment flow` → kitchen sink
 
 ---
@@ -48,9 +48,9 @@
 
 | Tier | Phases active | Coders | Cops | Plan Mode | Worktree | MCP |
 |---|---|---|---|---|---|---|
-| micro | 1, 2, 5+6, 7, 9 | 1 (split or unified) | 0 (skip Phase 8) | skip | no (forced) | ignored even if `-c -g` |
-| small | 1, 2, 3, 4, 5+6, 7, 8 (coverage only), 9 | 1 pair (split default) | 1 (coverage) | optional (active only if `-h`) | no (opt-in via `--worktree`) | optional |
-| full | All 9 phases | 1 pair (split default) | 3 | optional (active only if `-h`) | no (opt-in via `--worktree`) | optional |
+| micro | 1, 2, 5+6, 7, 8a, 9 | 1 (split or unified) | 0 agents (Phase 8a signals only) | skip | no (forced) | ignored even if `-c -g` |
+| small | 1, 2, 3, 4, 5+6, 7, 8 (coverage + metrics), 9 | 1 pair (split default) | 2 (coverage + metrics) | optional (active only if `-h`) | no (opt-in via `--worktree`) | optional |
+| full | All 9 phases | 1 pair (split default) | 4 (simplicity + coherence + coverage + metrics) | optional (active only if `-h`) | no (opt-in via `--worktree`) | optional |
 
 **Tier resolution order:**
 1. Explicit `--tier=X` wins
@@ -152,19 +152,20 @@ case "$TIER" in
     UNIFIED_TDD="${UNIFIED_TDD_OVERRIDE:-split}"
     USE_WORKTREE="${USE_WORKTREE_OVERRIDE:-no}"
     CODEX_REVIEW=false; AGY_REVIEW=false   # micro ignores reviewer flags
-    SKIP_PLAN_MODE=true; SKIP_COPS=true; SKIP_GATE1=true; SKIP_GATE2=true
+    SKIP_PLAN_MODE=true; SKIP_COPS=true; SKIP_GATE1=true; SKIP_GATE2=true   # SKIP_GATE2/SKIP_COPS = skip cop AGENTS (8b) only
+    COPS_SUBSET="none"; SIZE_CHECK=true   # v19: Phase 8a deterministic signals still run on micro (gated by SIZE_CHECK, not SKIP_GATE2) — batch/size/dup
     ;;
   small)
     UNIFIED_TDD="${UNIFIED_TDD_OVERRIDE:-split}"
     USE_WORKTREE="${USE_WORKTREE_OVERRIDE:-no}"
     SKIP_PLAN_MODE=false; ACTIVE_PLAN_MODE=$HUMAN_GATE
-    COPS_SUBSET="coverage"
+    COPS_SUBSET="coverage+metrics"; SIZE_CHECK=true   # v18: metrics-cop joins coverage-cop
     ;;
   full)
     UNIFIED_TDD="${UNIFIED_TDD_OVERRIDE:-split}"
     USE_WORKTREE="${USE_WORKTREE_OVERRIDE:-no}"   # opt-in even for full
     SKIP_PLAN_MODE=false; ACTIVE_PLAN_MODE=$HUMAN_GATE   # EnterPlanMode is interactive; only invoke with -h
-    COPS_SUBSET="all"
+    COPS_SUBSET="all"; SIZE_CHECK=true   # v18: all = simplicity + coherence + coverage + metrics (4 cops)
     ;;
 esac
 
@@ -211,7 +212,7 @@ On MISSING: ABORT by default; `--allow-mcp-downgrade` continues with the missing
 | 5 | Gate 1/2: Plan review | skip | skip (unless `-h`) | ✓ |
 | 6 | TDD (unified or split) | ✓ (unified) | ✓ | ✓ |
 | 7 | Final verification (+7b if needed) | ✓ | ✓ | ✓ |
-| 8 | Gate 2/2: Code review | skip | partial (coverage-cop only) | ✓ |
+| 8 | Gate 2/2: Code review | 8a signals only | coverage + metrics cops | ✓ (4 cops) |
 | 9 | Completion (merge if `--commit`) | ✓ | ✓ | ✓ |
 
 **Hook recommendation (printed at end of Phase 1):**
@@ -228,6 +229,13 @@ fi
 ```
 
 **Context capture (same as v1):** record git SHA, branch, MAIN_REPO path, dirty tree, auto-detect TEST_CMD/TEST_FILTER. Emit CONTEXT_BLOCK.
+
+**Required for Phase 8a:** explicitly capture the run baseline SHA so the batch-size and file-size signals can measure cumulative growth across the whole run (not just the last commit):
+
+```bash
+export BASELINE_SHA=$(git rev-parse HEAD)   # start-of-run commit; Phase 8a diffs touched files against this
+echo "BASELINE_SHA=$BASELINE_SHA"
+```
 
 ---
 
@@ -454,30 +462,92 @@ Same as v1: regression-fixer agent, max 3 iterations, structured `ITER N/3:` log
 
 ## Phase 8: GATE 2/2 — CODE_REVIEW (Tier-Gated)
 
-| Tier | Cops active | MCP active |
-|---|---|---|
-| micro | SKIP entire phase | n/a |
-| small | coverage-cop only | optional (if `-c`/`-g`) |
-| full | simplicity + coherence + coverage | optional |
+| Tier | Phase 8a (deterministic signals) | Cop agents active | MCP active |
+|---|---|---|---|
+| micro | signals (runs) | none | n/a |
+| small | signals (runs) | coverage + metrics | optional (if `-c`/`-g`) |
+| full | signals (runs) | simplicity + coherence + coverage + metrics | optional |
 
-**For small: ONE Agent call (coverage-cop) + optional MCP, single message, foreground.**
+### Phase 8a — Evidence-graded signals (batch size · file size · duplication)
 
-**For full: THREE Agent calls + optional MCP, single message, foreground parallel.** Each cop returns a verdict line `<name>: PASS|REJECT` (correlated by `name` field).
+**v19 — realigned to the evidence** (see [`.claude/research/ai-generated-code-best-practices.md`](../research/ai-generated-code-best-practices.md)). Hard file-size/complexity *caps* are folklore-tier as blockers (cyclomatic complexity ≈ 0.93·LOC — no independent signal; no empirical basis for a "300/500-line" cutoff). The two practices that ARE evidence-backed — **small batch size** (DORA 2024: large changesets drive a −7.2% stability hit) and **low duplication** (GitClear: AI quadruples clones) — were previously *missing*. So in v19:
+
+- **Batch size** (changed LOC — added+deleted — this run vs `$BASELINE_SHA`) is the only **size-derived** hard block — 🟢 the strongest AI-era lever (duplication also hard-blocks, below).
+- **Duplication** blocks only when **egregious** — 🟢 risk signal, gated high to avoid punishing intentional dup.
+- **File size** is **WARN-only** now (demoted from REJECT) — 🟡 a soft anti-balloon signal for review, not a gate.
+
+Runs whenever `SIZE_CHECK=true` (every tier). No LLM judgment, no agent spawn — pure measurement.
+
+```bash
+if [ -n "$BASELINE_SHA" ]; then BASE="$BASELINE_SHA"
+else BASE="HEAD~1"; echo "SIGNALS DEGRADED: BASELINE_SHA unset — batch/size measured against HEAD~1 only"; fi
+BATCH_WARN=400; BATCH_BLOCK=800     # 🟢 batch size (DORA) — the only size-derived hard block
+SIZE_WARN=300                       # 🟡 file size — soft WARN only (hard caps are folklore)
+DUP_WARN=3; DUP_BLOCK=5             # 🟢 duplication % (GitClear) — block only when egregious
+GATE_VERDICT="PASS"
+
+# Scope to production source: drop deps/build/generated, pure docs, lockfiles.
+FILES=$(git diff --name-only "$BASE" 2>/dev/null \
+          | grep -vE '(^|/)(node_modules|dist|build|vendor|__snapshots__|migrations|\.git)/' \
+          | grep -vE '\.(min\.js|generated\.[a-z]+|lock|md|mdx|rst|txt)$' \
+          | grep -vE '(^|/)(package-lock\.json|yarn\.lock|pnpm-lock\.yaml)$' || true)
+if [ -z "$FILES" ]; then echo "PHASE_8a: no production source touched"; echo "PHASE_8a GATE_VERDICT: PASS";
+else
+
+# 1) BATCH SIZE — 🟢 evidence-backed, the only size-derived hard block (duplication also blocks, below).
+#    Batch size = total churn (added + deleted), the DORA changeset-size notion — a big refactor
+#    is still a big batch. (Distinct from per-file net growth, which the size signal below uses.)
+BATCH=$(git diff --numstat "$BASE" -- $FILES 2>/dev/null | awk '{a+=$1+$2} END{print a+0}')
+if   [ "$BATCH" -gt "$BATCH_BLOCK" ]; then echo "BATCH REJECT: ${BATCH} changed LOC (added+deleted) > ${BATCH_BLOCK} — split into smaller changes (DORA: large batches drive instability)"; GATE_VERDICT="REJECT"
+elif [ "$BATCH" -gt "$BATCH_WARN" ]; then echo "BATCH WARN: ${BATCH} changed LOC (added+deleted) > ${BATCH_WARN} — prefer smaller batches"; fi
+
+# 2) FILE SIZE — 🟡 soft signal, WARN only (never blocks; reviewer/metrics-cop decides if a split is worth it)
+for f in $FILES; do
+  [ -f "$f" ] || continue
+  sloc=""
+  command -v scc  >/dev/null && sloc=$(scc --format json "$f" 2>/dev/null | grep -o '"Code":[0-9]*' | head -1 | grep -o '[0-9]*')
+  [ -z "$sloc" ] && command -v cloc >/dev/null && sloc=$(cloc --quiet --csv "$f" 2>/dev/null | awk -F, 'END{print $5}')
+  [ -z "$sloc" ] && sloc=$(grep -cvE '^\s*$' "$f")
+  case "$f" in *test*|*spec*|*fixture*) warn=$((SIZE_WARN*3/2));; *) warn=$SIZE_WARN;; esac
+  [ "${sloc:-0}" -gt "$warn" ] && echo "SIZE WARN: $f = ${sloc} SLOC > ${warn} (soft signal — consider extracting; not a blocker)"
+done
+
+# 3) DUPLICATION — 🟢 risk signal; WARN >3%, REJECT only when egregious (>5%)
+if command -v jscpd >/dev/null; then
+  dup=$(jscpd --silent --threshold 100 $FILES 2>/dev/null | grep -oE '[0-9.]+%' | head -1 | tr -d '%')
+  if   [ -n "$dup" ] && awk "BEGIN{exit !($dup > $DUP_BLOCK)}"; then echo "DUP REJECT: ${dup}% duplicated > ${DUP_BLOCK}% — deduplicate (GitClear: AI inflates clones)"; GATE_VERDICT="REJECT"
+  elif [ -n "$dup" ] && awk "BEGIN{exit !($dup > $DUP_WARN)}"; then echo "DUP WARN: ${dup}% duplicated > ${DUP_WARN}%"
+  elif [ -n "$dup" ]; then echo "DUP: ${dup}% (clean)"; fi
+else echo "DUP: jscpd not installed — duplication unmeasured (install for the GitClear-class gate)"; fi
+
+echo "PHASE_8a GATE_VERDICT: $GATE_VERDICT"
+fi
+```
+
+`GATE_VERDICT=REJECT` (egregious batch size or duplication) blocks the gate on **all** tiers, **independent of `SKIP_GATE2`/`SKIP_COPS`** (those govern the cop *agents* in Phase 8b). File-size WARNs never block — they inform the reviewer / `metrics-cop`. See [`.claude/reference/code-quality-metrics.md`](../reference/code-quality-metrics.md) for the full metric set and evidence tiers.
+
+### Phase 8b — Cop agents (small / full only)
+
+**For small: TWO Agent calls (coverage-cop + metrics-cop) + optional MCP, single message, foreground.**
+
+**For full: FOUR Agent calls (simplicity + coherence + coverage + metrics) + optional MCP, single message, foreground parallel.** Each cop returns a verdict line `<name>: PASS|REJECT` (correlated by `name` field). Pass `$BASELINE_SHA` to metrics-cop so it measures cumulative growth, not just the diff.
 
 ```text
 ┌─────────────────────────────────────────────┐
 │ [8/9] GATE 2/2 VERDICT                      │
 ├─────────────────────────────────────────────┤
+│ Signals (8a): [PASS|REJECT] (batch/dup)     │
 │ Simplicity:   [PASS|REJECT|SKIP]            │
 │ Coherence:    [PASS|REJECT|SKIP]            │
-│ Coverage:     [PASS|REJECT]                 │
+│ Coverage:     [PASS|REJECT|SKIP]            │
+│ Metrics:      [PASS|REJECT|SKIP]            │
 │ Codex Review: [APPROVED|NEEDS_WORK|N/A]     │
 │ Antigravity:  [APPROVED|NEEDS_WORK|N/A]     │
 │ OVERALL: [ALL PASS|NEEDS_WORK]              │
 └─────────────────────────────────────────────┘
 ```
 
-`SKIP` rows don't block. Max 3 reject iterations per failed reviewer.
+`SKIP` rows don't block. Phase 8a REJECT blocks on all tiers. Max 3 reject iterations per failed reviewer.
 
 ---
 
@@ -495,7 +565,8 @@ EXECUTION RED:                   [PRESENT|MISSING] — exit != 0?
 EXECUTION GREEN:                 [PRESENT|MISSING] — exit = 0?
 EXECUTION FULL (Phase 7):        [PRESENT|MISSING] — exit = 0?
 EXECUTION FIX (Phase 7b):        [PRESENT|MISSING|N/A] — exit = 0?
-Cops (Phase 8):                  [N/N PASS|<N|SKIPPED for tier]
+Signals (Phase 8a):              [PASS|REJECT] — batch/dup block; size warns; runs on all tiers
+Cops (Phase 8b):                 [N/N PASS|<N|SKIPPED for tier]
 MCP (Phase 8):                   [APPROVED|N/A]
 ----------------
 PROVENANCE: [COMPLETE|INCOMPLETE]
@@ -510,7 +581,7 @@ If `AUTO_COMMIT=true`: `git merge --ff-only $WT_BRANCH` from `$MAIN_REPO`, then 
 
 If `AUTO_COMMIT=false` (default): print worktree path + branch + the exact merge commands user should run. No merge happens automatically.
 
-Output: `ORCHESTRATION COMPLETE (wf v17, tier=$TIER)`
+Output: `ORCHESTRATION COMPLETE (wf v19, tier=$TIER)`
 
 ---
 
@@ -543,6 +614,7 @@ Spawning fresh agent with clean context + failure summary.
 | No CONTEXT_BLOCK | ✓ | STOP |
 | Quick test fails > 5 iterations (parsed from agent log) | ✓ | Rewind-discard cycle 1; STOP after cycle 2 |
 | FULL_SUITE_FIX > 3 iterations | ✓ | Rewind-discard; STOP after cycle 2 |
+| Phase 8a signals REJECT (batch >800 changed LOC, or duplication egregious) | all tiers | STOP: split into smaller changes / deduplicate (DORA + GitClear evidence) |
 | Any cop REJECTS 3× | small/full only | STOP: REVIEW LOOP EXCEEDED |
 | External reviewer (Codex MCP / Antigravity CLI) NEEDS_WORK 3× | if reviewer active | STOP: REVIEW LOOP EXCEEDED |
 | Provenance INCOMPLETE | ✓ | STOP, do not merge |

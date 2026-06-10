@@ -10,7 +10,7 @@ Run `/wf` for quick reference table.
 
 | Command | Description |
 |---------|-------------|
-| `/wf` | The workflow. Fast TDD on modern primitives (Agent + worktree + tier-auto). Prints `wf v16 (26-may-2026)` as its first line on every invocation. |
+| `/wf` | The workflow. Fast TDD on modern primitives (Agent + worktree + tier-auto). Prints `wf v19 (09-jun-2026)` as its first line on every invocation. |
 | `/research` (`/r`) | Multi-agent research (codebase + Antigravity + Codex) |
 | `/reflect` | Turn failures into rules with escalation ladder |
 
@@ -86,8 +86,11 @@ Before ANY completion claim, you MUST provide:
 │   ├── wf.md             # The workflow (was wf16). Prints version banner on invocation.
 │   └── r.md, reflect.md  # Research + reflection utilities
 ├── agents/
-│   ├── simplicity-cop.md, coherence-cop.md, coverage-cop.md   # 3 cops (used by /wf)
+│   ├── simplicity-cop.md, coherence-cop.md, coverage-cop.md   # Boris's 3 cops (used by /wf)
+│   ├── metrics-cop.md                                         # 4th cop: evidence-graded signals — hard-blocks dup/suppressions/cycles, warns on size (v19)
 │   └── code-simplifier.md, plan-reviewer.md, verify-app.md    # Helpers (used by archived boris2)
+├── reference/
+│   └── code-quality-metrics.md   # Threshold source-of-truth for metrics-cop
 └── settings.local.json   # Hooks configuration
 
 legacy/                   # Archived for AI-coder evolutionary context — NOT auto-loaded by Claude Code
