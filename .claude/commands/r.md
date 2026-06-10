@@ -1,6 +1,6 @@
 # /research - Multi-Agent Research
 
-Research a topic using codebase exploration + optional external research (Codex MCP / Antigravity CLI).
+Research a topic using codebase exploration + optional external research (Codex MCP / agy bridge MCP).
 
 **Philosophy**: *"Stand on shoulders of giants, don't reinvent the bicycle."*
 
@@ -46,7 +46,7 @@ TOPIC="${TOPIC%% }"  # trim trailing space
 FILENAME=$(echo "$TOPIC" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | sed 's/[^a-z0-9-]//g')
 
 echo "TOPIC: $TOPIC"
-echo "AGY (Antigravity CLI): $AGY"
+echo "AGY (agy bridge MCP): $AGY"
 echo "CODEX: $CODEX"
 echo "OUTPUT: .claude/research/${FILENAME}.md"
 ```
@@ -133,7 +133,7 @@ cat CLAUDE.md | grep -i "[keyword]"
 ### Capture to temp file
 
 ```bash
-mkdir -p .claude/research
+mkdir -p research
 echo "# Codebase Research: $TOPIC" > /tmp/opus-research.md
 echo "" >> /tmp/opus-research.md
 echo "## Existing Patterns" >> /tmp/opus-research.md
@@ -151,9 +151,9 @@ After exploration, append findings to `/tmp/opus-research.md`:
 
 ### If AGY=true (Antigravity via the `agy` bridge MCP)
 
-**Preflight:** confirm the bridge tool is loaded: `ToolSearch({query: "select:mcp__agy__agy_ask", max_results: 1})`. If missing, skip this phase and warn (register the bridge once with `claude mcp add agy -- ~/.claude/mcp-servers/agy-bridge/.venv/bin/python ~/.claude/mcp-servers/agy-bridge/server.py`, then restart Claude Code).
+**Preflight:** confirm the bridge tool is loaded: `ToolSearch({query: "select:mcp__agy__agy_ask,mcp__agy__agy_continue,mcp__agy__agy_status", max_results: 3})`. If missing, skip this phase and warn (register the bridge once with `claude mcp add agy -- ~/.claude/mcp-servers/agy-bridge/.venv/bin/python ~/.claude/mcp-servers/agy-bridge/server.py`, then restart Claude Code).
 
-Call the `mcp__agy__agy_ask` MCP tool (Gemini 3.5 Flash via the agy bridge — it returns the model's final answer directly; no stdout parsing):
+Call the `mcp__agy__agy_ask` MCP tool (Gemini 3.5 Flash via the agy bridge — it returns the model's final answer directly; no stdout parsing). The bridge detects 429 `RESOURCE_EXHAUSTED` from `agy` stdout/stderr and `~/.gemini/antigravity-cli/log/cli-*.log`; if free Gemini quota is exhausted, it automatically routes the same prompt to Vertex `gemini-3.5-flash` on project `gemini-keroga-260526-3895`, location `global`, using service account key `~/dev_local/temp/google300/vertex-key.json` unless overridden by environment. Treat a response prefixed `[agy quota exhausted — auto-routed to Vertex gemini-3.5-flash on project gemini-keroga-260526-3895]` as valid Gemini research, not a downgrade. Do not substitute Codex/self-research because Vertex credits would be used; Vertex is the intended Gemini fallback. If the response is truncated and `mcp__agy__agy_continue` is available, continue the same research conversation. If the bridge was updated but still behaves like the old agy-only bridge, restart Claude Code so the MCP server reloads.
 
 ```text
 mcp__agy__agy_ask  prompt="
@@ -421,10 +421,10 @@ Example output:
 
 After research, you can:
 1. **Read the doc** and decide approach manually
-2. **Distill** key insights into CLAUDE.md rules (then delete research)
+2. **Distill** key insights into CLAUDE.md rules when they should become permanent workflow rules
 3. **Feed to workflow**: `/wf12 <task>` and reference the research
 
-Research docs are **ephemeral** (gitignored). Distill lessons into rules, then discard.
+Research docs are Claude command outputs under `.claude/research/` like before. Scratch notes belong under `.claude/temp/`.
 
 ---
 

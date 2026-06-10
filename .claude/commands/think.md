@@ -93,12 +93,14 @@ If both schemas come back, `CODEX_AVAILABLE=true`. If only one or none, `CODEX_A
 ### 0b. Antigravity (agy bridge MCP) availability
 
 ```text
-# Bridge tool presence check — the agy bridge MCP exposes mcp__agy__agy_ask (Gemini 3.5 Flash)
-ToolSearch({query: "select:mcp__agy__agy_ask,mcp__agy__agy_status", max_results: 2})
+# Bridge tool presence check — the agy bridge MCP exposes agy_ask/agy_continue/agy_status
+ToolSearch({query: "select:mcp__agy__agy_ask,mcp__agy__agy_continue,mcp__agy__agy_status", max_results: 3})
 # AGY_AVAILABLE=true iff mcp__agy__agy_ask is loaded
 ```
 
 The bridge wraps `agy` (config under `~/.gemini/`) and reads its transcript files. Model is fixed to Gemini 3.5 Flash (High) by the bridge — the command never passes a model. Register once: `claude mcp add agy -- ~/.claude/mcp-servers/agy-bridge/.venv/bin/python ~/.claude/mcp-servers/agy-bridge/server.py`, then restart Claude Code.
+
+The bridge owns quota handling. It detects 429 `RESOURCE_EXHAUSTED` from `agy` stdout/stderr and `~/.gemini/antigravity-cli/log/cli-*.log`; if free Gemini quota is exhausted, it automatically routes the same prompt to Vertex `gemini-3.5-flash` on project `gemini-keroga-260526-3895`, location `global`, using service account key `~/dev_local/temp/google300/vertex-key.json` unless overridden by environment. A response prefixed `[agy quota exhausted — auto-routed to Vertex gemini-3.5-flash on project gemini-keroga-260526-3895]` is a valid Gemini council response, not a downgrade. Do not substitute Codex/self-deliberation because Vertex credits would be used; Vertex is the intended Gemini fallback. If the bridge was updated but still behaves like the old agy-only bridge, restart Claude Code so the MCP server reloads.
 
 ### 0c. USER.md persona card
 
@@ -289,6 +291,8 @@ Structure your response with these headers, in this order:
 ```
 
 The `mcp__agy__agy_ask` call is synchronous and bounded by `timeout_s`. If it errors or exceeds the timeout, treat agy as unavailable: `AGY_AVAILABLE=false; COUNCIL_SIZE=$((COUNCIL_SIZE - 1))` and continue with the remaining council members.
+
+If the response is truncated and `mcp__agy__agy_continue` is available, continue the same council-member conversation before marking the Antigravity pass failed.
 
 ---
 
@@ -492,7 +496,7 @@ This command produces non-verifiable output (opinion, not fact). Forbidden words
 | `~/.claude/USER.md` missing | STOP, write template, halt | `Created template at ~/.claude/USER.md. Open it, fill in, then re-run.` |
 | `--solo` flag passed | Skip Phases 2-codex, 2-agy, 3 | `SOLO mode: Opus only. No peer review.` |
 | `--nudge` with no prior session | STOP | `--nudge requires a previous /think session.` |
-| Output dir missing | `mkdir -p .claude/research` silently | (none) |
+| Output dir missing | `mkdir -p research` silently | (none) |
 
 ---
 

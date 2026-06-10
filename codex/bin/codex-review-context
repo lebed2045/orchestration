@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+MAX_UNTRACKED_BYTES="${CODEX_REVIEW_CONTEXT_MAX_UNTRACKED_BYTES:-200000}"
+
+printf '# Git status\n\n'
+git status --short
+
+printf '\n# Diff against HEAD\n\n'
+git diff --no-ext-diff HEAD -- . ':!codex/.agents/codex/temp' ':!.claude/temp'
+
+printf '\n# Untracked files\n'
+git ls-files --others --exclude-standard -z |
+while IFS= read -r -d '' file_path; do
+  case "$file_path" in
+    codex/.agents/codex/temp/*|.claude/temp/*) continue ;;
+  esac
+
+  printf '\n## %s\n\n' "$file_path"
+
+  if [[ -L "$file_path" ]]; then
+    printf '[omitted: symlink]\n'
+    continue
+  fi
+
+  if [[ ! -f "$file_path" ]]; then
+    printf '[not a regular file]\n'
+    continue
+  fi
+
+  bytes="$(wc -c < "$file_path" | tr -d '[:space:]')"
+  if [[ "$bytes" -gt "$MAX_UNTRACKED_BYTES" ]]; then
+    printf '[omitted: %s bytes exceeds %s-byte untracked-file limit]\n' "$bytes" "$MAX_UNTRACKED_BYTES"
+    continue
+  fi
+
+  if ! LC_ALL=C grep -Iq . "$file_path"; then
+    printf '[omitted: binary or non-text file]\n'
+    continue
+  fi
+
+  sed -n '1,400p' "$file_path"
+done

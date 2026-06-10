@@ -2,12 +2,11 @@
 .claude/temp/
 !.claude/temp/.gitkeep
 
-# Research files (ephemeral - distill into CLAUDE.md rules, then discard)
+# Claude research outputs
 .claude/research/
 
 # Codex workflow artifacts
-.codex/temp/
-.codex/research/
+codex/.agents/codex/temp/
 
 # Local settings
 .claude/settings.local.json

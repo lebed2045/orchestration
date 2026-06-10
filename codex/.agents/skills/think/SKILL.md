@@ -17,7 +17,8 @@ Flags:
 
 - no flag: run a three-perspective council when possible.
 - `--solo`: one Codex pass only, no peer review.
-- `--nudge "<pushback>"`: re-open the most recent `.codex/research/think-*.md` and deliberate again with the added pushback.
+- `-g`: require the Antigravity/Gemini council member through the agy bridge MCP when available; otherwise include a visible degradation note. In default mode, use Gemini for the expansionist/analogy pass when the tool is loaded.
+- `--nudge "<pushback>"`: re-open the most recent `codex/.agents/codex/research/think-*.md` and deliberate again with the added pushback.
 - `--vault <path>`: not implemented; ignore with a visible note.
 
 If the user writes `/think`, treat it as `$think`.
@@ -28,6 +29,12 @@ If the user writes `/think`, treat it as `$think`.
 - Prefer true independent subagents when available. If none are available, run separated inline passes and explicitly label them as not independently isolated.
 - If a persona card exists at `~/.codex/USER.md`, read it. If not, fall back to `~/.claude/USER.md` only if accessible. If neither exists, continue without a persona card and say so.
 - Do not browse unless the topic needs current facts; this workflow is primarily judgment, not research.
+- For Gemini/Antigravity participation, discover the agy bridge MCP before deliberation. If `tool_search` is available, search for `mcp__agy__agy_ask`, `mcp__agy__agy_continue`, and `mcp__agy__agy_status`; otherwise use whichever callable MCP tools are already exposed in the session.
+- The agy bridge owns model selection and quota handling: it first tries Antigravity `agy`, detects 429 `RESOURCE_EXHAUSTED` from `agy` stdout/stderr and `~/.gemini/antigravity-cli/log/cli-*.log`, and if free Gemini quota is exhausted automatically routes the same prompt to Vertex `gemini-3.5-flash` on project `gemini-keroga-260526-3895`, location `global`, using service account key `~/dev_local/temp/google300/vertex-key.json` unless overridden by bridge environment.
+- Treat a response prefixed `[agy quota exhausted — auto-routed to Vertex gemini-3.5-flash on project gemini-keroga-260526-3895]` as a valid Gemini council response, not as a degradation. Record the route in council provenance.
+- If a Gemini response is truncated and `mcp__agy__agy_continue` is available, continue the same council-member conversation rather than starting a replacement pass.
+- Do not replace requested Gemini/Antigravity participation with Claude, Codex, or another inline pass because of perceived cost. The Vertex fallback is the intended Gemini fallback. Only degrade when the agy MCP tool is missing, errors, or times out after its own fallback path.
+- If the bridge was recently updated but still behaves like the old agy-only bridge, note that the MCP host must be restarted before the new fallback code is loaded.
 
 ## Council Passes
 
@@ -45,6 +52,7 @@ For default mode, produce these perspectives:
    - Answer from that inversion.
 
 3. Expansionist + analogy:
+   - Prefer `mcp__agy__agy_ask` for this pass when Gemini/Antigravity is available.
    - Pick a genuinely different domain.
    - Map only the parts that survive mechanical scrutiny.
    - Drop the parts that do not transfer.
@@ -54,7 +62,7 @@ Each pass must end with `## What I might be wrong about` containing 2-4 specific
 
 ## Synthesis
 
-Write `.codex/research/think-<slug>.md` with:
+Write `codex/.agents/codex/research/think-<slug>.md` with:
 
 ```markdown
 # Council deliberation: <topic>
@@ -64,6 +72,7 @@ Generated: <YYYY-MM-DD HH:MM>
 Mode: <default | --solo | --nudge>
 Independence: <true subagents | inline separated passes | solo>
 Persona card: <path | none>
+Gemini route: <agy | Vertex fallback | unavailable | not requested>
 
 ## Synthesis
 

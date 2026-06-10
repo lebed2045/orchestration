@@ -21,8 +21,8 @@ Supported flags:
 - `--no-worktree`; default. Work in the current branch.
 - `--worktree`; create an isolated git worktree when feasible.
 - `-h`; add a human approval checkpoint after planning.
-- `-c`; request a Claude reviewer only if a callable Claude reviewer tool is actually available. From Codex, `c` means Claude; from Claude Code, `c` means Codex.
-- `-g`; request an Antigravity/Gemini reviewer only if a callable `agy` tool is actually available.
+- `-c`; request a Claude reviewer through the local official-Claude bridge. From Codex, `c` means Claude; from Claude Code, `c` means Codex.
+- `-g`; request an Antigravity/Gemini reviewer through the agy bridge MCP (`mcp__agy__agy_ask`) when loaded.
 - `--commit`; may create commits and merge only after all gates pass.
 - `--dry-run`; stop after writing the plan, no source edits.
 - `--goal "<criterion>"`; add an explicit success contract to GREEN and final verification.
@@ -47,8 +47,8 @@ Print the resolved settings before editing: tier, TDD mode, worktree mode, reque
    - Create a plan with `update_plan`; keep statuses current.
 
 2. Write workflow notes:
-   - Use `.codex/temp/wf/spec.md` for the task spec.
-   - Use `.codex/temp/wf/architecture.md` for design, file plan, quick test, and verification commands.
+   - Use `codex/.agents/codex/temp/wf/spec.md` for the task spec.
+   - Use `codex/.agents/codex/temp/wf/architecture.md` for design, file plan, quick test, and verification commands.
    - For `micro`, keep both files tiny.
    - For `--dry-run`, stop here and summarize the plan.
 
@@ -76,7 +76,20 @@ Print the resolved settings before editing: tier, TDD mode, worktree mode, reque
    - Run deterministic signals on changed production files: total changed LOC, large-file warnings, and duplication if `jscpd` is installed.
    - `small`: add coverage and metrics review.
    - `full`: add simplicity, coherence, coverage, and metrics review.
-   - Use subagents or callable external reviewer tools only when available. In Codex, `-c` is a Claude reviewer request and `-g` is a Gemini/Antigravity reviewer request. If a requested reviewer is missing, continue with a visible degradation note unless the user explicitly asked to abort on missing tools.
+   - Use subagents or callable external reviewer tools only when available. In Codex, `-c` is a Claude reviewer request and `-g` is a Gemini/Antigravity reviewer request.
+   - For `-c`, run the first executable found at `$HOME/.agents/bin/claude-peer` or `./codex/bin/claude-peer`. Prefer the user-local bridge so an untrusted checkout cannot replace it.
+   - Do not interpolate user task text into a shell command. Use the existing `codex/.agents/codex/temp/wf/spec.md` as the task file.
+   - Build reviewer context with the first executable found at `$HOME/.agents/bin/codex-review-context` or `./codex/bin/codex-review-context`, then call:
+     `<context-builder> | <bridge> --mode review --task-file codex/.agents/codex/temp/wf/spec.md`
+   - Reviewer context must include `git diff HEAD` plus untracked text files, excluding `codex/.agents/codex/temp` and `.claude/temp`.
+   - The Claude bridge must use official `claude -p` subscription/quota auth only. It must refuse API-key auth and disable Claude tools/edits. If the bridge exits non-zero, continue only with a visible `CLAUDE_REVIEW_UNAVAILABLE` degradation note and include the exit code.
+   - For `-g`, discover the agy bridge MCP before the review call. If `tool_search` is available, search for `mcp__agy__agy_ask`, `mcp__agy__agy_continue`, and `mcp__agy__agy_status`; otherwise use whichever callable MCP tools are already exposed in the session.
+   - Call `mcp__agy__agy_ask` with the review prompt and a bounded timeout when that argument is supported. The bridge owns model selection and quota handling: it first tries Antigravity `agy`, detects 429 `RESOURCE_EXHAUSTED` from `agy` stdout/stderr and `~/.gemini/antigravity-cli/log/cli-*.log`, and if free Gemini quota is exhausted automatically routes the same prompt to Vertex `gemini-3.5-flash` on project `gemini-keroga-260526-3895`, location `global`, using service account key `~/dev_local/temp/google300/vertex-key.json` unless overridden by bridge environment.
+   - Treat a response prefixed `[agy quota exhausted — auto-routed to Vertex gemini-3.5-flash on project gemini-keroga-260526-3895]` as a valid Gemini reviewer response, not as a degradation. Record the route in the review summary.
+   - If the agy response is truncated and `mcp__agy__agy_continue` is available, continue the same reviewer conversation rather than starting a new reviewer pass.
+   - Do not replace a requested `-g` review with Claude, Codex, or inline self-review because of perceived cost. The Vertex fallback is the intended Gemini fallback. Only degrade when the agy MCP tool is missing, errors, or times out after its own fallback path.
+   - If the bridge was recently updated but still behaves like the old agy-only bridge, note that the MCP host must be restarted before the new fallback code is loaded.
+   - If a requested reviewer is missing, continue with a visible degradation note unless the user explicitly asked to abort on missing tools.
 
 8. Commit behavior:
    - Do not create commits unless the user passed `--commit` or otherwise explicitly requested commits.

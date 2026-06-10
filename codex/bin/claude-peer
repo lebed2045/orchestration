@@ -1,0 +1,227 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+MODE="review"
+TASK=""
+TASK_FILE=""
+DRY_RUN=false
+SELF_TEST=false
+
+usage() {
+  cat <<'EOF'
+Usage: codex/bin/claude-peer [--mode review|research] [--task TEXT|--task-file PATH] [--dry-run] [--self-test]
+
+Read context from stdin and call the official Claude Code CLI in non-interactive
+mode using the user's Claude.ai subscription/quota auth. This bridge refuses
+API-key auth and unsets common API/provider environment variables for the child
+Claude process.
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --mode)
+      MODE="${2:-}"
+      shift 2
+      ;;
+    --mode=*)
+      MODE="${1#--mode=}"
+      shift
+      ;;
+    --task)
+      TASK="${2:-}"
+      shift 2
+      ;;
+    --task=*)
+      TASK="${1#--task=}"
+      shift
+      ;;
+    --task-file)
+      TASK_FILE="${2:-}"
+      shift 2
+      ;;
+    --task-file=*)
+      TASK_FILE="${1#--task-file=}"
+      shift
+      ;;
+    --dry-run)
+      DRY_RUN=true
+      shift
+      ;;
+    --self-test)
+      SELF_TEST=true
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "claude-peer: unknown argument: $1" >&2
+      usage >&2
+      exit 64
+      ;;
+  esac
+done
+
+case "$MODE" in
+  review|research) ;;
+  *)
+    echo "claude-peer: --mode must be review or research" >&2
+    exit 64
+    ;;
+esac
+
+if [[ -n "$TASK_FILE" ]]; then
+  if [[ -n "$TASK" ]]; then
+    echo "claude-peer: pass only one of --task or --task-file" >&2
+    exit 64
+  fi
+  if [[ ! -f "$TASK_FILE" ]]; then
+    echo "claude-peer: task file not found: $TASK_FILE" >&2
+    exit 66
+  fi
+  TASK_BYTES="$(wc -c < "$TASK_FILE" | tr -d '[:space:]')"
+  MAX_TASK_BYTES="${CLAUDE_PEER_MAX_TASK_BYTES:-100000}"
+  if [[ "$TASK_BYTES" -gt "$MAX_TASK_BYTES" ]]; then
+    echo "claude-peer: task file is ${TASK_BYTES} bytes; limit is ${MAX_TASK_BYTES}" >&2
+    exit 65
+  fi
+  TASK="$(cat "$TASK_FILE")"
+fi
+
+if ! command -v claude >/dev/null 2>&1; then
+  echo "CLAUDE_PEER_UNAVAILABLE: official claude CLI not found in PATH" >&2
+  exit 127
+fi
+
+CLAUDE_ENV=(
+  env
+  -u ANTHROPIC_API_KEY
+  -u ANTHROPIC_AUTH_TOKEN
+  -u ANTHROPIC_BASE_URL
+  -u ANTHROPIC_MODEL
+  -u ANTHROPIC_SMALL_FAST_MODEL
+  -u CLAUDE_CODE_USE_BEDROCK
+  -u CLAUDE_CODE_USE_VERTEX
+  -u ANTHROPIC_BEDROCK_BASE_URL
+  -u ANTHROPIC_VERTEX_BASE_URL
+  -u AWS_ACCESS_KEY_ID
+  -u AWS_SECRET_ACCESS_KEY
+  -u AWS_SESSION_TOKEN
+  -u AWS_PROFILE
+  -u AWS_DEFAULT_PROFILE
+  -u AWS_SHARED_CREDENTIALS_FILE
+  -u AWS_CONFIG_FILE
+  -u GOOGLE_APPLICATION_CREDENTIALS
+  -u GOOGLE_CLOUD_PROJECT
+  -u GCLOUD_PROJECT
+  -u CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE
+  -u CLOUDSDK_CORE_PROJECT
+  -u CLOUD_ML_REGION
+  -u ANTHROPIC_VERTEX_PROJECT_ID
+  -u ANTHROPIC_VERTEX_REGION
+)
+
+require_claude_flag() {
+  local flag="$1"
+  if [[ "$CLAUDE_HELP" != *"$flag"* ]]; then
+    echo "CLAUDE_PEER_UNAVAILABLE: claude CLI help does not list required flag '$flag'" >&2
+    exit 66
+  fi
+}
+
+CLAUDE_HELP="$("${CLAUDE_ENV[@]}" claude --help 2>/dev/null || true)"
+require_claude_flag "--safe-mode"
+require_claude_flag "--tools"
+require_claude_flag "--permission-mode"
+require_claude_flag "--no-session-persistence"
+require_claude_flag "--output-format"
+
+json_value() {
+  local key="$1"
+  if command -v jq >/dev/null 2>&1; then
+    jq -r --arg key "$key" '.[$key] // empty'
+  else
+    sed -n 's/.*"'"$key"'"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p'
+  fi
+}
+
+AUTH_STATUS="$("${CLAUDE_ENV[@]}" claude auth status --json 2>/dev/null || true)"
+AUTH_METHOD="$(printf '%s' "$AUTH_STATUS" | json_value authMethod)"
+API_PROVIDER="$(printf '%s' "$AUTH_STATUS" | json_value apiProvider)"
+SUBSCRIPTION_TYPE="$(printf '%s' "$AUTH_STATUS" | json_value subscriptionType)"
+
+if [[ "$AUTH_METHOD" != "claude.ai" ]]; then
+  echo "CLAUDE_PEER_UNAVAILABLE: expected Claude.ai subscription auth, got authMethod='${AUTH_METHOD:-unknown}'" >&2
+  echo "Refusing to use Anthropic API-key auth or third-party provider auth for this bridge." >&2
+  exit 66
+fi
+
+if [[ -n "$API_PROVIDER" && "$API_PROVIDER" != "firstParty" ]]; then
+  echo "CLAUDE_PEER_UNAVAILABLE: expected firstParty provider, got apiProvider='$API_PROVIDER'" >&2
+  exit 66
+fi
+
+if [[ "$SELF_TEST" == true ]]; then
+  printf 'CLAUDE_PEER_SELF_TEST=ok\n'
+  printf 'authMethod=%s\n' "$AUTH_METHOD"
+  printf 'apiProvider=%s\n' "${API_PROVIDER:-unknown}"
+  printf 'subscriptionType=%s\n' "${SUBSCRIPTION_TYPE:-unknown}"
+  printf 'liveCall=false\n'
+  exit 0
+fi
+
+CONTEXT_FILE="$(mktemp -t claude-peer-context.XXXXXX)"
+trap 'rm -f "$CONTEXT_FILE"' EXIT
+cat > "$CONTEXT_FILE"
+
+CONTEXT_BYTES="$(wc -c < "$CONTEXT_FILE" | tr -d '[:space:]')"
+MAX_CONTEXT_BYTES="${CLAUDE_PEER_MAX_CONTEXT_BYTES:-800000}"
+if [[ "$CONTEXT_BYTES" -gt "$MAX_CONTEXT_BYTES" ]]; then
+  echo "CLAUDE_PEER_UNAVAILABLE: stdin context is ${CONTEXT_BYTES} bytes; limit is ${MAX_CONTEXT_BYTES}" >&2
+  exit 65
+fi
+
+if [[ "$MODE" == "review" ]]; then
+  PROMPT="You are Claude Code called by Codex through a local, read-only peer-review bridge.
+
+Use only the stdin context. Do not use tools, Bash, MCP, network, file edits, or API access.
+This invocation must use the user's Claude.ai subscription/quota auth, not Anthropic API billing.
+
+Task: ${TASK:-Review the supplied diff, tests, and implementation context.}
+
+Return:
+1. Findings first, highest severity first, with file/path references when available.
+2. Missing tests or verification risks.
+3. End with exactly one line: VERDICT: APPROVED or VERDICT: NEEDS_WORK <short reason>."
+else
+  PROMPT="You are Claude Code called by Codex through a local, read-only research peer bridge.
+
+Use only the stdin context and your existing model knowledge. Do not use tools, Bash, MCP, network, file edits, or API access.
+This invocation must use the user's Claude.ai subscription/quota auth, not Anthropic API billing.
+
+Topic: ${TASK:-Give an independent implementation-pattern view of the supplied context.}
+
+Return practical findings, risks, and recommendations. End with one line: CLAUDE_PEER_DONE."
+fi
+
+if [[ "$DRY_RUN" == true ]]; then
+  printf 'CLAUDE_PEER_DRY_RUN=ok\n'
+  printf 'authMethod=%s\n' "$AUTH_METHOD"
+  printf 'apiProvider=%s\n' "${API_PROVIDER:-unknown}"
+  printf 'subscriptionType=%s\n' "${SUBSCRIPTION_TYPE:-unknown}"
+  printf 'mode=%s\n' "$MODE"
+  printf 'contextBytes=%s\n' "$CONTEXT_BYTES"
+  printf 'liveCall=false\n'
+  exit 0
+fi
+
+"${CLAUDE_ENV[@]}" claude \
+  --safe-mode \
+  -p "$PROMPT" \
+  --tools "" \
+  --permission-mode dontAsk \
+  --no-session-persistence \
+  --output-format text \
+  < "$CONTEXT_FILE"

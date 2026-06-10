@@ -1,8 +1,8 @@
 # /wf — Fast-Iteration TDD (Tier-Auto, Split-TDD, No-Worktree Default)
 
-**WF_VERSION:** `v19` · **WF_COMMITTED:** `10-jun-2026` · **Tag:** `[tier-auto | split-tdd | optional MCP | rewind-discard | no-auto-commit | evidence-graded-gates]`
+**WF_VERSION:** `v20` · **WF_COMMITTED:** `10-jun-2026` · **Tag:** `[tier-auto | split-tdd | optional MCP | rewind-discard | no-auto-commit | evidence-graded-gates | timing-receipt]`
 
-**First line of every run must be, verbatim:** `wf v19 (10-jun-2026)` — derived from the two values above. Bump both when the workflow body changes meaningfully.
+**First line of every run must be, verbatim:** `wf v20 (10-jun-2026)` — derived from the two values above. Bump both when the workflow body changes meaningfully.
 
 `-g` = Antigravity via agy bridge MCP (`mcp__agy__agy_ask`, Gemini 3.5 Flash). `-c` = Codex MCP. No-flag default: tier-auto, split TDD, no worktree, no reviewers, no gate, no commit.
 
@@ -190,10 +190,12 @@ echo "TASK: $TASK"
 ToolSearch({query: "select:mcp__codex-cli__codex,mcp__codex-cli__codex-reply", max_results: 2})
 
 # -g (Antigravity via agy bridge MCP) — tool-namespace check (bridge: 3 tools, agy_ask/agy_continue/agy_status)
-ToolSearch({query: "select:mcp__agy__agy_ask,mcp__agy__agy_status", max_results: 2})
+ToolSearch({query: "select:mcp__agy__agy_ask,mcp__agy__agy_continue,mcp__agy__agy_status", max_results: 3})
 ```
 
 The `-g` reviewer runs through the **agy bridge MCP** (`mcp__agy__agy_ask`, Gemini 3.5 Flash) — register once with `claude mcp add agy -- ~/.claude/mcp-servers/agy-bridge/.venv/bin/python ~/.claude/mcp-servers/agy-bridge/server.py`, then restart Claude Code. The bridge wraps `agy` and reads its transcript files, working around the `agy -p` headless-stdout bug.
+
+The bridge owns quota handling. It detects 429 `RESOURCE_EXHAUSTED` from `agy` stdout/stderr and `~/.gemini/antigravity-cli/log/cli-*.log`; if free Gemini quota is exhausted, it automatically routes the same prompt to Vertex `gemini-3.5-flash` on project `gemini-keroga-260526-3895`, location `global`, using service account key `~/dev_local/temp/google300/vertex-key.json` unless overridden by environment. A response prefixed `[agy quota exhausted — auto-routed to Vertex gemini-3.5-flash on project gemini-keroga-260526-3895]` is a valid Gemini response, not a downgrade. Do not substitute Codex/self-review because Vertex credits would be used; Vertex is the intended Gemini fallback. If the bridge was updated but still behaves like the old agy-only bridge, restart Claude Code so the MCP server reloads.
 
 On MISSING: ABORT by default; `--allow-mcp-downgrade` continues with the missing flag forced false. For `-g`, "missing" means the `mcp__agy__agy_ask` tool is not loaded.
 
@@ -235,6 +237,16 @@ fi
 ```bash
 export BASELINE_SHA=$(git rev-parse HEAD)   # start-of-run commit; Phase 8a diffs touched files against this
 echo "BASELINE_SHA=$BASELINE_SHA"
+```
+
+**Timing ledger (always-on):** start the wall-clock now so Phase 9 can print a total. Env vars do **not** persist across separate Bash calls — carry the echoed `WF_LEDGER` path to Phase 9 (or recover it there). The file is the verifiable record; the total is computed from it, never estimated.
+
+```bash
+WF_RUN_ID=$(date -u +%Y%m%dT%H%M%SZ)                 # UTC stamp; lexical sort == chronological
+WF_LEDGER=".claude/temp/wf/$WF_RUN_ID/started.txt"
+mkdir -p ".claude/temp/wf/$WF_RUN_ID"
+{ date +%s; date '+%Y-%m-%d %H:%M:%S'; } > "$WF_LEDGER"   # line 1 = epoch, line 2 = human start
+echo "timing ledger: $WF_LEDGER"
 ```
 
 ---
@@ -322,9 +334,11 @@ Otherwise: same as v1 (self-review + optional external reviewers). For `small` t
 | Flag | Surface | Invocation pattern |
 |---|---|---|
 | `-c` | MCP tool call | `mcp__codex-cli__codex` with a review-style prompt ending in `End with one line: VERDICT: APPROVED or VERDICT: NEEDS_WORK <reason>.` Model + reasoning effort inherit from `~/.codex/config.toml` — do not pass `model` or reasoning override unless you need to deviate. |
-| `-g` | MCP tool call | `mcp__agy__agy_ask` with `prompt="<review prompt>"` (Gemini 3.5 Flash via the agy bridge; returns the model's text directly — parse it for `APPROVED` / `NEEDS_WORK`) |
+| `-g` | MCP tool call | `mcp__agy__agy_ask` with `prompt="<review prompt>"` (Gemini 3.5 Flash via the agy bridge; may auto-route to Vertex on agy quota exhaustion; returns the model's text directly — parse it for `APPROVED` / `NEEDS_WORK`) |
 
 For `-g`: end the reviewer prompt with explicit verdict instructions, e.g. `"... End with one line: VERDICT: APPROVED or VERDICT: NEEDS_WORK <reason>."` Orchestrator greps the returned text's last line for the verdict token. Typical latency: 30–60s per call; budget accordingly.
+
+If the agy response is truncated and `mcp__agy__agy_continue` is available, continue the same reviewer conversation before marking the Antigravity review failed or starting another pass.
 
 Aggregate block:
 
@@ -581,7 +595,37 @@ If `AUTO_COMMIT=true`: `git merge --ff-only $WT_BRANCH` from `$MAIN_REPO`, then 
 
 If `AUTO_COMMIT=false` (default): print worktree path + branch + the exact merge commands user should run. No merge happens automatically.
 
-Output: `ORCHESTRATION COMPLETE (wf v19, tier=$TIER)`
+### Timing receipt (always-on, total wall time)
+
+Compute the total from the Phase 1 ledger and print the receipt just above the completion line. `LEDGER` is the `WF_LEDGER` path echoed in Phase 1; if that path was lost, recover the newest run (RUN_IDs are UTC stamps, so lexical sort = chronological). If no ledger is found, print `UNVERIFIED` — never estimate. This measures wall-clock from the Phase 1 stamp (not from when the user pressed enter), not CPU/active time.
+
+```bash
+LEDGER="$WF_LEDGER"
+[ -f "$LEDGER" ] || LEDGER=$(find .claude/temp/wf -name started.txt -type f 2>/dev/null | sort | tail -1)
+if [ -z "$LEDGER" ] || [ ! -f "$LEDGER" ]; then
+  echo "TOTAL WALL TIME: UNVERIFIED (start stamp not found)"
+else
+  S=$(sed -n 1p "$LEDGER"); SH=$(sed -n 2p "$LEDGER")
+  E=$(date +%s); EH=$(date '+%Y-%m-%d %H:%M:%S'); T=$((E - S))
+  if [ "$T" -ge 3600 ]; then H=$(printf '%dh %02dm %02ds' $((T/3600)) $((T%3600/60)) $((T%60)));
+  else H=$(printf '%dm %02ds' $((T/60)) $((T%60))); fi
+  printf 'Started %s | Ended %s | TOTAL %s | Ledger %s\n' "$SH" "$EH" "$H" "$LEDGER"
+fi
+```
+
+Render the values into this box (on `UNVERIFIED`, drop the Started/Ended/TOTAL rows and show only the single `UNVERIFIED` line):
+
+```text
+┌──────────── WF TIMING RECEIPT (v20, tier=$TIER) ────────────┐
+│ Started   <SH>                                              │
+│ Ended     <EH>                                              │
+│ TOTAL WALL TIME   <H>                                       │
+│ Clock: local wall time via date(1) — recorded, not estimated │
+│ Ledger: <LEDGER>                                            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+Output (final line): `ORCHESTRATION COMPLETE (wf v20, tier=$TIER)`
 
 ---
 
@@ -616,7 +660,7 @@ Spawning fresh agent with clean context + failure summary.
 | FULL_SUITE_FIX > 3 iterations | ✓ | Rewind-discard; STOP after cycle 2 |
 | Phase 8a signals REJECT (batch >800 changed LOC, or duplication egregious) | all tiers | STOP: split into smaller changes / deduplicate (DORA + GitClear evidence) |
 | Any cop REJECTS 3× | small/full only | STOP: REVIEW LOOP EXCEEDED |
-| External reviewer (Codex MCP / Antigravity CLI) NEEDS_WORK 3× | if reviewer active | STOP: REVIEW LOOP EXCEEDED |
+| External reviewer (Codex MCP / agy bridge MCP) NEEDS_WORK 3× | if reviewer active | STOP: REVIEW LOOP EXCEEDED |
 | Provenance INCOMPLETE | ✓ | STOP, do not merge |
 | Merge not fast-forwardable | if `--commit` | STOP, worktree preserved |
 | Post-merge full suite fails | if `--commit` | STOP, worktree preserved |
