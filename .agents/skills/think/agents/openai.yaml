@@ -1,0 +1,4 @@
+interface:
+  display_name: "Think"
+  short_description: "Run a deliberative council-style analysis"
+  default_prompt: "<topic>"

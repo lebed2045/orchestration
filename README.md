@@ -1,6 +1,6 @@
 # Orchestration
 
-Slash-command workflows for [Claude Code](https://claude.com/claude-code) that force TDD, zero-context review, and verifiable completion. Stops Claude from claiming "done" without proof.
+Orchestration workflows for coding agents that force TDD, independent review where available, and verifiable completion.
 
 ## Install
 
@@ -16,9 +16,23 @@ Restart Claude Code and the commands appear.
 
 | Command | What it does |
 |---|---|
-| `/wf` | The workflow. Tier-auto TDD on modern primitives. Prints `wf v16 (26-may-2026)` as its first line. |
+| `/wf` | The workflow. Tier-auto TDD on modern primitives. Prints `wf v19 (10-jun-2026)` as its first line. |
 | `/research` (`/r`) | Codebase + Antigravity CLI + Codex MCP research. |
+| `/think` | Council-style deliberation for judgment calls, framing critique, and pushback. |
 | `/reflect` | Turn recurring failures into rules. |
+
+## Codex
+
+Codex does not load repo-local `/wf`, `/research`, or `/think` slash commands out of the box. Its repo-shared mechanism is skills, so the Codex equivalents live in:
+
+```text
+.agents/skills/
+├── wf/
+├── research/
+└── think/
+```
+
+Invoke them in Codex as `$wf <task>`, `$research <topic>`, and `$think <topic>`, or choose them from `/skills`. Start a new Codex session if the skills do not appear immediately. Codex custom prompt slash commands exist as `/prompts:<name>`, but they are user-local under `~/.codex/prompts` and deprecated, so this repo uses skills instead.
 
 Older generations are archived in [legacy/](legacy/) (outside `.claude/` so Claude Code doesn't auto-register them as commands). They're kept in the repo as evolutionary context for AI coders reading the codebase, not for invocation.
 
@@ -28,8 +42,8 @@ Vanilla Claude reviews its own work and the review is biased. `/wf` enforces thr
 
 ## Optional reviewers
 
-- `-c` → Codex MCP: `npx -y codex-mcp-server`
-- `-g` → Antigravity CLI: `curl -fsSL https://antigravity.google/cli/install.sh | bash` (Gemini-MCP successor; Gemini CLI sunsets 2026-06-18)
+- `-c` means "the other main model": Claude commands call Codex; Codex skills call Claude.
+- `-g` means Gemini / Antigravity.
 
 Workflows degrade gracefully when these aren't installed.
 

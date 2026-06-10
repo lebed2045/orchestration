@@ -5,6 +5,10 @@
 # Research files (ephemeral - distill into CLAUDE.md rules, then discard)
 .claude/research/
 
+# Codex workflow artifacts
+.codex/temp/
+.codex/research/
+
 # Local settings
 .claude/settings.local.json
 
