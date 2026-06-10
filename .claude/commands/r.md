@@ -49,6 +49,13 @@ echo "TOPIC: $TOPIC"
 echo "AGY (agy bridge MCP): $AGY"
 echo "CODEX: $CODEX"
 echo "OUTPUT: .claude/research/${FILENAME}.md"
+
+# Timing ledger (always-on). Total wall time is computed from this file in Phase 5; never estimated.
+R_RUN_ID=$(date -u +%Y%m%dT%H%M%SZ)                  # UTC stamp; lexical sort == chronological
+R_LEDGER=".claude/temp/research/$R_RUN_ID/started.txt"
+mkdir -p ".claude/temp/research/$R_RUN_ID"
+{ date +%s; date '+%Y-%m-%d %H:%M:%S'; } > "$R_LEDGER"   # line 1 = epoch, line 2 = human start
+echo "timing ledger: $R_LEDGER"
 ```
 
 ---
@@ -366,6 +373,37 @@ Output this EXACT format (substitute actual values):
 ### Full Document
 
 **Click to open**: [[FILENAME].md](.claude/research/[FILENAME].md)
+```
+
+### Timing receipt (always-on, total wall time)
+
+After the metric table, compute the total from the setup ledger (`R_LEDGER`) and print the receipt. If the path was lost, recover the newest run (RUN_IDs are UTC stamps, so lexical sort = chronological); if no ledger exists, print `UNVERIFIED` — never estimate. `Mode` mirrors the agents actually used. For parallel external fan-out this is **total wall time, not the sum of agent durations**.
+
+```bash
+LEDGER="$R_LEDGER"
+[ -f "$LEDGER" ] || LEDGER=$(find .claude/temp/research -name started.txt -type f 2>/dev/null | sort | tail -1)
+if [ -z "$LEDGER" ] || [ ! -f "$LEDGER" ]; then
+  echo "TOTAL WALL TIME: UNVERIFIED (start stamp not found)"
+else
+  S=$(sed -n 1p "$LEDGER"); SH=$(sed -n 2p "$LEDGER")
+  E=$(date +%s); EH=$(date '+%Y-%m-%d %H:%M:%S'); T=$((E - S))
+  if [ "$T" -ge 3600 ]; then H=$(printf '%dh %02dm %02ds' $((T/3600)) $((T%3600/60)) $((T%60)));
+  else H=$(printf '%dm %02ds' $((T/60)) $((T%60))); fi
+  printf 'Started %s | Ended %s | TOTAL %s | Ledger %s\n' "$SH" "$EH" "$H" "$LEDGER"
+fi
+```
+
+Render into this box (on `UNVERIFIED`, show only that single line):
+
+```text
+┌──────────── RESEARCH TIMING RECEIPT ────────────┐
+│ Started   <SH>                                   │
+│ Ended     <EH>                                   │
+│ TOTAL WALL TIME   <H>                            │
+│ Mode  codebase [+ Antigravity] [+ Codex]         │
+│ Clock: local wall time via date(1) — recorded    │
+│ Ledger: <LEDGER>                                 │
+└──────────────────────────────────────────────────┘
 ```
 
 **IMPORTANT**: The link MUST be in markdown format `[text](path)` to be clickable in VSCode.

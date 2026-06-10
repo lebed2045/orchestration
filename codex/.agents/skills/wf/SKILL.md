@@ -5,7 +5,7 @@ description: Codex-native fast-iteration TDD workflow equivalent to Claude /wf. 
 
 # WF
 
-First response line for every run: `wf v19 (10-jun-2026)`.
+First response line for every run: `wf v20 (10-jun-2026)`.
 
 This is the Codex-native adaptation of `.claude/commands/wf.md`. Preserve the workflow intent, but use Codex surfaces: `update_plan`, shell commands, available subagents, available MCP/app tools, and explicit degradation notes. Do not call Claude-only primitives such as `TodoWrite`, `EnterPlanMode`, `AskUserQuestion`, or `Agent`.
 
@@ -44,6 +44,8 @@ Print the resolved settings before editing: tier, TDD mode, worktree mode, reque
 1. Capture context:
    - Run `git status --short`, current branch, current SHA, and identify likely test commands from repo files.
    - Set a run baseline SHA for later diff checks.
+   - Start a timing ledger so completion can report total wall time (recorded, never estimated); run once and remember the path:
+     `RUN=$(date -u +%Y%m%dT%H%M%SZ); L="codex/.agents/codex/temp/wf/$RUN/started.txt"; mkdir -p "codex/.agents/codex/temp/wf/$RUN"; { date +%s; date '+%Y-%m-%d %H:%M:%S'; } > "$L"; echo "timing ledger: $L"`
    - Create a plan with `update_plan`; keep statuses current.
 
 2. Write workflow notes:
@@ -99,3 +101,28 @@ Print the resolved settings before editing: tier, TDD mode, worktree mode, reque
 ## Completion Standard
 
 Never claim "done", "fixed", "complete", "tests pass", or equivalent unless the latest relevant `EXECUTION_BLOCK` has exit code 0. If verification cannot be run, say `UNVERIFIED` and explain what remains.
+
+## Timing Receipt (always-on, total wall time)
+
+End every run with the total wall time, computed from the ledger written in step 1 — recorded, never estimated. This is wall-clock from the step-1 stamp (not CPU/active time, and not counting pre-stamp latency). If the ledger path was lost, recover the newest run (RUN ids are UTC stamps, so lexical sort = chronological); if none exists, print `UNVERIFIED`.
+
+```bash
+L=$(find codex/.agents/codex/temp/wf -name started.txt -type f 2>/dev/null | sort | tail -1)
+if [ -z "$L" ]; then echo "TOTAL WALL TIME: UNVERIFIED (start stamp not found)"; else
+  S=$(sed -n 1p "$L"); SH=$(sed -n 2p "$L"); E=$(date +%s); EH=$(date '+%Y-%m-%d %H:%M:%S'); T=$((E - S))
+  if [ "$T" -ge 3600 ]; then H=$(printf '%dh %02dm %02ds' $((T/3600)) $((T%3600/60)) $((T%60)));
+  else H=$(printf '%dm %02ds' $((T/60)) $((T%60))); fi
+  printf 'Started %s | Ended %s | TOTAL %s\n' "$SH" "$EH" "$H"
+fi
+```
+
+Print as (on `UNVERIFIED`, show only that single line):
+
+```text
+┌──────────── WF TIMING RECEIPT (v20, tier=<tier>) ────────────┐
+│ Started   <SH>                                               │
+│ Ended     <EH>                                               │
+│ TOTAL WALL TIME   <H>                                        │
+│ Clock: local wall time via date(1) — recorded, not estimated │
+└──────────────────────────────────────────────────────────────┘
+```

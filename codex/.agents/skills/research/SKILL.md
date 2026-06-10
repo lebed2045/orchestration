@@ -28,6 +28,8 @@ Ask one concise clarification only when the topic is too vague to research safel
 
 1. Parse flags and slugify the topic.
 2. Create `codex/.agents/codex/research/` if needed. Durable research belongs in `codex/.agents/codex/research/`, not hidden tool scratch.
+   - Start a timing ledger so the final summary can report total wall time (recorded, never estimated); run once and remember the path:
+     `RUN=$(date -u +%Y%m%dT%H%M%SZ); L="codex/.agents/codex/temp/research/$RUN/started.txt"; mkdir -p "codex/.agents/codex/temp/research/$RUN"; { date +%s; date '+%Y-%m-%d %H:%M:%S'; } > "$L"; echo "timing ledger: $L"`
 3. Explore the codebase first:
    - Read `AGENTS.md`, `CLAUDE.md`, README files, config, tests, and related source files.
    - Use `rg` and `rg --files` before slower search tools.
@@ -77,3 +79,29 @@ Gemini route: <agy | Vertex fallback | unavailable | not requested>
 ```
 
 In chat, return a short summary and a clickable link to the research file. Do not claim source-backed certainty for uncited external claims.
+
+## Timing Receipt (always-on, total wall time)
+
+Append the total wall time to the in-chat summary, computed from the step-2 ledger — recorded, never estimated. `Mode` mirrors the agents actually used; for parallel external passes this is **total wall time, not the sum of agent durations**. If the ledger path was lost, recover the newest run (RUN ids are UTC stamps, so lexical sort = chronological); if none exists, print `UNVERIFIED`.
+
+```bash
+L=$(find codex/.agents/codex/temp/research -name started.txt -type f 2>/dev/null | sort | tail -1)
+if [ -z "$L" ]; then echo "TOTAL WALL TIME: UNVERIFIED (start stamp not found)"; else
+  S=$(sed -n 1p "$L"); SH=$(sed -n 2p "$L"); E=$(date +%s); EH=$(date '+%Y-%m-%d %H:%M:%S'); T=$((E - S))
+  if [ "$T" -ge 3600 ]; then H=$(printf '%dh %02dm %02ds' $((T/3600)) $((T%3600/60)) $((T%60)));
+  else H=$(printf '%dm %02ds' $((T/60)) $((T%60))); fi
+  printf 'Started %s | Ended %s | TOTAL %s\n' "$SH" "$EH" "$H"
+fi
+```
+
+Print as (on `UNVERIFIED`, show only that single line):
+
+```text
+┌──────────── RESEARCH TIMING RECEIPT ────────────┐
+│ Started   <SH>                                   │
+│ Ended     <EH>                                   │
+│ TOTAL WALL TIME   <H>                            │
+│ Mode  codebase [+ Antigravity] [+ Codex]         │
+│ Clock: local wall time via date(1) — recorded    │
+└──────────────────────────────────────────────────┘
+```
