@@ -21,6 +21,15 @@ reset='\033[0m'
 
 model_name=$(echo "$input" | jq -r '.model.display_name // "Claude"')
 
+# Per-family model color: Fable vs Opus distinguishable at a glance
+model_lower=$(printf '%s' "$model_name" | LC_ALL=C tr '[:upper:]' '[:lower:]')
+case "$model_lower" in
+    *fable*)  model_color='\033[38;2;200;120;255m' ;;  # violet — current flagship
+    *opus*)   model_color="$blue" ;;                    # unchanged — muscle memory
+    *sonnet*) model_color='\033[38;2;0;200;190m' ;;     # teal
+    *)        model_color="$blue" ;;
+esac
+
 size=$(echo "$input" | jq -r '.context_window.context_window_size // 200000')
 [ "$size" -eq 0 ] 2>/dev/null && size=200000
 
@@ -83,6 +92,6 @@ if [ "$dirty" -gt 0 ]; then
     dirty_str=" ${yellow}${dirty}~${reset}"
 fi
 
-printf "%b" "${blue}${model_name}${reset} ${pct_color}${pct}%${reset}${dim}/${reset}${size_fmt}${effort_str} ${dim}think:${reset}${think} ${green}${branch}${reset}${dirty_str}"
+printf "%b" "${model_color}${model_name}${reset} ${pct_color}${pct}%${reset}${dim}/${reset}${size_fmt}${effort_str} ${dim}think:${reset}${think} ${green}${branch}${reset}${dirty_str}"
 
 exit 0
