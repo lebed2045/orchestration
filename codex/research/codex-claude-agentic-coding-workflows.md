@@ -2,7 +2,7 @@
 
 Generated: 2026-06-10 15:14 WITA
 Mode: `$research` skill, codebase + external web research
-Canonical path: `codex/.agents/codex/research/codex-claude-agentic-coding-workflows.md`
+Canonical path: `codex/research/codex-claude-agentic-coding-workflows.md`
 Degradation: no callable Claude research tool was available from this Codex session; external comparison is based on official docs and practitioner writeups.
 
 ---

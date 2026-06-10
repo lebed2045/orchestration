@@ -18,7 +18,7 @@ Flags:
 - no flag: run a three-perspective council when possible.
 - `--solo`: one Codex pass only, no peer review.
 - `-g`: require the Antigravity/Gemini council member through the agy bridge MCP when available; otherwise include a visible degradation note. In default mode, use Gemini for the expansionist/analogy pass when the tool is loaded.
-- `--nudge "<pushback>"`: re-open the most recent `codex/.agents/codex/research/think-*.md` and deliberate again with the added pushback.
+- `--nudge "<pushback>"`: re-open the most recent `codex/research/think-*.md` and deliberate again with the added pushback.
 - `--vault <path>`: not implemented; ignore with a visible note.
 
 If the user writes `/think`, treat it as `$think`.
@@ -62,7 +62,7 @@ Each pass must end with `## What I might be wrong about` containing 2-4 specific
 
 ## Synthesis
 
-Write `codex/.agents/codex/research/think-<slug>.md` with:
+Write `codex/research/think-<slug>.md` with:
 
 ```markdown
 # Council deliberation: <topic>

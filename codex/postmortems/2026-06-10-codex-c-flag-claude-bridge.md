@@ -30,7 +30,7 @@ I ported the Claude workflow convention into Codex skills and documented `-c` as
 - The context builder omits untracked symlinks and binary/non-text files.
 - Updated Codex skill instructions so `-c` names this exact bridge and must report a visible degradation if it is unavailable.
 - Updated skill instructions to prefer the user-local bridge and pass task text through files, not shell interpolation.
-- Codex research notes now belong under `codex/.agents/codex/research/`; Claude research remains under `.claude/research/`.
+- Codex research notes now belong under `codex/research/`; Claude research remains under `.claude/research/`.
 
 ## Prevention rule
 

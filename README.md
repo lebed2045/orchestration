@@ -21,10 +21,10 @@ Restart Claude Code and the commands appear.
 | `/think` | Council-style deliberation for judgment calls, framing critique, and pushback. |
 | `/reflect` | Turn recurring failures into rules. |
 
-Claude research goes in `.claude/research/`. Codex research goes in `codex/.agents/codex/research/`.
+Claude research goes in `.claude/research/`. Codex research goes in `codex/research/`.
 
 ```text
-codex/.agents/codex/research/
+codex/research/
 ├── codex-claude-agentic-coding-workflows.md
 └── claude-from-codex-c-flag-tos.md
 ```
@@ -34,13 +34,16 @@ codex/.agents/codex/research/
 Codex does not load repo-local `/wf`, `/research`, or `/think` slash commands out of the box. Its repo-shared mechanism is skills, so the Codex equivalents live in:
 
 ```text
-codex/.agents/skills/
-├── wf/
+codex/
+├── .agents/
+│   └── skills/
+│       ├── wf/
+│       ├── research/
+│       └── think/
+├── bin/
+├── postmortems/
 ├── research/
-└── think/
-
-codex/.agents/codex/
-└── research/
+└── temp/        # gitignored scratch
 ```
 
 Invoke them in Codex as `$wf <task>`, `$research <topic>`, and `$think <topic>`, or choose them from `/skills`. Start a new Codex session if the skills do not appear immediately. Codex custom prompt slash commands exist as `/prompts:<name>`, but they are user-local under `~/.codex/prompts` and deprecated, so this repo uses skills instead.

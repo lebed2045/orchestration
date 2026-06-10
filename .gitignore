@@ -6,7 +6,7 @@
 .claude/research/
 
 # Codex workflow artifacts
-codex/.agents/codex/temp/
+codex/temp/
 
 # Local settings
 .claude/settings.local.json

@@ -45,12 +45,12 @@ Print the resolved settings before editing: tier, TDD mode, worktree mode, reque
    - Run `git status --short`, current branch, current SHA, and identify likely test commands from repo files.
    - Set a run baseline SHA for later diff checks.
    - Start a timing ledger so completion can report total wall time (recorded, never estimated); run once and remember the path:
-     `RUN=$(date -u +%Y%m%dT%H%M%SZ); L="codex/.agents/codex/temp/wf/$RUN/started.txt"; mkdir -p "codex/.agents/codex/temp/wf/$RUN"; { date +%s; date '+%Y-%m-%d %H:%M:%S'; } > "$L"; echo "timing ledger: $L"`
+     `RUN=$(date -u +%Y%m%dT%H%M%SZ); L="codex/temp/wf/$RUN/started.txt"; mkdir -p "codex/temp/wf/$RUN"; { date +%s; date '+%Y-%m-%d %H:%M:%S'; } > "$L"; echo "timing ledger: $L"`
    - Create a plan with `update_plan`; keep statuses current.
 
 2. Write workflow notes:
-   - Use `codex/.agents/codex/temp/wf/spec.md` for the task spec.
-   - Use `codex/.agents/codex/temp/wf/architecture.md` for design, file plan, quick test, and verification commands.
+   - Use `codex/temp/wf/spec.md` for the task spec.
+   - Use `codex/temp/wf/architecture.md` for design, file plan, quick test, and verification commands.
    - For `micro`, keep both files tiny.
    - For `--dry-run`, stop here and summarize the plan.
 
@@ -80,10 +80,10 @@ Print the resolved settings before editing: tier, TDD mode, worktree mode, reque
    - `full`: add simplicity, coherence, coverage, and metrics review.
    - Use subagents or callable external reviewer tools only when available. In Codex, `-c` is a Claude reviewer request and `-g` is a Gemini/Antigravity reviewer request.
    - For `-c`, run the first executable found at `$HOME/.agents/bin/claude-peer` or `./codex/bin/claude-peer`. Prefer the user-local bridge so an untrusted checkout cannot replace it.
-   - Do not interpolate user task text into a shell command. Use the existing `codex/.agents/codex/temp/wf/spec.md` as the task file.
+   - Do not interpolate user task text into a shell command. Use the existing `codex/temp/wf/spec.md` as the task file.
    - Build reviewer context with the first executable found at `$HOME/.agents/bin/codex-review-context` or `./codex/bin/codex-review-context`, then call:
-     `<context-builder> | <bridge> --mode review --task-file codex/.agents/codex/temp/wf/spec.md`
-   - Reviewer context must include `git diff HEAD` plus untracked text files, excluding `codex/.agents/codex/temp` and `.claude/temp`.
+     `<context-builder> | <bridge> --mode review --task-file codex/temp/wf/spec.md`
+   - Reviewer context must include `git diff HEAD` plus untracked text files, excluding `codex/temp` and `.claude/temp`.
    - The Claude bridge must use official `claude -p` subscription/quota auth only. It must refuse API-key auth and disable Claude tools/edits. If the bridge exits non-zero, continue only with a visible `CLAUDE_REVIEW_UNAVAILABLE` degradation note and include the exit code.
    - For `-g`, discover the agy bridge MCP before the review call. If `tool_search` is available, search for `mcp__agy__agy_ask`, `mcp__agy__agy_continue`, and `mcp__agy__agy_status`; otherwise use whichever callable MCP tools are already exposed in the session.
    - Call `mcp__agy__agy_ask` with the review prompt and a bounded timeout when that argument is supported. The bridge owns model selection and quota handling: it first tries Antigravity `agy`, detects 429 `RESOURCE_EXHAUSTED` from `agy` stdout/stderr and `~/.gemini/antigravity-cli/log/cli-*.log`, and if free Gemini quota is exhausted automatically routes the same prompt to Vertex `gemini-3.5-flash` on project `gemini-keroga-260526-3895`, location `global`, using service account key `~/dev_local/temp/google300/vertex-key.json` unless overridden by bridge environment.
@@ -107,7 +107,7 @@ Never claim "done", "fixed", "complete", "tests pass", or equivalent unless the 
 End every run with the total wall time, computed from the ledger written in step 1 — recorded, never estimated. This is wall-clock from the step-1 stamp (not CPU/active time, and not counting pre-stamp latency). If the ledger path was lost, recover the newest run (RUN ids are UTC stamps, so lexical sort = chronological); if none exists, print `UNVERIFIED`.
 
 ```bash
-L=$(find codex/.agents/codex/temp/wf -name started.txt -type f 2>/dev/null | sort | tail -1)
+L=$(find codex/temp/wf -name started.txt -type f 2>/dev/null | sort | tail -1)
 if [ -z "$L" ]; then echo "TOTAL WALL TIME: UNVERIFIED (start stamp not found)"; else
   S=$(sed -n 1p "$L"); SH=$(sed -n 2p "$L"); E=$(date +%s); EH=$(date '+%Y-%m-%d %H:%M:%S'); T=$((E - S))
   if [ "$T" -ge 3600 ]; then H=$(printf '%dh %02dm %02ds' $((T/3600)) $((T%3600/60)) $((T%60)));

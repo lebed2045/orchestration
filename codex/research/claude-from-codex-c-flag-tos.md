@@ -24,7 +24,7 @@ The user requirement is subscription/quota only, not API price. Therefore this r
 Use the official Claude Code CLI non-interactive mode, with user-local bridge precedence:
 
 ```bash
-codex/bin/codex-review-context | ~/.agents/bin/claude-peer --mode review --task-file codex/.agents/codex/temp/wf/spec.md
+codex/bin/codex-review-context | ~/.agents/bin/claude-peer --mode review --task-file codex/temp/wf/spec.md
 ```
 
 The bridge internally calls:
