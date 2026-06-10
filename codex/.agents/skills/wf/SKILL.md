@@ -5,7 +5,7 @@ description: Codex-native fast-iteration TDD workflow equivalent to Claude /wf. 
 
 # WF
 
-First response line for every run: `wf v20 (10-jun-2026)`.
+First response line for every run: `wf v21 (10-jun-2026)`.
 
 This is the Codex-native adaptation of `.claude/commands/wf.md`. Preserve the workflow intent, but use Codex surfaces: `update_plan`, shell commands, available subagents, available MCP/app tools, and explicit degradation notes. Do not call Claude-only primitives such as `TodoWrite`, `EnterPlanMode`, `AskUserQuestion`, or `Agent`.
 
@@ -96,6 +96,10 @@ Print the resolved settings before editing: tier, TDD mode, worktree mode, reque
 8. Commit behavior:
    - Do not create commits unless the user passed `--commit` or otherwise explicitly requested commits.
    - With `--commit`, commit only after verification and review gates pass; if using a worktree, merge with `git merge --ff-only`.
+   - Every commit created by this workflow must include a final commit-message trailer: `Assisted-by: wf <flags> <model>-<effort>`.
+   - For `<flags>`, include only flags that affected the run, normalized and space-separated, such as `-c`, `-g`, `-cg`, `--tier=full`, or `--worktree`. Do not include the task text. If no workflow flags affected the run, omit `<flags>` and write `Assisted-by: wf <model>-<effort>`.
+   - Resolve `<model>` and `<effort>` from the active Codex session. When that is not directly exposed, read `model` and `model_reasoning_effort` from `~/.codex/config.toml`. If either value cannot be resolved, use `unknown-model` or `unknown-effort` rather than omitting the trailer.
+   - Example for a `$wf -c` run in a `gpt-5.5` / `xhigh` session: `Assisted-by: wf -c gpt-5.5-xhigh`.
    - Without `--commit`, leave the working tree changed and report exact verification evidence.
 
 ## Completion Standard
