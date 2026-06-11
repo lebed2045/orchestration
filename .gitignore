@@ -11,5 +11,8 @@ codex/temp/
 # Local settings
 .claude/settings.local.json
 
+# Reflections are machine-local (live in ~/.claude/reflections/), never in the repo
+.claude/reflections/
+
 # Antigravity CLI local project symlinks (per-machine, points into ~/.gemini/config)
 .antigravitycli/

@@ -20,6 +20,7 @@ Restart Claude Code and the commands appear.
 | `/research` (`/r`) | Codebase + agy bridge MCP + Codex MCP research. |
 | `/think` | Council-style deliberation for judgment calls, framing critique, and pushback. |
 | `/reflect` | Turn recurring failures into rules. |
+| `/tl` | Tweet-size summary of the last output + clickable next-action buttons (`tldr` skill). |
 
 Claude research goes in `.claude/research/`. Codex research goes in `codex/research/`.
 
