@@ -285,7 +285,7 @@ echo "segment ledger: $WF_SEGMENTS"
 
 Every **blocking external call** the orchestrator waits on gets a start row immediately before the call and an end row immediately after it returns. These calls are foreground, so each segment's duration **is** the additional wait it imposed on the main process. The file is the verifiable record; Phase 9 prints absolute start→end per call plus per-class wait totals — never estimated.
 
-**Wrap rule** — run these Bash stamps around each call (`$WF_SEGMENTS` is carried/recovered exactly like `$WF_LEDGER`; recovery: `WF_SEGMENTS="$(dirname "$WF_LEDGER")/segments.tsv"`):
+**Wrap rule** — run these Bash stamps around each call (`$WF_SEGMENTS` is carried/recovered exactly like `$WF_LEDGER`; set-u-safe recovery: `WF_SEGMENTS="$(dirname "${WF_LEDGER:-$(find .claude/temp/wf -name started.txt | sort | tail -1)}")/segments.tsv"`):
 
 ```bash
 # BEFORE the blocking call:
@@ -306,7 +306,7 @@ printf '%s\tend\t%s\t%s\n'   "<label>" "$(date +%s)" "$(date '+%H:%M:%S')" >> "$
 | Codex MCP review (Gate 1 / Gate 2) | `codex:gate1` / `codex:gate2` |
 | agy MCP review (Gate 1 / Gate 2) | `agy:gate1` / `agy:gate2` |
 
-Re-review iterations append `#N` (e.g. `codex:gate2#2`) so every segment label is unique — pairing in Phase 9 is by label. A start row with no matching end row prints as `UNCLOSED` in the receipt (the call died or the stamp was skipped) — never silently dropped.
+**Every repetition of the same call appends `#N`** — re-review iterations (`codex:gate2#2`), rewind-discard respawns (`agent:tdd-green#2`), repeated fix passes (`agent:fix#2`) — so every segment label is unique; pairing in Phase 9 is by label, and a duplicate label would silently overwrite the earlier segment and undercount wait. A start row with no matching end row prints as `UNCLOSED` in the receipt (the call died or the stamp was skipped) — never silently dropped. The stamp snippets must be `set -u` safe: if `$WF_SEGMENTS` may be unset in a fresh Bash call, recover it first (`WF_SEGMENTS="$(dirname "${WF_LEDGER:-$(find .claude/temp/wf -name started.txt | sort | tail -1)}")/segments.tsv"`).
 
 ---
 
@@ -390,6 +390,8 @@ Otherwise: same as v1 (self-review + external reviewers). Codex reviews the plan
 
 ### Reviewer invocation reference
 
+**Segment stamps (v25):** wrap each MCP reviewer call in the start/end stamps from Phase 1's Segment timing section — `codex:gate1` / `agy:gate1` here, `codex:gate2` / `agy:gate2` in Phase 8 (`#N` suffix on re-review iterations).
+
 | Flag | Surface | Invocation pattern |
 |---|---|---|
 | `-c` | MCP tool call | `mcp__codex-cli__codex` with a review-style prompt ending in `End with one line: VERDICT: APPROVED or VERDICT: NEEDS_WORK <reason>.` Model + reasoning effort inherit from `~/.codex/config.toml` — do not pass `model` or reasoning override unless you need to deviate. |
@@ -415,6 +417,8 @@ Aggregate block:
 ---
 
 ## Phase 5+6: TDD — Split or Unified
+
+**Segment stamps (v25):** wrap every agent spawn below in the start/end stamps from Phase 1's Segment timing section — labels `agent:tdd-red`, `agent:tdd-green`, `agent:tdd-unified`, `agent:fix` (Phase 7b).
 
 **Branch on `$UNIFIED_TDD`:**
 
@@ -649,6 +653,8 @@ echo "PHASE_8a GATE_VERDICT: $GATE_VERDICT"
 
 ### Phase 8b — Cop agents (small / full only) + Codex review (all tiers)
 
+**Segment stamps (v25):** one `agent:cops` segment around the whole parallel cop batch (wall wait, not per-cop sum), plus `codex:gate2` / `agy:gate2` around each MCP review call.
+
 **For micro: no cop agents, but the default Codex review still runs here** — one `mcp__codex-cli__codex` call reviewing the diff vs `$BASELINE_SHA`, verdict-line protocol as in the Gate 1 reference. `SKIP_GATE2`/`SKIP_COPS` govern cop *agents* only, not the Codex reviewer.
 
 **For small: TWO Agent calls (coverage-cop + metrics-cop) + Codex (default) / agy MCP, single message, foreground.**
@@ -728,22 +734,54 @@ If `AUTO_COMMIT=true`: `git merge --ff-only $WT_BRANCH` from `$MAIN_REPO`, then 
 
 If `AUTO_COMMIT=false` (default): print worktree path + branch + the exact merge commands user should run. No merge happens automatically.
 
-### Timing receipt (always-on, total wall time)
+### Timing receipt (always-on, total wall time + per-call segments)
 
 Compute the total from the Phase 1 ledger and print the receipt just above the completion line. `LEDGER` is the `WF_LEDGER` path echoed in Phase 1; if that path was lost, recover the newest run (RUN_IDs are UTC stamps, so lexical sort = chronological). If no ledger is found, print `UNVERIFIED` — never estimate. This measures wall-clock from the Phase 1 stamp (not from when the user pressed enter), not CPU/active time.
 
+The segment block reads `segments.tsv` (same run dir; see Segment timing in Phase 1) and prints, per blocking call: absolute start → end and duration; then per-class wait totals (`agent`/`codex`/`agy`), the combined blocking wait, and `orchestrator-own` = TOTAL − combined wait (time the main process was itself working, not waiting). Since all wrapped calls are foreground, per-segment duration = the extra wait that call imposed on the main process.
+
 ```bash
-LEDGER="$WF_LEDGER"
+LEDGER="${WF_LEDGER:-}"   # :- keeps this set-u safe when the env var was lost between Bash calls
 [ -f "$LEDGER" ] || LEDGER=$(find .claude/temp/wf -name started.txt -type f 2>/dev/null | sort | tail -1)
 if [ -z "$LEDGER" ] || [ ! -f "$LEDGER" ]; then
-  echo "⏱ wf v24 tier=$TIER | TOTAL UNVERIFIED (start stamp not found)"
+  echo "⏱ wf v25 tier=$TIER | TOTAL UNVERIFIED (start stamp not found)"
 else
   S=$(sed -n 1p "$LEDGER"); SH=$(sed -n 2p "$LEDGER")
   E=$(date +%s); EH=$(date '+%Y-%m-%d %H:%M:%S'); T=$((E - S))
   if [ "$T" -ge 3600 ]; then H=$(printf '%dh %02dm %02ds' $((T/3600)) $((T%3600/60)) $((T%60)));
   else H=$(printf '%dm %02ds' $((T/60)) $((T%60))); fi
-  echo "⏱ wf v24 tier=$TIER | $SH → $EH | TOTAL $H"
+  echo "⏱ wf v25 tier=$TIER | $SH → $EH | TOTAL $H"
+  SEG="$(dirname "$LEDGER")/segments.tsv"
+  if [ -s "$SEG" ]; then
+    awk -F'\t' -v total="$T" '
+      function fmt(d){ return sprintf("%dm %02ds", d/60, d%60) }
+      $2=="start"{ s[$1]=$3; sh[$1]=$4; if(!seen[$1]++){ order[++n]=$1 } }
+      $2=="end"  { e[$1]=$3; eh[$1]=$4 }
+      END{
+        for(i=1;i<=n;i++){ l=order[i]
+          if(e[l]==""){ printf "  %-22s %s → ?         UNCLOSED (no end stamp)\n", l, sh[l]; continue }
+          d=e[l]-s[l]; cls=l; sub(/:.*/,"",cls); wait[cls]+=d; allwait+=d
+          printf "  %-22s %s → %s  %s\n", l, sh[l], eh[l], fmt(d) }
+        line="  WAIT"
+        split("agent codex agy", cls_order, " ")   # fixed order — for(c in wait) is nondeterministic
+        for(i=1;i<=3;i++){ c=cls_order[i]; if(c in wait) line=line sprintf(" %s=%s |", c, fmt(wait[c])) }
+        printf "%s all-blocking=%s | orchestrator-own=%s\n", line, fmt(allwait), fmt(total-allwait)
+      }' "$SEG"
+  else
+    echo "  segments: none recorded (segments.tsv missing or empty — per-call waits UNVERIFIED)"
+  fi
 fi
+```
+
+Example receipt:
+
+```text
+⏱ wf v25 tier=small | 2026-06-11 14:02:11 → 2026-06-11 14:19:48 | TOTAL 17m 37s
+  agent:tdd-red          14:02:40 → 14:05:12  2m 32s
+  agent:tdd-green        14:05:20 → 14:11:03  5m 43s
+  agent:cops             14:12:30 → 14:15:01  2m 31s
+  codex:gate2            14:15:05 → 14:17:44  2m 39s
+  WAIT agent=10m 46s | codex=2m 39s | all-blocking=13m 25s | orchestrator-own=4m 12s
 ```
 
 Output (final line): `ORCHESTRATION COMPLETE (wf v25, tier=$TIER)`
