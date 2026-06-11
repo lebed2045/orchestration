@@ -1,6 +1,6 @@
 ---
 name: wf
-description: Codex-native fast-iteration TDD workflow equivalent to Claude /wf. Use when the user explicitly invokes $wf, asks for a Codex equivalent of /wf, or asks Codex to build, fix, refactor, or implement code with tiered TDD, verification gates, optional worktree isolation, reviewer passes, and evidence-backed completion.
+description: Codex-native fast-iteration TDD workflow equivalent to Claude /wf. Use ONLY when the user explicitly invokes $wf or asks for a Codex equivalent of /wf — never auto-route code-change requests here. Tiered TDD, verification gates, optional worktree isolation, reviewer passes, evidence-backed completion.
 ---
 
 # WF

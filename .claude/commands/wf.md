@@ -1,13 +1,13 @@
 ---
-description: "TDD workflow for ALL code-change requests in this repo (bugfix, feature, refactor, config). Invoke this skill for any request that changes code, even when the user doesn't type /wf. Codex MCP review runs by DEFAULT on every tier; --no-codex opts out. Exempt (answer directly) - pure questions, research, read-only check/verify asks, explanations."
+description: "TDD workflow - invoke ONLY when the user explicitly types /wf; never auto-route code changes here. Codex MCP review runs by DEFAULT on every tier; --no-codex opts out."
 argument-hint: "[flags] <task>"
 ---
 
 # /wf — Fast-Iteration TDD (Tier-Auto, Split-TDD, No-Worktree, Codex-Default)
 
-**WF_VERSION:** `v24` · **WF_COMMITTED:** `11-jun-2026` · **Tag:** `[tier-auto | split-tdd | codex-default | rewind-discard | no-auto-commit | evidence-graded-gates | timing-receipt | assisted-by-trailer | longitudinal-ratchet]`
+**WF_VERSION:** `v25` · **WF_COMMITTED:** `11-jun-2026` · **Tag:** `[tier-auto | split-tdd | codex-default | rewind-discard | no-auto-commit | evidence-graded-gates | timing-receipt | segment-timing | assisted-by-trailer | longitudinal-ratchet]`
 
-**First line of every run must be, verbatim:** `wf v24 (11-jun-2026)` — derived from the two values above. Bump both when the workflow body changes meaningfully.
+**First line of every run must be, verbatim:** `wf v25 (11-jun-2026)` — derived from the two values above. Bump both when the workflow body changes meaningfully.
 
 `-g` = Antigravity via agy bridge MCP (`mcp__agy__agy_ask`, Gemini 3.5 Flash). `-c` = Codex MCP — **DEFAULT-ON since v22** (all tiers; `--no-codex` disables). No-flag default: tier-auto, split TDD, no worktree, Codex reviewer ON, no Antigravity, no gate, no commit.
 
@@ -226,7 +226,7 @@ The `-g` reviewer runs through the **agy bridge MCP** (`mcp__agy__agy_ask`, Gemi
 
 The bridge owns quota handling. It detects 429 `RESOURCE_EXHAUSTED` from `agy` stdout/stderr and `~/.gemini/antigravity-cli/log/cli-*.log`; if free Gemini quota is exhausted, it automatically routes the same prompt to Vertex `gemini-3.5-flash` on project `gemini-keroga-260526-3895`, location `global`, using service account key `~/dev_local/temp/google300/vertex-key.json` unless overridden by environment. A response prefixed `[agy quota exhausted — auto-routed to Vertex gemini-3.5-flash on project gemini-keroga-260526-3895]` is a valid Gemini response, not a downgrade. Do not substitute Codex/self-review because Vertex credits would be used; Vertex is the intended Gemini fallback. If the bridge was updated but still behaves like the old agy-only bridge, restart Claude Code so the MCP server reloads.
 
-On MISSING: continue with the missing reviewer forced false and print the downgrade loudly (default — `ALLOW_MCP_DOWNGRADE=true` since v16.2; with Codex default-on this means `CODEX REVIEW SKIPPED — MCP missing` must appear in the final output). `--abort-on-missing-mcp` restores the abort behavior. For `-g`, "missing" means the `mcp__agy__agy_ask` tool is not loaded.
+On MISSING: continue with the missing reviewer forced false and print the downgrade loudly (default — `ALLOW_MCP_DOWNGRADE=true` since v16.2; with Codex default-on this means `CODEX REVIEW SKIPPED - MCP missing` must appear in the final output). `--abort-on-missing-mcp` restores the abort behavior. For `-g`, "missing" means the `mcp__agy__agy_ask` tool is not loaded.
 
 ---
 
@@ -273,10 +273,40 @@ echo "BASELINE_SHA=$BASELINE_SHA"
 ```bash
 WF_RUN_ID=$(date -u +%Y%m%dT%H%M%SZ)                 # UTC stamp; lexical sort == chronological
 WF_LEDGER=".claude/temp/wf/$WF_RUN_ID/started.txt"
+WF_SEGMENTS=".claude/temp/wf/$WF_RUN_ID/segments.tsv"
 mkdir -p ".claude/temp/wf/$WF_RUN_ID"
 { date +%s; date '+%Y-%m-%d %H:%M:%S'; } > "$WF_LEDGER"   # line 1 = epoch, line 2 = human start
+: > "$WF_SEGMENTS"                                        # per-call timing rows (see Segment timing below)
 echo "timing ledger: $WF_LEDGER"
+echo "segment ledger: $WF_SEGMENTS"
 ```
+
+### Segment timing (v25, always-on — measures subagents + Codex/agy waits)
+
+Every **blocking external call** the orchestrator waits on gets a start row immediately before the call and an end row immediately after it returns. These calls are foreground, so each segment's duration **is** the additional wait it imposed on the main process. The file is the verifiable record; Phase 9 prints absolute start→end per call plus per-class wait totals — never estimated.
+
+**Wrap rule** — run these Bash stamps around each call (`$WF_SEGMENTS` is carried/recovered exactly like `$WF_LEDGER`; recovery: `WF_SEGMENTS="$(dirname "$WF_LEDGER")/segments.tsv"`):
+
+```bash
+# BEFORE the blocking call:
+printf '%s\tstart\t%s\t%s\n' "<label>" "$(date +%s)" "$(date '+%H:%M:%S')" >> "$WF_SEGMENTS"
+# AFTER it returns:
+printf '%s\tend\t%s\t%s\n'   "<label>" "$(date +%s)" "$(date '+%H:%M:%S')" >> "$WF_SEGMENTS"
+```
+
+**Labels** — `<class>:<call>`; class is the prefix before `:` and drives the per-class totals:
+
+| Call | Label |
+|---|---|
+| Phase 5 RED agent | `agent:tdd-red` |
+| Phase 6 GREEN agent | `agent:tdd-green` |
+| Unified TDD agent | `agent:tdd-unified` |
+| Phase 7b regression-fixer agent | `agent:fix` |
+| Phase 8b cop batch (one segment around the whole parallel batch — wall wait, not sum) | `agent:cops` |
+| Codex MCP review (Gate 1 / Gate 2) | `codex:gate1` / `codex:gate2` |
+| agy MCP review (Gate 1 / Gate 2) | `agy:gate1` / `agy:gate2` |
+
+Re-review iterations append `#N` (e.g. `codex:gate2#2`) so every segment label is unique — pairing in Phase 9 is by label. A start row with no matching end row prints as `UNCLOSED` in the receipt (the call died or the stamp was skipped) — never silently dropped.
 
 ---
 
@@ -716,7 +746,7 @@ else
 fi
 ```
 
-Output (final line): `ORCHESTRATION COMPLETE (wf v24, tier=$TIER)`
+Output (final line): `ORCHESTRATION COMPLETE (wf v25, tier=$TIER)`
 
 ---
 

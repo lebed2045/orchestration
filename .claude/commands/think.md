@@ -27,7 +27,7 @@ A third primitive next to `/wf` (do) and `/r` (find): for open / introspective /
 | `/r` | "Tell me how X is done. Stand on giants." Ground truth: cited sources. | Research doc in `.claude/research/` |
 | `/think` | "What do you think? What do I do? Am I right that…?" No ground truth. | Council synthesis + dissent + framing critique |
 
-If the question has tests, it's `/wf`. If the question has citations, it's `/r`. If the question is about *you*, it's `/think`.
+If the question has tests, it's `/wf`. If the question has citations, it's `/r`. If the question is about *you*, it's `/think`. (This table tells the USER which command fits — never auto-route into `/wf`; it runs only on explicit invocation.)
 
 ---
 
