@@ -82,26 +82,15 @@ In chat, return a short summary and a clickable link to the research file. Do no
 
 ## Timing Receipt (always-on, total wall time)
 
-Append the total wall time to the in-chat summary, computed from the step-2 ledger — recorded, never estimated. `Mode` mirrors the agents actually used; for parallel external passes this is **total wall time, not the sum of agent durations**. If the ledger path was lost, recover the newest run (RUN ids are UTC stamps, so lexical sort = chronological); if none exists, print `UNVERIFIED`.
+Append the one-line total wall time to the in-chat summary, computed from the step-2 ledger — recorded, never estimated. Append the mode in parentheses when known (mirrors the agents actually used), e.g. `⏱ research (codebase+codex) | ...`; for parallel external passes this is **total wall time, not the sum of agent durations**. If the ledger path was lost, recover the newest run (RUN ids are UTC stamps, so lexical sort = chronological); if none exists, print the `UNVERIFIED` line.
 
 ```bash
+MODE="codebase"   # set to the agents actually used, e.g. "codebase+claude"; leave empty if unknown
 L=$(find codex/temp/research -name started.txt -type f 2>/dev/null | sort | tail -1)
-if [ -z "$L" ]; then echo "TOTAL WALL TIME: UNVERIFIED (start stamp not found)"; else
+if [ -z "$L" ]; then echo "⏱ research${MODE:+ ($MODE)} | TOTAL UNVERIFIED (start stamp not found)"; else
   S=$(sed -n 1p "$L"); SH=$(sed -n 2p "$L"); E=$(date +%s); EH=$(date '+%Y-%m-%d %H:%M:%S'); T=$((E - S))
   if [ "$T" -ge 3600 ]; then H=$(printf '%dh %02dm %02ds' $((T/3600)) $((T%3600/60)) $((T%60)));
   else H=$(printf '%dm %02ds' $((T/60)) $((T%60))); fi
-  printf 'Started %s | Ended %s | TOTAL %s\n' "$SH" "$EH" "$H"
+  printf '⏱ research%s | %s → %s | TOTAL %s\n' "${MODE:+ ($MODE)}" "$SH" "$EH" "$H"
 fi
-```
-
-Print as (on `UNVERIFIED`, show only that single line):
-
-```text
-┌──────────── RESEARCH TIMING RECEIPT ────────────┐
-│ Started   <SH>                                   │
-│ Ended     <EH>                                   │
-│ TOTAL WALL TIME   <H>                            │
-│ Mode  codebase [+ Antigravity] [+ Codex]         │
-│ Clock: local wall time via date(1) — recorded    │
-└──────────────────────────────────────────────────┘
 ```

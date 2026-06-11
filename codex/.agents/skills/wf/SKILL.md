@@ -112,21 +112,12 @@ End every run with the total wall time, computed from the ledger written in step
 
 ```bash
 L=$(find codex/temp/wf -name started.txt -type f 2>/dev/null | sort | tail -1)
-if [ -z "$L" ]; then echo "TOTAL WALL TIME: UNVERIFIED (start stamp not found)"; else
+if [ -z "$L" ]; then echo "⏱ wf tier=<tier> | TOTAL UNVERIFIED (start stamp not found)"; else
   S=$(sed -n 1p "$L"); SH=$(sed -n 2p "$L"); E=$(date +%s); EH=$(date '+%Y-%m-%d %H:%M:%S'); T=$((E - S))
   if [ "$T" -ge 3600 ]; then H=$(printf '%dh %02dm %02ds' $((T/3600)) $((T%3600/60)) $((T%60)));
   else H=$(printf '%dm %02ds' $((T/60)) $((T%60))); fi
-  printf 'Started %s | Ended %s | TOTAL %s\n' "$SH" "$EH" "$H"
+  printf '⏱ wf tier=<tier> | %s → %s | TOTAL %s\n' "$SH" "$EH" "$H"
 fi
 ```
 
-Print as (on `UNVERIFIED`, show only that single line):
-
-```text
-┌──────────── WF TIMING RECEIPT (v20, tier=<tier>) ────────────┐
-│ Started   <SH>                                               │
-│ Ended     <EH>                                               │
-│ TOTAL WALL TIME   <H>                                        │
-│ Clock: local wall time via date(1) — recorded, not estimated │
-└──────────────────────────────────────────────────────────────┘
-```
+Print as one line, substituting the resolved tier for `<tier>` (on `UNVERIFIED`, that single line is the whole receipt): `⏱ wf tier=<tier> | <SH> → <EH> | TOTAL <H>`

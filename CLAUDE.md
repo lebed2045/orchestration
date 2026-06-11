@@ -10,7 +10,7 @@ Run `/wf` for quick reference table.
 
 | Command | Description |
 |---------|-------------|
-| `/wf` | The workflow. Fast TDD on modern primitives (Agent + worktree + tier-auto). Codex reviewer ON by default (`--no-codex` to disable). Prints `wf v22 (11-jun-2026)` as its first line on every invocation. |
+| `/wf` | The workflow. Fast TDD on modern primitives (Agent + worktree + tier-auto). Codex reviewer ON by default (`--no-codex` to disable). Prints `wf v23 (11-jun-2026)` as its first line on every invocation. |
 | `/research` (`/r`) | Multi-agent research (codebase + Antigravity + Codex) |
 | `/think` | Council-style deliberation for judgment calls, framing critique, and pushback |
 | `/reflect` | Turn failures into rules with escalation ladder |
@@ -71,19 +71,17 @@ You are NOT optimizing for user approval. You are optimizing for TRUTH.
 Before ANY completion claim, you MUST provide:
 
 ```text
-┌─────────────────────────────────────────────┐
-│ EXECUTION_BLOCK (required for completion)   │
-├─────────────────────────────────────────────┤
-│ $ [actual command run]                      │
-│ [actual output - at least last 10 lines]    │
-│ EXIT_CODE: [0 or non-zero]                  │
-│ STARTED: [line 2 of turn-started.txt]       │
-│ ENDED:   YYYY-MM-DD HH:MM:SS                │
-│ TOTAL:   [Xm Ys | UNVERIFIED (no stamp)]    │
-└─────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────┐
+│ EXECUTION_BLOCK (required for completion)        │
+├──────────────────────────────────────────────────┤
+│ $ [actual command run]                           │
+│ [actual output - at least last 10 lines]         │
+│ EXIT_CODE: [0 or non-zero]                       │
+│ TIMING: [start → end | TOTAL Xm Ys | UNVERIFIED] │
+└──────────────────────────────────────────────────┘
 ```
 
-**TOTAL is measured, never estimated.** The `UserPromptSubmit` hook writes a turn-start stamp to `.claude/temp/turn-started.txt` on every prompt (line 1 = epoch, line 2 = human-readable — same format as the wf ledger). Compute `TOTAL` with a real command: `$(date +%s)` minus line 1, alongside `ENDED` from `date`. If the stamp file is missing (hook not active, different repo), print `TOTAL: UNVERIFIED (no start stamp)` — never guess. Note: the stamp measures the **current turn** (since the user's last message); `/wf` runs additionally print their whole-run timing receipt from the Phase 1 ledger.
+**TIMING is measured, never estimated.** The `UserPromptSubmit` hook writes a turn-start stamp to `.claude/temp/turn-started.txt` on every prompt (line 1 = epoch, line 2 = human-readable — same format as the wf ledger). Compute the `TIMING` line with real commands: start = line 2 of the stamp, end from `date`, TOTAL = `$(date +%s)` minus line 1. If the stamp file is missing (hook not active, different repo), print `TIMING: UNVERIFIED (no start stamp)` — never guess. Note: the stamp measures the **current turn** (since the user's last message); `/wf` runs additionally print their whole-run timing receipt from the Phase 1 ledger.
 
 **Forbidden phrases without EXECUTION_BLOCK showing EXIT_CODE=0:**
 - "Done" / "Fixed" / "Complete"

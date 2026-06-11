@@ -5,9 +5,9 @@ argument-hint: "[flags] <task>"
 
 # /wf — Fast-Iteration TDD (Tier-Auto, Split-TDD, No-Worktree, Codex-Default)
 
-**WF_VERSION:** `v22` · **WF_COMMITTED:** `11-jun-2026` · **Tag:** `[tier-auto | split-tdd | codex-default | rewind-discard | no-auto-commit | evidence-graded-gates | timing-receipt | assisted-by-trailer]`
+**WF_VERSION:** `v23` · **WF_COMMITTED:** `11-jun-2026` · **Tag:** `[tier-auto | split-tdd | codex-default | rewind-discard | no-auto-commit | evidence-graded-gates | timing-receipt | assisted-by-trailer]`
 
-**First line of every run must be, verbatim:** `wf v22 (11-jun-2026)` — derived from the two values above. Bump both when the workflow body changes meaningfully.
+**First line of every run must be, verbatim:** `wf v23 (11-jun-2026)` — derived from the two values above. Bump both when the workflow body changes meaningfully.
 
 `-g` = Antigravity via agy bridge MCP (`mcp__agy__agy_ask`, Gemini 3.5 Flash). `-c` = Codex MCP — **DEFAULT-ON since v22** (all tiers; `--no-codex` disables). No-flag default: tier-auto, split TDD, no worktree, Codex reviewer ON, no Antigravity, no gate, no commit.
 
@@ -636,29 +636,17 @@ Compute the total from the Phase 1 ledger and print the receipt just above the c
 LEDGER="$WF_LEDGER"
 [ -f "$LEDGER" ] || LEDGER=$(find .claude/temp/wf -name started.txt -type f 2>/dev/null | sort | tail -1)
 if [ -z "$LEDGER" ] || [ ! -f "$LEDGER" ]; then
-  echo "TOTAL WALL TIME: UNVERIFIED (start stamp not found)"
+  echo "⏱ wf v23 tier=$TIER | TOTAL UNVERIFIED (start stamp not found)"
 else
   S=$(sed -n 1p "$LEDGER"); SH=$(sed -n 2p "$LEDGER")
   E=$(date +%s); EH=$(date '+%Y-%m-%d %H:%M:%S'); T=$((E - S))
   if [ "$T" -ge 3600 ]; then H=$(printf '%dh %02dm %02ds' $((T/3600)) $((T%3600/60)) $((T%60)));
   else H=$(printf '%dm %02ds' $((T/60)) $((T%60))); fi
-  printf 'Started %s | Ended %s | TOTAL %s | Ledger %s\n' "$SH" "$EH" "$H" "$LEDGER"
+  echo "⏱ wf v23 tier=$TIER | $SH → $EH | TOTAL $H"
 fi
 ```
 
-Render the values into this box (on `UNVERIFIED`, drop the Started/Ended/TOTAL rows and show only the single `UNVERIFIED` line):
-
-```text
-┌──────────── WF TIMING RECEIPT (v22, tier=$TIER) ────────────┐
-│ Started   <SH>                                              │
-│ Ended     <EH>                                              │
-│ TOTAL WALL TIME   <H>                                       │
-│ Clock: local wall time via date(1) — recorded, not estimated │
-│ Ledger: <LEDGER>                                            │
-└─────────────────────────────────────────────────────────────┘
-```
-
-Output (final line): `ORCHESTRATION COMPLETE (wf v22, tier=$TIER)`
+Output (final line): `ORCHESTRATION COMPLETE (wf v23, tier=$TIER)`
 
 ---
 

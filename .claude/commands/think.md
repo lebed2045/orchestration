@@ -71,6 +71,13 @@ echo "TOPIC: $TOPIC"
 echo "SOLO: $SOLO"
 echo "OUTPUT: $OUTPUT"
 [ -n "$NUDGE" ] && echo "NUDGE: $NUDGE"
+
+# Timing ledger (always-on). Total wall time is computed from this file at completion; never estimated.
+T_RUN_ID=$(date -u +%Y%m%dT%H%M%SZ)                  # UTC stamp; lexical sort == chronological
+T_LEDGER=".claude/temp/think/$T_RUN_ID/started.txt"
+mkdir -p ".claude/temp/think/$T_RUN_ID"
+{ date +%s; date '+%Y-%m-%d %H:%M:%S'; } > "$T_LEDGER"   # line 1 = epoch, line 2 = human start
+echo "timing ledger: $T_LEDGER"
 ```
 
 ---
@@ -477,7 +484,27 @@ In-chat output is ONLY:
 **Full deliberation**: [think-<slug>.md](.claude/research/think-<slug>.md)
 ```
 
+5. The one-line timing receipt (see "Timing receipt" below)
+
 No raw per-agent views, no rankings — those live in the file.
+
+### Timing receipt (always-on, total wall time)
+
+Compute the total from the setup ledger (`T_LEDGER`) and print the one-line receipt as the last in-chat line. If the path was lost, recover the newest run (RUN_IDs are UTC stamps, so lexical sort = chronological); if no ledger exists, print the `UNVERIFIED` line — measured, never estimated.
+
+```bash
+LEDGER="$T_LEDGER"
+[ -f "$LEDGER" ] || LEDGER=$(find .claude/temp/think -name started.txt -type f 2>/dev/null | sort | tail -1)
+if [ -z "$LEDGER" ] || [ ! -f "$LEDGER" ]; then
+  echo "⏱ think | TOTAL UNVERIFIED (start stamp not found)"
+else
+  S=$(sed -n 1p "$LEDGER"); SH=$(sed -n 2p "$LEDGER")
+  E=$(date +%s); EH=$(date '+%Y-%m-%d %H:%M:%S'); T=$((E - S))
+  if [ "$T" -ge 3600 ]; then H=$(printf '%dh %02dm %02ds' $((T/3600)) $((T%3600/60)) $((T%60)));
+  else H=$(printf '%dm %02ds' $((T/60)) $((T%60))); fi
+  echo "⏱ think | $SH → $EH | TOTAL $H"
+fi
+```
 
 ### 5c. Completion language
 
