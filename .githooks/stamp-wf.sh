@@ -1,15 +1,16 @@
 #!/bin/sh
 # stamp-wf.sh — make wf.md's banner self-truthful, then sync to the global copy.
 #
-# Source of truth = line 3 of wf.md:
+# Source of truth = the **WF_VERSION:** line of wf.md (found by pattern — YAML
+# frontmatter may precede it, so never assume a fixed line number):
 #   **WF_VERSION:** `vN` · **WF_COMMITTED:** `DD-mmm-YYYY` · ...
 # This script:
 #   1. rewrites WF_COMMITTED to today's date (DD-mmm-YYYY, lowercase month)
-#   2. propagates vN (read from line 3) into the verbatim run-banner (line ~5)
-#      and the ORCHESTRATION COMPLETE output line (line ~513)
+#   2. propagates vN (read from that line) into the verbatim run-banner
+#      and the ORCHESTRATION COMPLETE output line
 #   3. copies the result to ~/.claude/commands/wf.md so global == project
 #
-# Version (vN) stays a manual human decision (edit line 3). The DATE and the
+# Version (vN) stays a manual human decision (edit the WF_VERSION line). The DATE and the
 # propagation of vN everywhere else are mechanical — that's what this automates.
 set -e
 cd "$(git rev-parse --show-toplevel)"
@@ -17,8 +18,8 @@ F=".claude/commands/wf.md"
 [ -f "$F" ] || { echo "stamp-wf: $F not found"; exit 1; }
 
 TODAY=$(date +%d-%b-%Y | tr 'A-Z' 'a-z')
-VER=$(sed -n '3p' "$F" | grep -oE 'v[0-9]+' | head -1)
-[ -n "$VER" ] || { echo "stamp-wf: could not read WF_VERSION from line 3"; exit 1; }
+VER=$(grep -m1 '^\*\*WF_VERSION:\*\*' "$F" | grep -oE 'v[0-9]+' | head -1)
+[ -n "$VER" ] || { echo "stamp-wf: could not find a **WF_VERSION:** line in $F"; exit 1; }
 
 # 1. WF_COMMITTED date  (match the date without touching the surrounding backticks)
 sed -i '' -E "s/(WF_COMMITTED:[^0-9]*)[0-9]{2}-[a-z]{3}-[0-9]{4}/\1${TODAY}/" "$F"

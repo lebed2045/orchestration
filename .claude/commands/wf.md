@@ -5,9 +5,9 @@ argument-hint: "[flags] <task>"
 
 # /wf — Fast-Iteration TDD (Tier-Auto, Split-TDD, No-Worktree, Codex-Default)
 
-**WF_VERSION:** `v22` · **WF_COMMITTED:** `10-jun-2026` · **Tag:** `[tier-auto | split-tdd | codex-default | rewind-discard | no-auto-commit | evidence-graded-gates | timing-receipt | assisted-by-trailer]`
+**WF_VERSION:** `v22` · **WF_COMMITTED:** `11-jun-2026` · **Tag:** `[tier-auto | split-tdd | codex-default | rewind-discard | no-auto-commit | evidence-graded-gates | timing-receipt | assisted-by-trailer]`
 
-**First line of every run must be, verbatim:** `wf v22 (10-jun-2026)` — derived from the two values above. Bump both when the workflow body changes meaningfully.
+**First line of every run must be, verbatim:** `wf v22 (11-jun-2026)` — derived from the two values above. Bump both when the workflow body changes meaningfully.
 
 `-g` = Antigravity via agy bridge MCP (`mcp__agy__agy_ask`, Gemini 3.5 Flash). `-c` = Codex MCP — **DEFAULT-ON since v22** (all tiers; `--no-codex` disables). No-flag default: tier-auto, split TDD, no worktree, Codex reviewer ON, no Antigravity, no gate, no commit.
 
