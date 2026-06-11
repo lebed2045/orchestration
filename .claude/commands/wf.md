@@ -5,9 +5,9 @@ argument-hint: "[flags] <task>"
 
 # /wf — Fast-Iteration TDD (Tier-Auto, Split-TDD, No-Worktree, Codex-Default)
 
-**WF_VERSION:** `v23` · **WF_COMMITTED:** `11-jun-2026` · **Tag:** `[tier-auto | split-tdd | codex-default | rewind-discard | no-auto-commit | evidence-graded-gates | timing-receipt | assisted-by-trailer]`
+**WF_VERSION:** `v24` · **WF_COMMITTED:** `11-jun-2026` · **Tag:** `[tier-auto | split-tdd | codex-default | rewind-discard | no-auto-commit | evidence-graded-gates | timing-receipt | assisted-by-trailer | longitudinal-ratchet]`
 
-**First line of every run must be, verbatim:** `wf v23 (11-jun-2026)` — derived from the two values above. Bump both when the workflow body changes meaningfully.
+**First line of every run must be, verbatim:** `wf v24 (11-jun-2026)` — derived from the two values above. Bump both when the workflow body changes meaningfully.
 
 `-g` = Antigravity via agy bridge MCP (`mcp__agy__agy_ask`, Gemini 3.5 Flash). `-c` = Codex MCP — **DEFAULT-ON since v22** (all tiers; `--no-codex` disables). No-flag default: tier-auto, split TDD, no worktree, Codex reviewer ON, no Antigravity, no gate, no commit.
 
@@ -536,7 +536,7 @@ FILES=$(git diff --name-only "$BASE" 2>/dev/null \
           | grep -vE '(^|/)(node_modules|dist|build|vendor|__snapshots__|migrations|\.git)/' \
           | grep -vE '\.(min\.js|generated\.[a-z]+|lock|md|mdx|rst|txt)$' \
           | grep -vE '(^|/)(package-lock\.json|yarn\.lock|pnpm-lock\.yaml)$' || true)
-if [ -z "$FILES" ]; then echo "PHASE_8a: no production source touched"; echo "PHASE_8a GATE_VERDICT: PASS";
+if [ -z "$FILES" ]; then echo "PHASE_8a: no production source touched (longitudinal ratchet still runs below)";
 else
 
 # 1) BATCH SIZE — 🟢 evidence-backed, the only size-derived hard block (duplication also blocks, below).
@@ -565,8 +565,54 @@ if command -v jscpd >/dev/null; then
   elif [ -n "$dup" ]; then echo "DUP: ${dup}% (clean)"; fi
 else echo "DUP: jscpd not installed — duplication unmeasured (install for the GitClear-class gate)"; fi
 
-echo "PHASE_8a GATE_VERDICT: $GATE_VERDICT"
 fi
+
+# 4) LONGITUDINAL RATCHET + DEBT (v24) — runs on EVERY run, even when FILES is empty
+RATCHET=.claude/metrics/ratchet.tsv; DEBT=.claude/metrics/debt.tsv
+RUN_ID="${WF_RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)}"
+CUR_DUP=NA
+if command -v jscpd >/dev/null; then
+  CUR_DUP=$(jscpd --silent --threshold 100 . 2>/dev/null | grep -oE '[0-9.]+%' | head -1 | tr -d '%')
+  [ -n "$CUR_DUP" ] || CUR_DUP=NA   # jscpd present but unparseable → NA, never empty
+fi
+CUR_SUP=$(git grep -nE 'eslint-disable|ts-ignore|@ts-nocheck|type:\s*ignore|@SuppressWarnings|NOSONAR' -- ':!*.md' ':!tests/' 2>/dev/null | wc -l | tr -d ' ')
+CUR_CYC=NA
+if command -v madge >/dev/null; then
+  # parse the COUNT from "✖ Found N circular dependencies!" — not mere presence (1 cycle vs 5 must differ)
+  CUR_CYC=$(madge --circular . 2>/dev/null | grep -oE 'Found [0-9]+ circular' | grep -oE '[0-9]+' | head -1)
+  CUR_CYC=${CUR_CYC:-0}   # madge ran, no "Found N" line → zero cycles
+fi
+LAST=$(grep -v '^#' "$RATCHET" 2>/dev/null | tail -1)
+if [ -n "$LAST" ]; then
+  L_DUP=$(printf '%s' "$LAST" | cut -f2); L_SUP=$(printf '%s' "$LAST" | cut -f3); L_CYC=$(printf '%s' "$LAST" | cut -f4)
+  if [ "$CUR_DUP" != "NA" ] && [ "$L_DUP" != "NA" ] && awk -v c="$CUR_DUP" -v l="$L_DUP" 'BEGIN{exit !(c > l + 0.5)}'; then
+    echo "RATCHET REJECT: repo dup ${CUR_DUP}% > last ${L_DUP}% + 0.5pt"; GATE_VERDICT="REJECT"; fi
+  [ "$CUR_DUP" = "NA" ] && echo "RATCHET dup: unmeasured (jscpd missing/unparseable) — skipped, NOT a pass"
+  if [ "${CUR_SUP:-0}" -gt "${L_SUP:-0}" ] 2>/dev/null; then
+    echo "RATCHET REJECT: suppressions $CUR_SUP > last $L_SUP"; GATE_VERDICT="REJECT"; fi
+  if [ "$CUR_CYC" != "NA" ] && [ "$L_CYC" != "NA" ] && [ "$CUR_CYC" -gt "$L_CYC" ] 2>/dev/null; then
+    echo "RATCHET REJECT: prod cycles $CUR_CYC > last $L_CYC"; GATE_VERDICT="REJECT"; fi
+  [ "$CUR_CYC" = "NA" ] && echo "RATCHET cycles: unmeasured (madge missing) — skipped, NOT a pass"
+else echo "RATCHET: no prior row — baseline run, comparisons start next run"; fi
+# debt append + 3-strikes escalation; any non-numeric sloc field (waiver:/recovered:) breaks a streak
+for f in $FILES; do
+  [ -f "$f" ] || continue
+  sloc=$(grep -cvE '^\s*$' "$f")
+  case "$f" in *test*|*spec*|*fixture*) warn=$((SIZE_WARN*3/2));; *) warn=$SIZE_WARN;; esac
+  if [ "$sloc" -gt "$warn" ]; then
+    printf '%s\t%s\t%s\n' "$RUN_ID" "$f" "$sloc" >> "$DEBT"
+    HIST=$(grep -v '^#' "$DEBT" | awk -F'\t' -v f="$f" '$2==f {print $3}' | tail -3)
+    N=$(printf '%s\n' "$HIST" | grep -c .)
+    if [ "$N" -ge 3 ] && ! printf '%s\n' "$HIST" | grep -q '[^0-9]'; then
+      S1=$(printf '%s\n' "$HIST" | sed -n 1p); S2=$(printf '%s\n' "$HIST" | sed -n 2p); S3=$(printf '%s\n' "$HIST" | sed -n 3p)
+      if [ "$S2" -ge "$S1" ] && [ "$S3" -ge "$S2" ]; then   # pairwise non-decreasing (500→400→500 must NOT reject)
+        echo "DEBT ESCALATION REJECT: $f warned 3 consecutive appearances, non-decreasing SLOC ($S1→$S2→$S3) — extract a responsibility or record a waiver row"; GATE_VERDICT="REJECT"; fi
+    fi
+  elif [ -f "$DEBT" ] && awk -F'\t' -v f="$f" '$2==f{found=1} END{exit !found}' "$DEBT"; then
+    printf '%s\t%s\trecovered:%s\n' "$RUN_ID" "$f" "$sloc" >> "$DEBT"   # shrank below warn → streak breaker
+  fi
+done
+echo "PHASE_8a GATE_VERDICT: $GATE_VERDICT"
 ```
 
 `GATE_VERDICT=REJECT` (egregious batch size or duplication) blocks the gate on **all** tiers, **independent of `SKIP_GATE2`/`SKIP_COPS`** (those govern the cop *agents* in Phase 8b). File-size WARNs never block — they inform the reviewer / `metrics-cop`. See [`.claude/reference/code-quality-metrics.md`](../reference/code-quality-metrics.md) for the full metric set and evidence tiers.
@@ -577,7 +623,9 @@ fi
 
 **For small: TWO Agent calls (coverage-cop + metrics-cop) + Codex (default) / agy MCP, single message, foreground.**
 
-**For full: FOUR Agent calls (simplicity + coherence + coverage + metrics) + Codex (default) / agy MCP, single message, foreground parallel.** Each cop returns a verdict line `<name>: PASS|REJECT` (correlated by `name` field). Pass `$BASELINE_SHA` to metrics-cop so it measures cumulative growth, not just the diff.
+**For full: FOUR Agent calls (simplicity + coherence + coverage + metrics) + Codex (default) / agy MCP, single message, foreground parallel.** Each cop returns a verdict line `<name>: PASS|REJECT` (correlated by `name` field).
+
+**metrics-cop prompt (small + full):** pass it both `$BASELINE_SHA` (so it measures cumulative growth, not just the diff) AND the instruction to run its **Debt Escalation** section against `.claude/metrics/debt.tsv` (3 consecutive non-decreasing-SLOC warnings on a touched file → REJECT until it shrinks or a waiver row is recorded).
 
 ```text
 ┌─────────────────────────────────────────────┐
@@ -622,6 +670,24 @@ TIER WARNINGS: [list any tier downgrades, e.g., "full tier ran with --no-worktre
 
 INCOMPLETE: STOP, do not merge.
 
+### Ratchet row append (v24, always-on — after provenance COMPLETE, before the timing receipt)
+
+Append this run's repo-wide measurements to `.claude/metrics/ratchet.tsv` so the next run has a baseline to ratchet against. The block is **fully self-contained** (env does NOT persist between Bash calls — everything is recomputed; safe under `set -u` even when Phase 8a took the FILES-empty path). `NA` means unmeasured (tool missing) — never guess a number.
+
+```bash
+RUN_ID="${WF_RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)}"
+CUR_DUP=NA; command -v jscpd >/dev/null && { CUR_DUP=$(jscpd --silent --threshold 100 . 2>/dev/null | grep -oE '[0-9.]+%' | head -1 | tr -d '%'); [ -n "$CUR_DUP" ] || CUR_DUP=NA; }
+CUR_SUP=$(git grep -nE 'eslint-disable|ts-ignore|@ts-nocheck|type:\s*ignore|@SuppressWarnings|NOSONAR' -- ':!*.md' ':!tests/' 2>/dev/null | wc -l | tr -d ' ')
+CUR_CYC=NA; command -v madge >/dev/null && { CUR_CYC=$(madge --circular . 2>/dev/null | grep -oE 'Found [0-9]+ circular' | grep -oE '[0-9]+' | head -1); CUR_CYC=${CUR_CYC:-0}; }
+FOW=$(git ls-files '*.sh' '*.py' '*.ts' '*.js' '*.cs' 2>/dev/null | while read -r f; do n=$(grep -cvE '^\s*$' "$f"); [ "$n" -gt 300 ] && echo 1; done | wc -l | tr -d ' ')
+printf '%s\t%s\t%s\t%s\t%s\n' "$RUN_ID" "$CUR_DUP" "$CUR_SUP" "$CUR_CYC" "$FOW" >> .claude/metrics/ratchet.tsv
+git add .claude/metrics/ && git commit -m "chore(metrics): ratchet row $RUN_ID
+
+$ASSIST_TRAILER" --quiet && echo "ratchet row committed" || echo "ratchet commit skipped (no change)"
+```
+
+**Known limitation:** the deterministic debt gate is scoped to production source as filtered by Phase 8a — markdown workflow files (this repo's "source") are excluded from it by the generic `*.md` filter; their size/trend is owned by metrics-cop judgment and the gardener, not the deterministic gate. This avoids blocking on prose length, which would be a folklore gate.
+
 ### Merge logic
 
 If `AUTO_COMMIT=true`: `git merge --ff-only $WT_BRANCH` from `$MAIN_REPO`, then re-run `$TEST_CMD` post-merge as regression check. On any failure: worktree preserved, exit non-zero.
@@ -636,17 +702,17 @@ Compute the total from the Phase 1 ledger and print the receipt just above the c
 LEDGER="$WF_LEDGER"
 [ -f "$LEDGER" ] || LEDGER=$(find .claude/temp/wf -name started.txt -type f 2>/dev/null | sort | tail -1)
 if [ -z "$LEDGER" ] || [ ! -f "$LEDGER" ]; then
-  echo "⏱ wf v23 tier=$TIER | TOTAL UNVERIFIED (start stamp not found)"
+  echo "⏱ wf v24 tier=$TIER | TOTAL UNVERIFIED (start stamp not found)"
 else
   S=$(sed -n 1p "$LEDGER"); SH=$(sed -n 2p "$LEDGER")
   E=$(date +%s); EH=$(date '+%Y-%m-%d %H:%M:%S'); T=$((E - S))
   if [ "$T" -ge 3600 ]; then H=$(printf '%dh %02dm %02ds' $((T/3600)) $((T%3600/60)) $((T%60)));
   else H=$(printf '%dm %02ds' $((T/60)) $((T%60))); fi
-  echo "⏱ wf v23 tier=$TIER | $SH → $EH | TOTAL $H"
+  echo "⏱ wf v24 tier=$TIER | $SH → $EH | TOTAL $H"
 fi
 ```
 
-Output (final line): `ORCHESTRATION COMPLETE (wf v23, tier=$TIER)`
+Output (final line): `ORCHESTRATION COMPLETE (wf v24, tier=$TIER)`
 
 ---
 

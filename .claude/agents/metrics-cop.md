@@ -84,6 +84,21 @@ A file being large is **never** a REJECT from you. If you think it has multiple 
 | Nesting depth | 🟡 | >3 | — (judgment) |
 | Parameter count | 🟡 | >4 | — (judgment) |
 
+## Debt Escalation (longitudinal)
+
+Read `.claude/metrics/debt.tsv` (append-only ledger; rows are `run_id<TAB>file<TAB>sloc`, where the sloc field may also be `waiver:<reason>` or `recovered:<n>`). For each touched file at/over the size warn threshold: if its last **3 consecutive** appearances in the ledger (including this run) show **non-decreasing SLOC**, → **REJECT** with required fix "extract a named responsibility or record a waiver row".
+
+State plainly in your output: this is an entropy-bound **policy**, not a defect-evidence claim — the research found no defect-prediction basis for size caps, but unbounded repeat-warnings are alert-fatigue wallpaper; the 3-strikes rule converts them into a time-bound obligation.
+
+- Waiver row format: `<run_id>\t<file>\twaiver:<reason>` — resets the streak.
+- Any non-numeric sloc field (`waiver:`/`recovered:`) breaks a streak.
+
+## Adjudication Guardrail
+
+WARN-only metrics do not auto-compound into REJECT by count. They must be adjudicated: correlated size/complexity/nesting warnings count as one reviewability cluster unless they reveal distinct concrete harms. REJECT only when WARNs support a named design, maintainability, architectural, or behavioral risk, or when an evidence-backed hard gate fires.
+
+Role boundary: metrics-cop owns numeric signals; coherence-cop owns reuse and layer directionality; simplicity-cop owns abstraction/responsibility judgment; coverage-cop owns test meaning.
+
 ## Output Format
 
 ```text

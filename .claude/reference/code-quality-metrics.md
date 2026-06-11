@@ -52,6 +52,35 @@ Never fabricate a number. If no tool is available to measure a row, report `unme
 
 ---
 
+## Longitudinal enforcement (v24)
+
+Per-run gates are memoryless; these mechanisms add memory across runs. **Caveat up front:** these are entropy-bound *policies* for AI-context ergonomics, not defect-evidence claims; ratchets can be gamed by mechanical splitting — the cop adjudication layer stays on top.
+
+### Ratchet ledger (`.claude/metrics/ratchet.tsv`, versioned, append-only)
+
+Each `/wf` run appends one row in Phase 9: `run_id<TAB>dup_pct<TAB>suppressions<TAB>prod_cycles<TAB>files_over_warn`. Phase 8a compares the current repo-wide state against the **last** row:
+
+| Metric | Tolerance vs last row | Class |
+|---|---|---|
+| Repo-wide duplication % (jscpd) | > last + 0.5pt → REJECT | **hard** |
+| Suppression count (git grep, `:!*.md` `:!tests/`) | > last → REJECT | **hard** |
+| Prod import cycles (madge) | > last → REJECT | **hard** |
+| `files_over_warn` (tracked source files >300 SLOC) | — | **trend-only** (gardener input, never blocks) |
+
+**NA honesty rule:** an unmeasured metric (tool missing — jscpd/madge are optional) is recorded as `NA`, reported loudly, and skipped in comparisons — never treated as a pass and never guessed.
+
+### Debt ledger (`.claude/metrics/debt.tsv`, versioned, append-only)
+
+Every Phase 8a SIZE WARN appends `run_id<TAB>file<TAB>sloc`. **3-strikes rule:** a file warned on 3 consecutive appearances with pairwise non-decreasing SLOC → REJECT until it shrinks below the warn threshold or a waiver row is recorded. Waiver format: `<run_id>\t<file>\twaiver:<reason>` (resets the streak); a file dropping below warn appends `recovered:<n>` (also a streak breaker). This converts repeated warnings from wallpaper into a time-bound obligation without reintroducing hard size caps.
+
+**Known limitation:** the deterministic debt gate is scoped to production source as filtered by Phase 8a — markdown workflow files (this repo's "source") are excluded from it by the generic `*.md` filter; their size/trend is owned by metrics-cop judgment and the gardener, not the deterministic gate. This avoids blocking on prose length, which would be a folklore gate.
+
+### Gardener cadence
+
+`/gardener` (manual, or scheduled) reads both ledgers, runs a repo-wide duplication/dead-code sweep, ranks escalated debt first, and executes the top-K extractions as small `/wf`-style tasks with separate commits.
+
+---
+
 ## Scope & exemptions
 
 - Apply to **production source touched this run**. Exempt: generated/vendor/`node_modules`/snapshots/migrations, and allow **1.5×** limits for test/fixture files.

@@ -70,8 +70,8 @@ else
   fail "CLAUDE.md missing TIMING: row"
 fi
 
-# 8. Banner sync: literal 'wf v23 (11-jun-2026)' in wf.md, CLAUDE.md, README.md
-BANNER='wf v23 (11-jun-2026)'
+# 8. Banner sync: literal 'wf v24 (11-jun-2026)' in wf.md, CLAUDE.md, README.md
+BANNER='wf v24 (11-jun-2026)'
 for f in "$WF" CLAUDE.md README.md; do
   if grep -Fq "$BANNER" "$f" 2>/dev/null; then
     pass "banner '$BANNER' present in $f"
@@ -81,11 +81,11 @@ for f in "$WF" CLAUDE.md README.md; do
 done
 
 # 9. wf.md receipt name is versioned on BOTH paths (success + UNVERIFIED)
-WF_V23_LINES=$(grep -c '⏱ wf v23' "$WF" 2>/dev/null); WF_V23_LINES=${WF_V23_LINES:-0}
-if [ "$WF_V23_LINES" -ge 2 ]; then
-  pass "wf.md has versioned receipt on both success and UNVERIFIED paths ($WF_V23_LINES lines)"
+WF_V24_LINES=$(grep -c '⏱ wf v24' "$WF" 2>/dev/null); WF_V24_LINES=${WF_V24_LINES:-0}
+if [ "$WF_V24_LINES" -ge 2 ]; then
+  pass "wf.md has versioned receipt on both success and UNVERIFIED paths ($WF_V24_LINES lines)"
 else
-  fail "wf.md versioned receipt lines: $WF_V23_LINES (need >=2: success + UNVERIFIED)"
+  fail "wf.md versioned receipt lines: $WF_V24_LINES (need >=2: success + UNVERIFIED)"
 fi
 
 # 10. research receipts carry the mode (graceful when unset) in r.md and Codex research skill
