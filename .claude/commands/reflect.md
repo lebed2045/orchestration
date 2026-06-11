@@ -43,7 +43,7 @@ fi
 
 | Mode | Reads | Writes | Reviews |
 |------|-------|--------|---------|
-| `/reflect` | incidents.jsonl, failures.md | CLAUDE.md, incidents.jsonl, failures-addressed.md | Self |
+| `/reflect` | incidents.jsonl, failures.md | CLAUDE.md (+compress if >30k), incidents.jsonl, failures.md, failures-addressed.md, reflection-log.md | Self |
 | `/reflect -g` | same | same | Gemini |
 | `/reflect -c` | same | same | Codex |
 | `/reflect -gc` | same | same | Both |
@@ -242,6 +242,44 @@ PROVE [mandatory proof — cannot proceed without this].
 
 ---
 
+## Phase 5.5: SIZE-GATE COMPRESSION (append-first, compress only above 30k)
+
+**Rules are ALWAYS appended in Phase 5 — never blocked, never merged-instead-of-added.** The budget is enforced AFTER the append, not before. CLAUDE.md is loaded in full into context every session; the official guidance is to keep it small (under ~200 lines / well under the 40k-char warning). The budget keeps it there without ever refusing a new rule.
+
+```bash
+cp ~/.claude/CLAUDE.md ~/.claude/CLAUDE.md.bak       # always refresh backup first
+SIZE=$(wc -c < ~/.claude/CLAUDE.md)
+echo "CLAUDE.md size: $SIZE chars (budget: 30000)"
+[ "$SIZE" -gt 30000 ] && echo "OVER 30k → COMPRESSION REQUIRED this run" || echo "under budget → no compression needed"
+```
+
+**If `$SIZE <= 30000`: do nothing. Stop here, go to Phase 6.**
+
+**If `$SIZE > 30000`: run ONE compression pass** on `~/.claude/CLAUDE.md`, applying these levers in order, stopping as soon as `wc -c <= 30000` (or all levers exhausted):
+
+1. **Collapse provenance.** Replace any `**ESCALATION Lx** (strikes: …): <prose>` line with just the level tag `**[Lx]**`. Move the stripped strike-chain + rationale verbatim to `~/.claude/CLAUDE_ARCHIVE.md`, keyed by rule heading — **archive FIRST, then strip** (the perl alone would delete the provenance):
+   `{ echo; echo "## Provenance moved by compression pass $(date '+%Y-%m-%d %H:%M:%S')"; grep '^\*\*ESCALATION L' ~/.claude/CLAUDE.md; } >> ~/.claude/CLAUDE_ARCHIVE.md`
+   `perl -i -pe 's/^\*\*ESCALATION (L\d(?: HALT)?)\*\*.*$/**[$1]**/' ~/.claude/CLAUDE.md`
+2. **Trim illustrative examples.** In the longest blocks, collapse multi-item example lists / parentheticals to a single example. Move nothing structural.
+3. **Drop redundant restatements.** A trailing "If X, the rule failed." that only restates the PROVE may be removed.
+
+**HARD GUARDRAILS — compression must NEVER:**
+- delete or weaken any `WHEN` / `DO` / `PROVE` / `HALT` directive
+- remove an entire `###` rule block
+- demote or remove a safety / destructive gate — no-sudo, no-delete/stash/reset without permission, mounts & daemons (GLO-38), daily-driver browser (GLO-44), Exact Values, Questions-Are-Not-Authorization, and any `**[L4]**`/`HALT` rule stay in CLAUDE.md verbatim
+- alter a level tag (`**[Lx]**`)
+
+**PROVE (mandatory) before declaring the run done:** paste `wc -c` before/after AND confirm these counts are UNCHANGED vs the `.bak`:
+```bash
+b=~/.claude/CLAUDE.md.bak; f=~/.claude/CLAUDE.md
+for pat in '^### ' '^WHEN ' '^DO ' '^PROVE ' '^HALT'; do
+  printf '%s now=%s was=%s\n' "$pat" "$(grep -c "$pat" "$f")" "$(grep -c "$pat" "$b")"
+done
+```
+Any count that dropped = compression corrupted a rule → **restore from `~/.claude/CLAUDE.md.bak` and retry more conservatively.**
+
+---
+
 ## Phase 6: LOG to incidents.jsonl + failures-addressed.md
 
 ### Append to incidents.jsonl
@@ -281,6 +319,27 @@ Use the **Write/Edit tool** (not bash echo) to append a JSON line. This prevents
 **Root cause:** [why]
 **Rule:** [WHEN/DO/PROVE summary]
 ```
+
+### Append verbatim to reflection-log.md (PERMANENT HISTORY — append-only, NEVER edited)
+
+`~/.claude/reflections/reflection-log.md` is the immutable canonical record: every reflection's **full rule text** + metadata, appended forever, **never edited, compressed, or pruned** — even when the rule is later compressed (Phase 5.5) or retired in CLAUDE.md. This is the unchanged history; CLAUDE.md is the live working copy.
+
+Append with the Edit tool (add below the "NEW REFLECTIONS APPEND BELOW" marker — never rewrite content above it):
+
+```markdown
+## [ID] | [ISO8601 timestamp] | [L1/L2/L3/L4] | Pillar [N] | scope=[global|project] | reviewed=[Gemini|Codex|Self]
+**What:** [failure]
+**Root cause:** [why]
+**Recurrence of:** [previous ID or none]
+**Rule (verbatim as added to CLAUDE.md):**
+### [Rule Title] (ref: [ID])
+WHEN [trigger]:
+DO [action].
+PROVE [evidence].
+---
+```
+
+The full original survives here permanently even if CLAUDE.md shrinks.
 
 ---
 
@@ -349,11 +408,14 @@ Also show escalation status:
 
 ```
 ~/.claude/
-├── CLAUDE.md                      # Rules (5 pillars + standalone)
+├── CLAUDE.md                      # Rules (5 pillars + standalone) — live working copy, budget 30k (compressed above it, Phase 5.5)
+├── CLAUDE.md.bak                  # Auto-refreshed backup before each compression pass
+├── CLAUDE_ARCHIVE.md              # Provenance (strike-chains, trimmed examples) moved out by compression — never loaded
 └── reflections/
     ├── incidents.jsonl             # Structured incident log (source of truth)
     ├── failures.md                 # Prose failures (human-readable)
-    └── failures-addressed.md      # Addressed with rules + escalation
+    ├── failures-addressed.md      # Addressed with rules + escalation
+    └── reflection-log.md          # PERMANENT append-only verbatim history — every rule's original full text, never edited
 
 [project]/.claude/
 ├── CLAUDE.md                      # Project-specific rules only

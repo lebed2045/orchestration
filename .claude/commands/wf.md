@@ -1,10 +1,15 @@
-# /wf — Fast-Iteration TDD (Tier-Auto, Split-TDD, No-Worktree Default)
+---
+description: "TDD workflow for ALL code-change requests in this repo (bugfix, feature, refactor, config). Invoke this skill for any request that changes code, even when the user doesn't type /wf. Codex MCP review runs by DEFAULT on every tier; --no-codex opts out. Exempt (answer directly) - pure questions, research, read-only check/verify asks, explanations."
+argument-hint: "[flags] <task>"
+---
 
-**WF_VERSION:** `v20` · **WF_COMMITTED:** `10-jun-2026` · **Tag:** `[tier-auto | split-tdd | optional MCP | rewind-discard | no-auto-commit | evidence-graded-gates | timing-receipt]`
+# /wf — Fast-Iteration TDD (Tier-Auto, Split-TDD, No-Worktree, Codex-Default)
 
-**First line of every run must be, verbatim:** `wf v20 (10-jun-2026)` — derived from the two values above. Bump both when the workflow body changes meaningfully.
+**WF_VERSION:** `v22` · **WF_COMMITTED:** `10-jun-2026` · **Tag:** `[tier-auto | split-tdd | codex-default | rewind-discard | no-auto-commit | evidence-graded-gates | timing-receipt | assisted-by-trailer]`
 
-`-g` = Antigravity via agy bridge MCP (`mcp__agy__agy_ask`, Gemini 3.5 Flash). `-c` = Codex MCP. No-flag default: tier-auto, split TDD, no worktree, no reviewers, no gate, no commit.
+**First line of every run must be, verbatim:** `wf v22 (10-jun-2026)` — derived from the two values above. Bump both when the workflow body changes meaningfully.
+
+`-g` = Antigravity via agy bridge MCP (`mcp__agy__agy_ask`, Gemini 3.5 Flash). `-c` = Codex MCP — **DEFAULT-ON since v22** (all tiers; `--no-codex` disables). No-flag default: tier-auto, split TDD, no worktree, Codex reviewer ON, no Antigravity, no gate, no commit.
 
 ## Usage
 
@@ -12,7 +17,7 @@
 /wf [flags] <task>
 ```
 
-**Default behavior (no flags):** `tier=auto` (heuristic) · `split-tdd` · `no-worktree` · no MCP · no human gate · no auto-commit · MCP downgrade allowed.
+**Default behavior (no flags):** `tier=auto` (heuristic) · `split-tdd` · `no-worktree` · **Codex MCP reviewer ON** · no Antigravity · no human gate · no auto-commit · MCP downgrade allowed.
 
 | Flag | Effect | Default? |
 |---|---|---|
@@ -24,7 +29,8 @@
 | `--unified-tdd` | ONE agent does RED+GREEN in SAME context (steipete catch-rate) | |
 | `--no-worktree` | Work on current branch | **DEFAULT** |
 | `--worktree` | Force-create isolated git worktree (steipete-counter: only when you want it) | |
-| `-c` | Add Codex MCP reviewer at both gates | opt-in |
+| `-c` | Codex MCP reviewer at both active gates (micro: Gate 2 only) | **DEFAULT** (since v22; flag kept for explicitness) |
+| `--no-codex` | Disable the default Codex reviewer for this run (last flag wins if combined with `-c`) | opt-in |
 | `-g` | Add Antigravity reviewer (`mcp__agy__agy_ask` bridge, Gemini 3.5 Flash) at both gates | opt-in |
 | `-h` | Human gate via `AskUserQuestion` after RED | opt-in |
 | `--commit` | ff-only merge to main on success | opt-in |
@@ -37,10 +43,11 @@
 | `--dry-run` | Stop after Phase 4. Print plan, no code touched | opt-in |
 
 **Combinable.** Examples:
-- `/wf fix typo in README` → auto picks `micro` → 1 agent, no worktree, no ceremony
-- `/wf implement email validator` → auto picks `small` → 1 split-TDD pair + coverage cop
-- `/wf implement OAuth refresh flow` → auto picks `full` → split TDD + 4 cops, still no worktree unless `--worktree`
-- `/wf --tier=full --worktree -cg --commit implement payment flow` → kitchen sink
+- `/wf fix typo in README` → auto picks `micro` → 1 agent, no worktree, Codex spot-review at Gate 2
+- `/wf implement email validator` → auto picks `small` → 1 split-TDD pair + coverage cop + Codex at both gates
+- `/wf implement OAuth refresh flow` → auto picks `full` → split TDD + 4 cops + Codex, still no worktree unless `--worktree`
+- `/wf --no-codex fix typo in README` → micro with zero MCP calls (old v21 behavior)
+- `/wf --tier=full --worktree -g --commit implement payment flow` → kitchen sink (Codex already on by default)
 
 ---
 
@@ -48,24 +55,24 @@
 
 | Tier | Phases active | Coders | Cops | Plan Mode | Worktree | MCP |
 |---|---|---|---|---|---|---|
-| micro | 1, 2, 5+6, 7, 8a, 9 | 1 (split or unified) | 0 agents (Phase 8a signals only) | skip | no (forced) | ignored even if `-c -g` |
-| small | 1, 2, 3, 4, 5+6, 7, 8 (coverage + metrics), 9 | 1 pair (split default) | 2 (coverage + metrics) | optional (active only if `-h`) | no (opt-in via `--worktree`) | optional |
-| full | All 9 phases | 1 pair (split default) | 4 (simplicity + coherence + coverage + metrics) | optional (active only if `-h`) | no (opt-in via `--worktree`) | optional |
+| micro | 1, 2, 5+6, 7, 8a, 9 | 1 (split or unified) | 0 agents (Phase 8a signals only) | skip | no (forced) | Codex default at Gate 2 (`--no-codex` disables); `-g` ignored |
+| small | 1, 2, 3, 4, 5+6, 7, 8 (coverage + metrics), 9 | 1 pair (split default) | 2 (coverage + metrics) | optional (active only if `-h`) | no (opt-in via `--worktree`) | Codex default; agy opt-in |
+| full | All 9 phases | 1 pair (split default) | 4 (simplicity + coherence + coverage + metrics) | optional (active only if `-h`) | no (opt-in via `--worktree`) | Codex default; agy opt-in |
 
 **Tier resolution order:**
 1. Explicit `--tier=X` wins
 2. Default tier: `auto` — heuristic scans task text (see `detect_tier_auto` in Flag Detection)
-3. Conflicts: `--tier=micro --commit` → still ff-merges if green; `--tier=micro -c` → MCP flag silently ignored; missing MCP → continue without (default) unless `--abort-on-missing-mcp` passed
+3. Conflicts: `--tier=micro --commit` → still ff-merges if green; `--tier=micro` runs the default Codex review at Gate 2 (`-g` is still ignored on micro); missing MCP → continue without (default) unless `--abort-on-missing-mcp` passed
 
 ---
 
 ## Flag Detection (Tokenized — word-boundary safe)
 
 ```bash
-# v16.2 defaults: tier=auto, split-tdd, no-worktree, no MCP, no human gate, MCP downgrade allowed
+# v22 defaults: tier=auto, split-tdd, no-worktree, CODEX ON, no agy, no human gate, MCP downgrade allowed
 TIER="auto"
 HUMAN_GATE=false
-CODEX_REVIEW=false
+CODEX_REVIEW=true                   # v22: Codex reviewer default-ON for everything; --no-codex opts out
 AGY_REVIEW=false                    # `-g` flag: Antigravity via agy bridge MCP (mcp__agy__agy_ask)
 AUTO_COMMIT=false
 ALLOW_MCP_DOWNGRADE=true            # default flipped vs v16.1
@@ -87,6 +94,7 @@ for tok in "$@"; do
     --split-tdd)   UNIFIED_TDD_OVERRIDE="split" ;;
     --no-worktree) USE_WORKTREE_OVERRIDE="no" ;;
     --worktree)    USE_WORKTREE_OVERRIDE="yes" ;;
+    --no-codex)              CODEX_REVIEW=false ;;
     --commit)                AUTO_COMMIT=true ;;
     --allow-mcp-downgrade)   ALLOW_MCP_DOWNGRADE=true ;;
     --abort-on-missing-mcp)  ABORT_ON_MISSING_MCP=true; ALLOW_MCP_DOWNGRADE=false ;;
@@ -151,8 +159,8 @@ case "$TIER" in
   micro)
     UNIFIED_TDD="${UNIFIED_TDD_OVERRIDE:-split}"
     USE_WORKTREE="${USE_WORKTREE_OVERRIDE:-no}"
-    CODEX_REVIEW=false; AGY_REVIEW=false   # micro ignores reviewer flags
-    SKIP_PLAN_MODE=true; SKIP_COPS=true; SKIP_GATE1=true; SKIP_GATE2=true   # SKIP_GATE2/SKIP_COPS = skip cop AGENTS (8b) only
+    AGY_REVIEW=false   # micro ignores -g; CODEX_REVIEW keeps its default/flag value (v22) — single Codex review at Gate 2
+    SKIP_PLAN_MODE=true; SKIP_COPS=true; SKIP_GATE1=true; SKIP_GATE2=true   # SKIP_GATE2/SKIP_COPS = skip cop AGENTS (8b) only; Codex review still runs in Phase 8
     COPS_SUBSET="none"; SIZE_CHECK=true   # v19: Phase 8a deterministic signals still run on micro (gated by SIZE_CHECK, not SKIP_GATE2) — batch/size/dup
     ;;
   small)
@@ -173,6 +181,27 @@ echo "TIER=$TIER  TDD=$UNIFIED_TDD  WORKTREE=$USE_WORKTREE  HUMAN=$HUMAN_GATE  C
 [ -n "$GOAL" ] && echo "GOAL: $GOAL"
 [ -n "$COPS_MODEL$CODER_MODEL$EFFORT" ] && echo "MODEL_OVERRIDES: cops=$COPS_MODEL coder=$CODER_MODEL effort=$EFFORT"
 echo "TASK: $TASK"
+
+# v21: provenance trailer — appended as the LAST line of EVERY commit message this run creates.
+# Model = the coder agent's actual model id; effort = its actual effort. If effort is unknown, OMIT the
+# "-<effort>" suffix — never guess it.
+WF_FLAGSTR=""
+[ "$CODEX_REVIEW" = true ]  && WF_FLAGSTR+=" -c"
+[ "$AGY_REVIEW" = true ]    && WF_FLAGSTR+=" -g"
+[ "$HUMAN_GATE" = true ]    && WF_FLAGSTR+=" -h"
+[ "$AUTO_COMMIT" = true ]   && WF_FLAGSTR+=" --commit"
+[ "$USE_WORKTREE" = "yes" ] && WF_FLAGSTR+=" --worktree"
+ASSIST_MODEL="${CODER_MODEL:-}"   # must be the ACTUAL session model id (from --coder-model or the session); never a guessed literal
+ASSIST_EFFORT="${EFFORT:-}"       # empty when effort is unknown → the :+ expansion below omits the -<effort> suffix entirely
+if [ -z "$ASSIST_MODEL" ]; then
+  # HARD STOP: no trailer is constructed until the orchestrator fills ASSIST_MODEL with the real
+  # session model id. TDD phases MUST NOT commit while ASSIST_TRAILER is unset.
+  unset ASSIST_TRAILER
+  echo "TRAILER: UNRESOLVED — fill ASSIST_MODEL with the real session model id before any commit"
+else
+  ASSIST_TRAILER="Assisted-by: wf${WF_FLAGSTR} ${ASSIST_MODEL}${ASSIST_EFFORT:+-$ASSIST_EFFORT}"
+  echo "TRAILER: $ASSIST_TRAILER"   # e.g. "Assisted-by: wf -c opus-4.8-xhigh"
+fi
 ```
 
 **Word-boundary safety:** Flag parser tokenizes on whitespace; words like `force-commit`, `--commitment`, `-guide`, `-gpu` are NOT misread as flags.
@@ -183,7 +212,7 @@ echo "TASK: $TASK"
 
 ## Preflight: Reviewer Availability Check (Phase 0)
 
-**Skip if both `CODEX_REVIEW=false` AND `AGY_REVIEW=false`** (always true for micro tier).
+**Skip if both `CODEX_REVIEW=false` AND `AGY_REVIEW=false`** (since v22 this only happens with `--no-codex` — Codex is on by default on every tier).
 
 ```text
 # -c (Codex MCP) — tool-namespace check (official `codex mcp-server`: 2 tools, `codex` + `codex-reply`)
@@ -197,7 +226,7 @@ The `-g` reviewer runs through the **agy bridge MCP** (`mcp__agy__agy_ask`, Gemi
 
 The bridge owns quota handling. It detects 429 `RESOURCE_EXHAUSTED` from `agy` stdout/stderr and `~/.gemini/antigravity-cli/log/cli-*.log`; if free Gemini quota is exhausted, it automatically routes the same prompt to Vertex `gemini-3.5-flash` on project `gemini-keroga-260526-3895`, location `global`, using service account key `~/dev_local/temp/google300/vertex-key.json` unless overridden by environment. A response prefixed `[agy quota exhausted — auto-routed to Vertex gemini-3.5-flash on project gemini-keroga-260526-3895]` is a valid Gemini response, not a downgrade. Do not substitute Codex/self-review because Vertex credits would be used; Vertex is the intended Gemini fallback. If the bridge was updated but still behaves like the old agy-only bridge, restart Claude Code so the MCP server reloads.
 
-On MISSING: ABORT by default; `--allow-mcp-downgrade` continues with the missing flag forced false. For `-g`, "missing" means the `mcp__agy__agy_ask` tool is not loaded.
+On MISSING: continue with the missing reviewer forced false and print the downgrade loudly (default — `ALLOW_MCP_DOWNGRADE=true` since v16.2; with Codex default-on this means `CODEX REVIEW SKIPPED — MCP missing` must appear in the final output). `--abort-on-missing-mcp` restores the abort behavior. For `-g`, "missing" means the `mcp__agy__agy_ask` tool is not loaded.
 
 ---
 
@@ -207,14 +236,14 @@ On MISSING: ABORT by default; `--allow-mcp-downgrade` continues with the missing
 
 | # | Item (full tier) | micro | small |
 |---|---|---|---|
-| 1 | MCP preflight check | ✓ (skip if no MCP flag) | ✓ | ✓ |
+| 1 | MCP preflight check | ✓ (skip only with `--no-codex`) | ✓ | ✓ |
 | 2 | Context capture | ✓ | ✓ | ✓ |
 | 3 | Intake (spec.md) | ✓ | ✓ | ✓ |
 | 4 | Planning (architecture.md) + plan-mode gate | skip | optional | ✓ |
 | 5 | Gate 1/2: Plan review | skip | skip (unless `-h`) | ✓ |
 | 6 | TDD (unified or split) | ✓ (unified) | ✓ | ✓ |
 | 7 | Final verification (+7b if needed) | ✓ | ✓ | ✓ |
-| 8 | Gate 2/2: Code review | 8a signals only | coverage + metrics cops | ✓ (4 cops) |
+| 8 | Gate 2/2: Code review | 8a signals + Codex review | coverage + metrics cops + Codex | ✓ (4 cops + Codex) |
 | 9 | Completion (merge if `--commit`) | ✓ | ✓ | ✓ |
 
 **Hook recommendation (printed at end of Phase 1):**
@@ -327,7 +356,7 @@ fi
 
 **If `SKIP_GATE1=true`:** Skip entirely.
 
-Otherwise: same as v1 (self-review + optional external reviewers). For `small` tier without `-c -g`, only the self-review checklist runs.
+Otherwise: same as v1 (self-review + external reviewers). Codex reviews the plan by default (v22); for `small` tier with `--no-codex` and no `-g`, only the self-review checklist runs.
 
 ### Reviewer invocation reference
 
@@ -372,7 +401,7 @@ Agent({
   isolation: <"worktree" if USE_WORKTREE=yes; omit otherwise>,
   name: "tdd-red",
   // model + effort: inherit session unless --coder-model / --effort overrides
-  prompt: <RED prompt — write test, run, must fail, commit "test: <feature> (RED)">
+  prompt: <RED prompt — write test, run, must fail, commit "test: <feature> (RED)" with $ASSIST_TRAILER as the final commit-message line>
 })
 ```
 
@@ -401,6 +430,7 @@ INNER LOOP (max 5 iterations, orchestrator enforces from your structured log):
   GREEN_ITER N/5: cmd=<cmd> exit=<code> error="<one-line or 'none'>"
 
 When the quick test passes, commit `feat: <feature> (GREEN)`.
+Every commit message you create must end with this exact trailer line: $ASSIST_TRAILER
 
 <<additional success contract (only if --goal was passed)>>
 $GOAL
@@ -431,9 +461,10 @@ Unified prompt structure:
 - RED phase: write test → run → must fail → commit "test: (RED)" → emit RED_ITER log
 - GREEN phase: implement → loop max 5 → must pass → commit "feat: (GREEN)" → emit GREEN_ITER log
 - If `$GOAL` set, append: `Additional success contract: $GOAL — must satisfy in addition to quick test passing.`
+- Every commit message ends with the trailer line `$ASSIST_TRAILER`
 - FORBIDDEN: running `$TEST_CMD` (full suite). Only the quick test command.
 
-After agent returns (either variant), capture `WT_PATH` (if worktree), `QUICK_TEST_CMD`, `TEST_FILES`. Verify both commits exist.
+After agent returns (either variant), capture `WT_PATH` (if worktree), `QUICK_TEST_CMD`, `TEST_FILES`. Verify both commits exist and each ends with the `Assisted-by:` trailer.
 
 ### Orchestrator Circuit-Breaker Check (both variants)
 
@@ -478,9 +509,9 @@ Same as v1: regression-fixer agent, max 3 iterations, structured `ITER N/3:` log
 
 | Tier | Phase 8a (deterministic signals) | Cop agents active | MCP active |
 |---|---|---|---|
-| micro | signals (runs) | none | n/a |
-| small | signals (runs) | coverage + metrics | optional (if `-c`/`-g`) |
-| full | signals (runs) | simplicity + coherence + coverage + metrics | optional |
+| micro | signals (runs) | none | Codex (default; `--no-codex` disables) |
+| small | signals (runs) | coverage + metrics | Codex (default) + agy if `-g` |
+| full | signals (runs) | simplicity + coherence + coverage + metrics | Codex (default) + agy if `-g` |
 
 ### Phase 8a — Evidence-graded signals (batch size · file size · duplication)
 
@@ -540,11 +571,13 @@ fi
 
 `GATE_VERDICT=REJECT` (egregious batch size or duplication) blocks the gate on **all** tiers, **independent of `SKIP_GATE2`/`SKIP_COPS`** (those govern the cop *agents* in Phase 8b). File-size WARNs never block — they inform the reviewer / `metrics-cop`. See [`.claude/reference/code-quality-metrics.md`](../reference/code-quality-metrics.md) for the full metric set and evidence tiers.
 
-### Phase 8b — Cop agents (small / full only)
+### Phase 8b — Cop agents (small / full only) + Codex review (all tiers)
 
-**For small: TWO Agent calls (coverage-cop + metrics-cop) + optional MCP, single message, foreground.**
+**For micro: no cop agents, but the default Codex review still runs here** — one `mcp__codex-cli__codex` call reviewing the diff vs `$BASELINE_SHA`, verdict-line protocol as in the Gate 1 reference. `SKIP_GATE2`/`SKIP_COPS` govern cop *agents* only, not the Codex reviewer.
 
-**For full: FOUR Agent calls (simplicity + coherence + coverage + metrics) + optional MCP, single message, foreground parallel.** Each cop returns a verdict line `<name>: PASS|REJECT` (correlated by `name` field). Pass `$BASELINE_SHA` to metrics-cop so it measures cumulative growth, not just the diff.
+**For small: TWO Agent calls (coverage-cop + metrics-cop) + Codex (default) / agy MCP, single message, foreground.**
+
+**For full: FOUR Agent calls (simplicity + coherence + coverage + metrics) + Codex (default) / agy MCP, single message, foreground parallel.** Each cop returns a verdict line `<name>: PASS|REJECT` (correlated by `name` field). Pass `$BASELINE_SHA` to metrics-cop so it measures cumulative growth, not just the diff.
 
 ```text
 ┌─────────────────────────────────────────────┐
@@ -581,7 +614,7 @@ EXECUTION FULL (Phase 7):        [PRESENT|MISSING] — exit = 0?
 EXECUTION FIX (Phase 7b):        [PRESENT|MISSING|N/A] — exit = 0?
 Signals (Phase 8a):              [PASS|REJECT] — batch/dup block; size warns; runs on all tiers
 Cops (Phase 8b):                 [N/N PASS|<N|SKIPPED for tier]
-MCP (Phase 8):                   [APPROVED|N/A]
+MCP (Phase 8):                   [APPROVED|N/A] — N/A only via --no-codex or missing MCP; state which
 ----------------
 PROVENANCE: [COMPLETE|INCOMPLETE]
 TIER WARNINGS: [list any tier downgrades, e.g., "full tier ran with --no-worktree"]
@@ -616,7 +649,7 @@ fi
 Render the values into this box (on `UNVERIFIED`, drop the Started/Ended/TOTAL rows and show only the single `UNVERIFIED` line):
 
 ```text
-┌──────────── WF TIMING RECEIPT (v20, tier=$TIER) ────────────┐
+┌──────────── WF TIMING RECEIPT (v22, tier=$TIER) ────────────┐
 │ Started   <SH>                                              │
 │ Ended     <EH>                                              │
 │ TOTAL WALL TIME   <H>                                       │
@@ -625,7 +658,7 @@ Render the values into this box (on `UNVERIFIED`, drop the Started/Ended/TOTAL r
 └─────────────────────────────────────────────────────────────┘
 ```
 
-Output (final line): `ORCHESTRATION COMPLETE (wf v20, tier=$TIER)`
+Output (final line): `ORCHESTRATION COMPLETE (wf v22, tier=$TIER)`
 
 ---
 
@@ -691,7 +724,7 @@ Spawning fresh agent with clean context + failure summary.
 | Fix typo, rename variable, single-line bugfix | `--tier=micro` | 5-7 agents for a typo is over-orchestration |
 | Add a function, fix one logic bug in one file | `--tier=small` | One coder + coverage cop is enough |
 | Multi-file feature, refactor, new module | `--tier=full` (default) | Full ceremony justified |
-| Slow test suite (Unity/.NET), risky migration | `--tier=full -cg` | Add MCP perspectives |
+| Slow test suite (Unity/.NET), risky migration | `--tier=full -g` | Codex already on; add the Antigravity perspective |
 | One-shot exploration, can't define quick test | refactor task to define one, or run free-form | `/wf` requires a quick test |
 
 ## Legacy generations
