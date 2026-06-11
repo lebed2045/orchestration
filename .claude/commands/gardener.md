@@ -26,12 +26,12 @@ mkdir -p .claude/temp/gardener
 RATCHET=.claude/metrics/ratchet.tsv; DEBT=.claude/metrics/debt.tsv
 echo "== ratchet trend (last 10 rows: run_id dup_pct suppressions prod_cycles files_over_warn) =="
 grep -v '^#' "$RATCHET" 2>/dev/null | tail -10
-echo "== debt open items (warned files: no waiver row, still over warn at HEAD) =="
+echo "== debt open items (files with warned rows after their last waiver/recovered row) =="
 grep -v '^#' "$DEBT" 2>/dev/null | awk -F'\t' '
-  $3 ~ /^waiver:/   {waived[$2]=1; next}
+  $3 ~ /^waiver:/   {streak[$2]=0; next}   # waiver RESETS the streak (never a permanent exemption) — a later warn reopens the item
   $3 ~ /^recovered:/{streak[$2]=0; next}
   {streak[$2]++; last[$2]=$3}
-  END{for (f in streak) if (streak[f]>0 && !waived[f]) print f "\t" last[f] "\tstreak=" streak[f]}'
+  END{for (f in streak) if (streak[f]>0) print f "\t" last[f] "\tstreak=" streak[f]}'
 ```
 
 Open item = a file with warned rows after its last waiver/recovered row. Re-verify each is still over the warn threshold (300 SLOC; test/fixture ×1.5) at HEAD before ranking — debt rows are history, HEAD is truth.

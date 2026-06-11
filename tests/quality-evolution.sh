@@ -235,6 +235,35 @@ else
   pass "tests/timing-receipts.sh no longer contains 'wf v23 (11-jun-2026)'"
 fi
 
+# 30. gardener.md open-items awk: waiver must RESET the streak, never permanently exempt the file.
+# Documented contract (gardener.md prose, metrics-cop.md, code-quality-metrics.md): "waiver resets the
+# streak" — so a warn → waiver → warn history MUST reopen the item. Extracting and executing the awk
+# from the fenced block against a fixture is brittle (sed boundaries break on doc edits), so we assert
+# the contract textually instead: no permanent 'waived[' exemption map, and the waiver branch resets
+# the streak like the recovered branch does.
+if grep -qF 'waived[' "$GARDENER" 2>/dev/null; then
+  fail "gardener.md awk still has a permanent 'waived[' exemption (waiver must reset the streak, not exempt the file forever)"
+elif grep -F '/^waiver:/' "$GARDENER" 2>/dev/null | grep -qF 'streak[$2]=0'; then
+  pass "gardener.md awk resets the streak on waiver rows (no permanent exemption)"
+else
+  fail "gardener.md awk waiver branch does not reset the streak (missing streak[\$2]=0 on /^waiver:/ rows)"
+fi
+
+# 31. Guardrail identity: the adjudication-guardrail paragraph must be byte-identical in all 4 cop files
+GUARD_VARIANTS=$(grep -h 'do not auto-compound into REJECT by count' "$SIMP" "$COHER" "$COVER" "$METRICS" 2>/dev/null | sort -u | wc -l | tr -d ' ')
+if [ "$GUARD_VARIANTS" = "1" ]; then
+  pass "adjudication guardrail is byte-identical across all 4 cop files"
+else
+  fail "adjudication guardrail differs across cop files ($GUARD_VARIANTS unique variants; need exactly 1)"
+fi
+
+# 32. wf.md Phase 9 ratchet block guards the commit when ASSIST_TRAILER is unset (v21 rule: never guess it)
+if grep -qF 'ASSIST_TRAILER unset' "$WF" 2>/dev/null; then
+  pass "wf.md Phase 9 guards the ratchet commit when ASSIST_TRAILER is unset"
+else
+  fail "wf.md Phase 9 missing the 'ASSIST_TRAILER unset' commit guard"
+fi
+
 echo
 if [ "$FAILURES" -eq 0 ]; then
   echo "RESULT: ALL ASSERTIONS PASSED"

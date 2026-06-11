@@ -672,7 +672,7 @@ INCOMPLETE: STOP, do not merge.
 
 ### Ratchet row append (v24, always-on — after provenance COMPLETE, before the timing receipt)
 
-Append this run's repo-wide measurements to `.claude/metrics/ratchet.tsv` so the next run has a baseline to ratchet against. The block is **fully self-contained** (env does NOT persist between Bash calls — everything is recomputed; safe under `set -u` even when Phase 8a took the FILES-empty path). `NA` means unmeasured (tool missing) — never guess a number.
+Append this run's repo-wide measurements to `.claude/metrics/ratchet.tsv` so the next run has a baseline to ratchet against. The block is **fully self-contained** (env does NOT persist between Bash calls — everything is recomputed; safe under `set -u` even when Phase 8a took the FILES-empty path); the orchestrator must re-export `ASSIST_TRAILER` (and `WF_RUN_ID`) into this Bash call, the same way it carries `WF_LEDGER` — the trailer is never guessed. `NA` means unmeasured (tool missing) — never guess a number.
 
 ```bash
 RUN_ID="${WF_RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)}"
@@ -681,9 +681,13 @@ CUR_SUP=$(git grep -nE 'eslint-disable|ts-ignore|@ts-nocheck|type:\s*ignore|@Sup
 CUR_CYC=NA; command -v madge >/dev/null && { CUR_CYC=$(madge --circular . 2>/dev/null | grep -oE 'Found [0-9]+ circular' | grep -oE '[0-9]+' | head -1); CUR_CYC=${CUR_CYC:-0}; }
 FOW=$(git ls-files '*.sh' '*.py' '*.ts' '*.js' '*.cs' 2>/dev/null | while read -r f; do n=$(grep -cvE '^\s*$' "$f"); [ "$n" -gt 300 ] && echo 1; done | wc -l | tr -d ' ')
 printf '%s\t%s\t%s\t%s\t%s\n' "$RUN_ID" "$CUR_DUP" "$CUR_SUP" "$CUR_CYC" "$FOW" >> .claude/metrics/ratchet.tsv
-git add .claude/metrics/ && git commit -m "chore(metrics): ratchet row $RUN_ID
+if [ -z "${ASSIST_TRAILER:-}" ]; then
+  echo "ratchet commit skipped: ASSIST_TRAILER unset — re-export it in this shell (orchestrator carries it like WF_LEDGER)"
+else
+  git add .claude/metrics/ && git commit -m "chore(metrics): ratchet row $RUN_ID
 
 $ASSIST_TRAILER" --quiet && echo "ratchet row committed" || echo "ratchet commit skipped (no change)"
+fi
 ```
 
 **Known limitation:** the deterministic debt gate is scoped to production source as filtered by Phase 8a — markdown workflow files (this repo's "source") are excluded from it by the generic `*.md` filter; their size/trend is owned by metrics-cop judgment and the gardener, not the deterministic gate. This avoids blocking on prose length, which would be a folklore gate.
