@@ -10,7 +10,7 @@ Run `/wf` for quick reference table.
 
 | Command | Description |
 |---------|-------------|
-| `/wf` | The workflow. Fast TDD on modern primitives (Agent + worktree + tier-auto). Codex reviewer ON by default (`--no-codex` to disable). Prints `wf v25 (11-jun-2026)` as its first line on every invocation. |
+| `/workflow` (`/wf`) | The workflow. Fast TDD on modern primitives (Agent + worktree + tier-auto). Codex reviewer ON by default (`--no-codex` to disable). Prints `workflow v26 (12-jun-2026)` as its first line on every invocation. |
 | `/gardener` | Periodic entropy removal. Reads the longitudinal ledgers (`.claude/metrics/ratchet.tsv`, `debt.tsv`), sweeps for duplication/dead code, executes top-K cleanups as small `/wf`-style tasks (`--top=K`, `--dry-run`). |
 | `/research` (`/r`) | Multi-agent research (codebase + Antigravity + Codex) |
 | `/think` | Council-style deliberation for judgment calls, framing critique, and pushback |
@@ -21,9 +21,9 @@ Run `/wf` for quick reference table.
 
 Older generations live in `legacy/commands/` and `legacy/agents/` at the repo root — outside `.claude/` so Claude Code doesn't auto-register them. They're kept for **evolutionary context only**: an AI coder reading this repo can see how the workflows progressed (wf1 → wf3 anti-regression → wf6 quad-review → wf12 3-cops → wf16 modern primitives → wf16 renamed to `/wf`). Do not reference them as `/legacy:wfX` — that namespace no longer exists. If you need to revive one, copy the file back into `.claude/commands/` and update its content.
 
-### Bumping the `/wf` version banner
+### Bumping the `/workflow` version banner
 
-When the workflow body in `.claude/commands/wf.md` changes meaningfully, update **both** lines at the top of the file:
+When the workflow body in `.claude/commands/workflow.md` changes meaningfully, update **both** lines at the top of the file:
 - `**WF_VERSION:** \`v17\`` (bump from v16)
 - `**WF_COMMITTED:** \`DD-mmm-YYYY\`` (lowercase month abbreviation, e.g. `27-may-2026`)
 
@@ -39,9 +39,9 @@ For Codex skills, `c` is inverted: `$wf -c` and `$research -c` request Claude. T
 
 ## General Rules (Apply to All Workflows)
 
-### `/wf` is explicit-only
+### `/workflow` (`/wf`) is explicit-only
 
-Invoke the `wf` skill ONLY when the user explicitly types `/wf` (or names it: "run wf", "use the workflow"). Never auto-route a code-change request into `/wf` — handle it directly (still under the Codex sidekick rule below). Rolled back 11-jun-2026: the old "all code changes go through /wf" default routing is gone.
+Invoke the `workflow` skill ONLY when the user explicitly types `/workflow` or `/wf` (or names it: "run wf", "use the workflow"). `/wf` is a thin alias command that delegates to `workflow.md`. Never auto-route a code-change request into `/wf` — handle it directly (still under the Codex sidekick rule below). Rolled back 11-jun-2026: the old "all code changes go through /wf" default routing is gone.
 
 ### Codex sidekick — always on, every turn
 
@@ -106,8 +106,12 @@ Before ANY completion claim, you MUST provide:
 ```text
 .claude/
 ├── commands/
-│   ├── wf.md             # The workflow (was wf16). Prints version banner on invocation.
-│   └── r.md, think.md, reflect.md  # Research + deliberation + reflection utilities
+│   ├── workflow.md       # The workflow (was wf16, then wf.md). Prints version banner on invocation.
+│   ├── wf.md             # Thin alias → workflow.md
+│   ├── research.md       # Multi-agent research (canonical)
+│   ├── r.md              # Thin alias → research.md
+│   ├── tl.md             # Thin alias → tldr skill
+│   └── think.md, reflect.md  # Deliberation + reflection utilities
 ├── agents/
 │   ├── simplicity-cop.md, coherence-cop.md, coverage-cop.md   # Boris's 3 cops (used by /wf)
 │   ├── metrics-cop.md                                         # 4th cop: evidence-graded signals — hard-blocks dup/suppressions/cycles, warns on size (v19)

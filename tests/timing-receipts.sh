@@ -12,8 +12,8 @@ fail() { echo "FAIL: $1"; FAILURES=$((FAILURES + 1)); }
 
 THINK=.claude/commands/think.md
 REFLECT=.claude/commands/reflect.md
-WF=.claude/commands/wf.md
-R=.claude/commands/r.md
+WF=.claude/commands/workflow.md
+R=.claude/commands/research.md
 CODEX_WF=codex/.agents/skills/wf/SKILL.md
 CODEX_RESEARCH=codex/.agents/skills/research/SKILL.md
 
@@ -54,7 +54,7 @@ else
   fail "'RESEARCH TIMING RECEIPT' still present in: $(echo "$RESEARCH_BOX_HITS" | tr '\n' ' ')"
 fi
 
-# 6. ⏱ present in wf.md, r.md, and both Codex SKILL.md files
+# 6. ⏱ present in workflow.md, research.md, and both Codex SKILL.md files
 for f in "$WF" "$R" "$CODEX_WF" "$CODEX_RESEARCH"; do
   if grep -q '⏱' "$f" 2>/dev/null; then
     pass "⏱ present in $f"
@@ -70,8 +70,8 @@ else
   fail "CLAUDE.md missing TIMING: row"
 fi
 
-# 8. Banner sync: literal 'wf v24 (11-jun-2026)' in wf.md, CLAUDE.md, README.md
-BANNER='wf v24 (11-jun-2026)'
+# 8. Banner sync: literal 'workflow v26 (12-jun-2026)' in workflow.md, CLAUDE.md, README.md
+BANNER='workflow v26 (12-jun-2026)'
 for f in "$WF" CLAUDE.md README.md; do
   if grep -Fq "$BANNER" "$f" 2>/dev/null; then
     pass "banner '$BANNER' present in $f"
@@ -80,15 +80,15 @@ for f in "$WF" CLAUDE.md README.md; do
   fi
 done
 
-# 9. wf.md receipt name is versioned on BOTH paths (success + UNVERIFIED)
-WF_V24_LINES=$(grep -c '⏱ wf v24' "$WF" 2>/dev/null); WF_V24_LINES=${WF_V24_LINES:-0}
-if [ "$WF_V24_LINES" -ge 2 ]; then
-  pass "wf.md has versioned receipt on both success and UNVERIFIED paths ($WF_V24_LINES lines)"
+# 9. workflow.md receipt name is versioned on BOTH paths (success + UNVERIFIED)
+WF_VER_LINES=$(grep -c '⏱ workflow v26' "$WF" 2>/dev/null); WF_VER_LINES=${WF_VER_LINES:-0}
+if [ "$WF_VER_LINES" -ge 2 ]; then
+  pass "workflow.md has versioned receipt on both success and UNVERIFIED paths ($WF_VER_LINES lines)"
 else
-  fail "wf.md versioned receipt lines: $WF_V24_LINES (need >=2: success + UNVERIFIED)"
+  fail "workflow.md versioned receipt lines: $WF_VER_LINES (need >=2: success + UNVERIFIED)"
 fi
 
-# 10. research receipts carry the mode (graceful when unset) in r.md and Codex research skill
+# 10. research receipts carry the mode (graceful when unset) in research.md and Codex research skill
 for f in "$R" "$CODEX_RESEARCH"; do
   if grep -Fq 'MODE:+' "$f" 2>/dev/null; then
     pass "research receipt carries mode via \${MODE:+ (...)} in $f"

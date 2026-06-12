@@ -1,8 +1,8 @@
 #!/bin/sh
-# pre-commit — keep wf.md's banner honest automatically.
+# pre-commit — keep workflow.md's banner honest automatically.
 # If this commit touches the workflow file, stamp today's date + propagate the
 # version + sync the global copy, then re-stage so the stamped version is what
 # actually gets committed.
-git diff --cached --name-only | grep -qx ".claude/commands/wf.md" || exit 0
-"$(git rev-parse --show-toplevel)/.githooks/stamp-wf.sh" || { echo "pre-commit: stamp-wf failed — refusing to commit a drifted wf.md banner"; exit 1; }
-git add ".claude/commands/wf.md"
+git diff --cached --name-only | grep -qx ".claude/commands/workflow.md" || exit 0
+"$(git rev-parse --show-toplevel)/.githooks/stamp-wf.sh" || { echo "pre-commit: stamp-wf failed — refusing to commit a drifted workflow.md banner"; exit 1; }
+git add ".claude/commands/workflow.md"

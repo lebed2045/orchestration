@@ -14,7 +14,7 @@ SIMP=.claude/agents/simplicity-cop.md
 COHER=.claude/agents/coherence-cop.md
 COVER=.claude/agents/coverage-cop.md
 METRICS=.claude/agents/metrics-cop.md
-WF=.claude/commands/wf.md
+WF=.claude/commands/workflow.md
 GARDENER=.claude/commands/gardener.md
 RATCHET=.claude/metrics/ratchet.tsv
 DEBT=.claude/metrics/debt.tsv
@@ -159,12 +159,12 @@ else
   fail "metrics-cop.md missing '3 consecutive' (debt escalation rule)"
 fi
 
-# 20. wf.md version line bumped to v24
-V24_LINE='**WF_VERSION:** `v24`'
-if grep -qF "$V24_LINE" "$WF" 2>/dev/null; then
-  pass "wf.md contains version line $V24_LINE"
+# 20. workflow.md version line bumped to v26
+VER_LINE='**WF_VERSION:** `v26`'
+if grep -qF "$VER_LINE" "$WF" 2>/dev/null; then
+  pass "workflow.md contains version line $VER_LINE"
 else
-  fail "wf.md missing version line $V24_LINE"
+  fail "workflow.md missing version line $VER_LINE"
 fi
 
 # 21. wf.md references both ledgers
@@ -174,16 +174,16 @@ else
   fail "wf.md missing ratchet.tsv and/or debt.tsv reference"
 fi
 
-# 22. wf.md receipt name versioned to v24 on BOTH paths (success + UNVERIFIED)
-WF_V24_LINES=$(grep -Fc '⏱ wf v24' "$WF" 2>/dev/null); WF_V24_LINES=${WF_V24_LINES:-0}
-if [ "$WF_V24_LINES" -ge 2 ]; then
-  pass "wf.md has v24 receipt on both success and UNVERIFIED paths ($WF_V24_LINES lines)"
+# 22. workflow.md receipt name versioned to v26 on BOTH paths (success + UNVERIFIED)
+WF_VER_LINES=$(grep -Fc '⏱ workflow v26' "$WF" 2>/dev/null); WF_VER_LINES=${WF_VER_LINES:-0}
+if [ "$WF_VER_LINES" -ge 2 ]; then
+  pass "workflow.md has v26 receipt on both success and UNVERIFIED paths ($WF_VER_LINES lines)"
 else
-  fail "wf.md '⏱ wf v24' lines: $WF_V24_LINES (need >=2: success + UNVERIFIED)"
+  fail "workflow.md '⏱ workflow v26' lines: $WF_VER_LINES (need >=2: success + UNVERIFIED)"
 fi
 
-# 23. Banner sync: literal 'wf v24 (11-jun-2026)' in wf.md, CLAUDE.md, README.md
-BANNER='wf v24 (11-jun-2026)'
+# 23. Banner sync: literal 'workflow v26 (12-jun-2026)' in workflow.md, CLAUDE.md, README.md
+BANNER='workflow v26 (12-jun-2026)'
 for f in "$WF" CLAUDE.md README.md; do
   if grep -Fq "$BANNER" "$f" 2>/dev/null; then
     pass "banner '$BANNER' present in $f"
