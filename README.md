@@ -16,7 +16,7 @@ Restart Claude Code and the commands appear.
 
 | Command | What it does |
 |---|---|
-| `/workflow` (`/wf`) | The workflow. Tier-auto TDD on modern primitives. Codex reviewer on by default (`--no-codex` to skip). Prints `workflow v26 (12-jun-2026)` as its first line. |
+| `/workflow` (`/wf`) | The workflow. Tier-auto TDD on modern primitives. Codex reviewer on by default (`--no-codex` to skip). Prints `workflow v27 (13-jun-2026)` as its first line. |
 | `/research` (`/r`) | Codebase + agy bridge MCP + Codex MCP research. |
 | `/think` | Council-style deliberation for judgment calls, framing critique, and pushback. |
 | `/reflect` | Turn recurring failures into rules. |

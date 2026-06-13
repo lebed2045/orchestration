@@ -5,9 +5,9 @@ argument-hint: "[flags] <task>"
 
 # /workflow — Fast-Iteration TDD (Tier-Auto, Split-TDD, No-Worktree, Codex-Default) — `/wf` for short
 
-**WF_VERSION:** `v26` · **WF_COMMITTED:** `12-jun-2026` · **Tag:** `[tier-auto | split-tdd | codex-default | rewind-discard | no-auto-commit | evidence-graded-gates | timing-receipt | segment-timing | assisted-by-trailer | longitudinal-ratchet]`
+**WF_VERSION:** `v27` · **WF_COMMITTED:** `13-jun-2026` · **Tag:** `[tier-auto | split-tdd | codex-default | rewind-discard | no-auto-commit | evidence-graded-gates | timing-receipt | segment-timing | assisted-by-trailer | longitudinal-ratchet | reviewer-timeout]`
 
-**First line of every run must be, verbatim:** `workflow v26 (12-jun-2026)` — derived from the two values above. Bump both when the workflow body changes meaningfully.
+**First line of every run must be, verbatim:** `workflow v27 (13-jun-2026)` — derived from the two values above. Bump both when the workflow body changes meaningfully.
 
 **Second line — help banner:** if invoked via the `/wf` wrapper (the wrapper says so), print `/wf — short for /workflow: tier-auto TDD with cop reviews and Codex gate.` — otherwise print `/workflow — tier-auto TDD with cop reviews and Codex gate (/wf for short).`
 
@@ -228,7 +228,22 @@ The `-g` reviewer runs through the **agy bridge MCP** (`mcp__agy__agy_ask`, Gemi
 
 The bridge owns quota handling. It detects 429 `RESOURCE_EXHAUSTED` from `agy` stdout/stderr and `~/.gemini/antigravity-cli/log/cli-*.log`; if free Gemini quota is exhausted, it automatically routes the same prompt to Vertex `gemini-3.5-flash` on project `gemini-keroga-260526-3895`, location `global`, using service account key `~/dev_local/temp/google300/vertex-key.json` unless overridden by environment. A response prefixed `[agy quota exhausted — auto-routed to Vertex gemini-3.5-flash on project gemini-keroga-260526-3895]` is a valid Gemini response, not a downgrade. Do not substitute Codex/self-review because Vertex credits would be used; Vertex is the intended Gemini fallback. If the bridge was updated but still behaves like the old agy-only bridge, restart Claude Code so the MCP server reloads.
 
-On MISSING: continue with the missing reviewer forced false and print the downgrade loudly (default — `ALLOW_MCP_DOWNGRADE=true` since v16.2; with Codex default-on this means `CODEX REVIEW SKIPPED - MCP missing` must appear in the final output). `--abort-on-missing-mcp` restores the abort behavior. For `-g`, "missing" means the `mcp__agy__agy_ask` tool is not loaded.
+On MISSING: continue with the missing reviewer disabled for execution (its internal flag forced false) and print the downgrade loudly (default — `ALLOW_MCP_DOWNGRADE=true` since v16.2; with Codex default-on this means `CODEX REVIEW SKIPPED - MCP missing` must appear in the final output). **Record it at the gate as `UNREACH (MCP missing)`, not `N/A`** — "forced false" here means "tried, unreachable," which is the same downgrade family as a timeout; `N/A` is reserved for a reviewer the user intentionally did not run (`--no-codex`, or not active for the tier). `--abort-on-missing-mcp` restores the abort behavior. For `-g`, "missing" means the `mcp__agy__agy_ask` tool is not loaded. **A reviewer that does not reply within the 5-minute cap is treated as unreachable too** — same downgrade path; see "Reviewer wall-clock cap" immediately below.
+
+### Reviewer wall-clock cap (v27, always-on) — 5 minutes, no reply ⇒ unreachable, no retry
+
+A reviewer MCP call that hasn't returned within **5 minutes** (`REVIEWER_TIMEOUT = 300s`) is treated as **UNREACHABLE** — the exact same downgrade path as "MCP missing." This fixes the failure mode where a Codex review that drops to the background or stalls leaves the orchestrator blocked for up to ~28h (the default tool-call timeout) "doing nothing meaningful."
+
+- **No retry.** A timeout is **not** a `NEEDS_WORK` verdict, so it does **not** consume an iteration of the "reviewer NEEDS_WORK 3×" circuit breaker. It is one-shot: print the skip line and move to the next phase. Do **not** call the reviewer a second time.
+- **Skip line (loud downgrade contract):** `CODEX REVIEW SKIPPED - timeout >5m (treated as unreachable)` for `-c`; `ANTIGRAVITY REVIEW SKIPPED - timeout >5m (treated as unreachable)` for `-g`. One of these must appear in the final output, just like the MCP-missing line.
+- **Gate verdict semantics:** the reviewer row reads `UNREACHABLE (timeout >5m)`, **not** bare `N/A`. The gate still **PASSes** on that row because `ALLOW_MCP_DOWNGRADE=true` (default). Under `--abort-on-missing-mcp`, an unreachable reviewer **BLOCKS** instead (strict mode), identical to the missing-MCP rule.
+- **Segment stamp:** write the `end` stamp for the call even on the timeout (the harness returns an error tool-result, so the call *does* return) — otherwise the Phase 9 timing receipt shows `UNCLOSED`. Same label as a normal call (`codex:gate2`, etc.).
+
+**Enforcement — the real lever (not folklore).** The markdown cannot interrupt a blocking tool call by itself; the cap is enforced by Claude Code's per-tool-call execution timeout, **`MCP_TOOL_TIMEOUT`** (milliseconds), set in `.claude/settings.local.json` → `env`. This repo sets `MCP_TOOL_TIMEOUT=300000`. When it fires, the harness aborts the hung call and returns an error tool-result, so the orchestrator regains control and applies the unreachable path above. The setting is read **at session start**, so a Claude Code restart is required for a change to take effect, and it does **not** retroactively rescue a call already hung in the current session. (Behavior-on-fire — error tool-result vs. session abort — is undocumented upstream; "returns control to the orchestrator" is the designed behavior but is UNVERIFIED until a live >5m hang is observed post-restart.)
+
+**Scope — reviewers only, by design.** The 5-min cap governs reviewer **MCP** calls (`mcp__codex-cli__codex`, `mcp__agy__agy_ask`). Coder/TDD `Agent()` subagents are **not** MCP calls and are **not** wall-clock-capped here — real implementation work can legitimately exceed 5 minutes. Coders keep their existing **iteration-based** circuit breakers (5 inner-loop iters, 3 regression-fix passes, 2 rewind-discard cycles); a wedged coder is caught by those, not by this timeout. (Known limitation: the skill has no way to impose a wall-clock cap on an `Agent()` call.)
+
+**Blast radius (acknowledged).** `MCP_TOOL_TIMEOUT` is global to *all* MCP tool calls, but it lives in project-scoped `settings.local.json`, so other projects are unaffected. In this project every MCP tool is either a reviewer (`codex-cli`, `agy`) or an occasional quick Google call that never approaches 5 minutes, so the cap only ever bites a genuinely hung reviewer. To cap a single server instead, add a per-server `timeout` field (ms) to that server's `.mcp.json` entry — it overrides `MCP_TOOL_TIMEOUT` for that server only.
 
 ---
 
@@ -399,7 +414,7 @@ Otherwise: same as v1 (self-review + external reviewers). Codex reviews the plan
 | `-c` | MCP tool call | `mcp__codex-cli__codex` with a review-style prompt ending in `End with one line: VERDICT: APPROVED or VERDICT: NEEDS_WORK <reason>.` Model + reasoning effort inherit from `~/.codex/config.toml` — do not pass `model` or reasoning override unless you need to deviate. |
 | `-g` | MCP tool call | `mcp__agy__agy_ask` with `prompt="<review prompt>"` (Gemini 3.5 Flash via the agy bridge; may auto-route to Vertex on agy quota exhaustion; returns the model's text directly — parse it for `APPROVED` / `NEEDS_WORK`) |
 
-For `-g`: end the reviewer prompt with explicit verdict instructions, e.g. `"... End with one line: VERDICT: APPROVED or VERDICT: NEEDS_WORK <reason>."` Orchestrator greps the returned text's last line for the verdict token. Typical latency: 30–60s per call; budget accordingly.
+For `-g`: end the reviewer prompt with explicit verdict instructions, e.g. `"... End with one line: VERDICT: APPROVED or VERDICT: NEEDS_WORK <reason>."` Orchestrator greps the returned text's last line for the verdict token. Typical latency: 30–60s per call; budget accordingly. **Either reviewer is capped at 5 min** — if the call has not returned by then it is treated as UNREACHABLE (no retry, downgrade, proceed) per "Reviewer wall-clock cap" in Phase 0.
 
 If the agy response is truncated and `mcp__agy__agy_continue` is available, continue the same reviewer conversation before marking the Antigravity review failed or starting another pass.
 
@@ -410,11 +425,13 @@ Aggregate block:
 │ [4/9] GATE 1/2 (Plan Review)                │
 ├─────────────────────────────────────────────┤
 │ Self-review: [PROCEED|REVISE]               │
-│ Codex:       [APPROVED|NEEDS_WORK|N/A]      │
-│ Antigravity: [APPROVED|NEEDS_WORK|N/A]      │
+│ Codex:       [APPROVED|NEEDS_WORK|UNREACH|N/A] │
+│ Antigravity: [APPROVED|NEEDS_WORK|UNREACH|N/A] │
 │ GATE STATUS: [PASS|BLOCKED]                 │
 └─────────────────────────────────────────────┘
 ```
+
+`UNREACH` = reviewer unreachable — MCP missing **or** the 5-min cap fired (timeout); the row passes via downgrade (`BLOCKED` only under `--abort-on-missing-mcp`). `N/A` = reviewer not run (`--no-codex`, or not active for this tier). See "Reviewer wall-clock cap" in Phase 0.
 
 ---
 
@@ -657,7 +674,7 @@ echo "PHASE_8a GATE_VERDICT: $GATE_VERDICT"
 
 **Segment stamps (v25):** one `agent:cops` segment around the whole parallel cop batch (wall wait, not per-cop sum), plus `codex:gate2` / `agy:gate2` around each MCP review call.
 
-**For micro: no cop agents, but the default Codex review still runs here** — one `mcp__codex-cli__codex` call reviewing the diff vs `$BASELINE_SHA`, verdict-line protocol as in the Gate 1 reference. `SKIP_GATE2`/`SKIP_COPS` govern cop *agents* only, not the Codex reviewer.
+**For micro: no cop agents, but the default Codex review still runs here** — one `mcp__codex-cli__codex` call reviewing the diff vs `$BASELINE_SHA`, verdict-line protocol as in the Gate 1 reference. `SKIP_GATE2`/`SKIP_COPS` govern cop *agents* only, not the Codex reviewer. This call is subject to the 5-min cap: no reply by then ⇒ UNREACHABLE, print the skip line, no retry, proceed (Phase 0 "Reviewer wall-clock cap").
 
 **For small: TWO Agent calls (coverage-cop + metrics-cop) + Codex (default) / agy MCP, single message, foreground.**
 
@@ -674,13 +691,13 @@ echo "PHASE_8a GATE_VERDICT: $GATE_VERDICT"
 │ Coherence:    [PASS|REJECT|SKIP]            │
 │ Coverage:     [PASS|REJECT|SKIP]            │
 │ Metrics:      [PASS|REJECT|SKIP]            │
-│ Codex Review: [APPROVED|NEEDS_WORK|N/A]     │
-│ Antigravity:  [APPROVED|NEEDS_WORK|N/A]     │
+│ Codex Review: [APPROVED|NEEDS_WORK|UNREACH|N/A] │
+│ Antigravity:  [APPROVED|NEEDS_WORK|UNREACH|N/A] │
 │ OVERALL: [ALL PASS|NEEDS_WORK]              │
 └─────────────────────────────────────────────┘
 ```
 
-`SKIP` rows don't block. Phase 8a REJECT blocks on all tiers. Max 3 reject iterations per failed reviewer.
+`SKIP` rows don't block. `UNREACH` (reviewer unreachable — MCP missing or the 5-min cap fired) passes via downgrade — it is not a `NEEDS_WORK` and does not count toward the 3-iteration cap; `--abort-on-missing-mcp` makes it BLOCK. `N/A` = reviewer not run (`--no-codex` / not active for tier). Phase 8a REJECT blocks on all tiers. Max 3 reject iterations per failed reviewer.
 
 ---
 
@@ -700,7 +717,7 @@ EXECUTION FULL (Phase 7):        [PRESENT|MISSING] — exit = 0?
 EXECUTION FIX (Phase 7b):        [PRESENT|MISSING|N/A] — exit = 0?
 Signals (Phase 8a):              [PASS|REJECT] — batch/dup block; size warns; runs on all tiers
 Cops (Phase 8b):                 [N/N PASS|<N|SKIPPED for tier]
-MCP (Phase 8):                   [APPROVED|N/A] — N/A only via --no-codex or missing MCP; state which
+MCP (Phase 8):                   [APPROVED|UNREACHABLE|N/A] — N/A only via --no-codex; UNREACHABLE = missing MCP or 5-min timeout; state which
 ----------------
 PROVENANCE: [COMPLETE|INCOMPLETE]
 TIER WARNINGS: [list any tier downgrades, e.g., "full tier ran with --no-worktree"]
@@ -746,13 +763,13 @@ The segment block reads `segments.tsv` (same run dir; see Segment timing in Phas
 LEDGER="${WF_LEDGER:-}"   # :- keeps this set-u safe when the env var was lost between Bash calls
 [ -f "$LEDGER" ] || LEDGER=$(find .claude/temp/wf -name started.txt -type f 2>/dev/null | sort | tail -1)
 if [ -z "$LEDGER" ] || [ ! -f "$LEDGER" ]; then
-  echo "⏱ workflow v26 tier=$TIER | TOTAL UNVERIFIED (start stamp not found)"
+  echo "⏱ workflow v27 tier=$TIER | TOTAL UNVERIFIED (start stamp not found)"
 else
   S=$(sed -n 1p "$LEDGER"); SH=$(sed -n 2p "$LEDGER")
   E=$(date +%s); EH=$(date '+%Y-%m-%d %H:%M:%S'); T=$((E - S))
   if [ "$T" -ge 3600 ]; then H=$(printf '%dh %02dm %02ds' $((T/3600)) $((T%3600/60)) $((T%60)));
   else H=$(printf '%dm %02ds' $((T/60)) $((T%60))); fi
-  echo "⏱ workflow v26 tier=$TIER | $SH → $EH | TOTAL $H"
+  echo "⏱ workflow v27 tier=$TIER | $SH → $EH | TOTAL $H"
   SEG="$(dirname "$LEDGER")/segments.tsv"
   if [ -s "$SEG" ]; then
     awk -F'\t' -v total="$T" '
@@ -778,7 +795,7 @@ fi
 Example receipt:
 
 ```text
-⏱ workflow v26 tier=small | 2026-06-11 14:02:11 → 2026-06-11 14:19:48 | TOTAL 17m 37s
+⏱ workflow v27 tier=small | 2026-06-11 14:02:11 → 2026-06-11 14:19:48 | TOTAL 17m 37s
   agent:tdd-red          14:02:40 → 14:05:12  2m 32s
   agent:tdd-green        14:05:20 → 14:11:03  5m 43s
   agent:cops             14:12:30 → 14:15:01  2m 31s
@@ -786,7 +803,7 @@ Example receipt:
   WAIT agent=10m 46s | codex=2m 39s | all-blocking=13m 25s | orchestrator-own=4m 12s
 ```
 
-Output (final line): `ORCHESTRATION COMPLETE (workflow v26, tier=$TIER)`
+Output (final line): `ORCHESTRATION COMPLETE (workflow v27, tier=$TIER)`
 
 ---
 
@@ -822,6 +839,7 @@ Spawning fresh agent with clean context + failure summary.
 | Phase 8a signals REJECT (batch >800 changed LOC, or duplication egregious) | all tiers | STOP: split into smaller changes / deduplicate (DORA + GitClear evidence) |
 | Any cop REJECTS 3× | small/full only | STOP: REVIEW LOOP EXCEEDED |
 | External reviewer (Codex MCP / agy bridge MCP) NEEDS_WORK 3× | if reviewer active | STOP: REVIEW LOOP EXCEEDED |
+| External reviewer no reply within 5-min cap (`MCP_TOOL_TIMEOUT`) | if reviewer active | Treat UNREACHABLE: print skip line, NO retry, downgrade + proceed (`--abort-on-missing-mcp` ⇒ STOP). Not a NEEDS_WORK iteration |
 | Provenance INCOMPLETE | ✓ | STOP, do not merge |
 | Merge not fast-forwardable | if `--commit` | STOP, worktree preserved |
 | Post-merge full suite fails | if `--commit` | STOP, worktree preserved |
