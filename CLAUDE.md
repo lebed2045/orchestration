@@ -10,8 +10,9 @@ Run `/wf` for quick reference table.
 
 | Command | Description |
 |---------|-------------|
-| `/workflow` (`/wf`) | The workflow. Fast TDD on modern primitives (Agent + worktree + tier-auto). Codex reviewer ON by default (`--no-codex` to disable). Prints `workflow v27 (13-jun-2026)` as its first line on every invocation. |
+| `/workflow` (`/wf`) | The workflow. Fast TDD on modern primitives (Agent + worktree + tier-auto). Codex reviewer ON by default (`--no-codex` to disable). Prints `workflow v0.27 (13-jun-2026)` as its first line on every invocation. |
 | `/gardener` | Periodic entropy removal. Reads the longitudinal ledgers (`.claude/metrics/ratchet.tsv`, `debt.tsv`), sweeps for duplication/dead code, executes top-K cleanups as small `/wf`-style tasks (`--top=K`, `--dry-run`). |
+| `/sweep` | End-of-session working-tree sweep. Classifies every uncommitted path into discard/ignore/commit-main/commit-sidecar/stash/hold and executes so `git status` ends clean. Codex consult ON by default (`--fast` / `--no-codex` to skip); secrets hard-fenced from auto-commit; never pushes. Prints `sweep v1 (13-jun-2026)` as its first line. |
 | `/research` (`/r`) | Multi-agent research (codebase + Antigravity + Codex) |
 | `/think` | Council-style deliberation for judgment calls, framing critique, and pushback |
 | `/reflect` | Turn failures into rules with escalation ladder |
