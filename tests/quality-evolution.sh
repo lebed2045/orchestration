@@ -159,8 +159,8 @@ else
   fail "metrics-cop.md missing '3 consecutive' (debt escalation rule)"
 fi
 
-# 20. workflow.md version line bumped to v26
-VER_LINE='**WF_VERSION:** `v26`'
+# 20. workflow.md version line bumped to v0.27
+VER_LINE='**WF_VERSION:** `v0.27`'
 if grep -qF "$VER_LINE" "$WF" 2>/dev/null; then
   pass "workflow.md contains version line $VER_LINE"
 else
@@ -174,16 +174,16 @@ else
   fail "wf.md missing ratchet.tsv and/or debt.tsv reference"
 fi
 
-# 22. workflow.md receipt name versioned to v26 on BOTH paths (success + UNVERIFIED)
-WF_VER_LINES=$(grep -Fc '⏱ workflow v26' "$WF" 2>/dev/null); WF_VER_LINES=${WF_VER_LINES:-0}
+# 22. workflow.md receipt name versioned to v0.27 on BOTH paths (success + UNVERIFIED)
+WF_VER_LINES=$(grep -Fc '⏱ workflow v0.27' "$WF" 2>/dev/null); WF_VER_LINES=${WF_VER_LINES:-0}
 if [ "$WF_VER_LINES" -ge 2 ]; then
-  pass "workflow.md has v26 receipt on both success and UNVERIFIED paths ($WF_VER_LINES lines)"
+  pass "workflow.md has v0.27 receipt on both success and UNVERIFIED paths ($WF_VER_LINES lines)"
 else
-  fail "workflow.md '⏱ workflow v26' lines: $WF_VER_LINES (need >=2: success + UNVERIFIED)"
+  fail "workflow.md '⏱ workflow v0.27' lines: $WF_VER_LINES (need >=2: success + UNVERIFIED)"
 fi
 
-# 23. Banner sync: literal 'workflow v26 (12-jun-2026)' in workflow.md, CLAUDE.md, README.md
-BANNER='workflow v26 (12-jun-2026)'
+# 23. Banner sync: literal 'workflow v0.27 (13-jun-2026)' in workflow.md, CLAUDE.md, README.md
+BANNER='workflow v0.27 (13-jun-2026)'
 for f in "$WF" CLAUDE.md README.md; do
   if grep -Fq "$BANNER" "$f" 2>/dev/null; then
     pass "banner '$BANNER' present in $f"

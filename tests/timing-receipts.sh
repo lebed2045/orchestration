@@ -70,8 +70,8 @@ else
   fail "CLAUDE.md missing TIMING: row"
 fi
 
-# 8. Banner sync: literal 'workflow v26 (12-jun-2026)' in workflow.md, CLAUDE.md, README.md
-BANNER='workflow v26 (12-jun-2026)'
+# 8. Banner sync: literal 'workflow v0.27 (13-jun-2026)' in workflow.md, CLAUDE.md, README.md
+BANNER='workflow v0.27 (13-jun-2026)'
 for f in "$WF" CLAUDE.md README.md; do
   if grep -Fq "$BANNER" "$f" 2>/dev/null; then
     pass "banner '$BANNER' present in $f"
@@ -81,7 +81,7 @@ for f in "$WF" CLAUDE.md README.md; do
 done
 
 # 9. workflow.md receipt name is versioned on BOTH paths (success + UNVERIFIED)
-WF_VER_LINES=$(grep -c '⏱ workflow v26' "$WF" 2>/dev/null); WF_VER_LINES=${WF_VER_LINES:-0}
+WF_VER_LINES=$(grep -c '⏱ workflow v0.27' "$WF" 2>/dev/null); WF_VER_LINES=${WF_VER_LINES:-0}
 if [ "$WF_VER_LINES" -ge 2 ]; then
   pass "workflow.md has versioned receipt on both success and UNVERIFIED paths ($WF_VER_LINES lines)"
 else

@@ -5,9 +5,9 @@ argument-hint: "[flags] <task>"
 
 # /workflow — Fast-Iteration TDD (Tier-Auto, Split-TDD, No-Worktree, Codex-Default) — `/wf` for short
 
-**WF_VERSION:** `v27` · **WF_COMMITTED:** `13-jun-2026` · **Tag:** `[tier-auto | split-tdd | codex-default | rewind-discard | no-auto-commit | evidence-graded-gates | timing-receipt | segment-timing | assisted-by-trailer | longitudinal-ratchet | reviewer-timeout]`
+**WF_VERSION:** `v0.27` · **WF_COMMITTED:** `13-jun-2026` · **Tag:** `[tier-auto | split-tdd | codex-default | rewind-discard | no-auto-commit | evidence-graded-gates | timing-receipt | segment-timing | assisted-by-trailer | longitudinal-ratchet | reviewer-timeout]`
 
-**First line of every run must be, verbatim:** `workflow v27 (13-jun-2026)` — derived from the two values above. Bump both when the workflow body changes meaningfully.
+**First line of every run must be, verbatim:** `workflow v0.27 (13-jun-2026)` — derived from the two values above. Bump both when the workflow body changes meaningfully.
 
 **Second line — help banner:** if invoked via the `/wf` wrapper (the wrapper says so), print `/wf — short for /workflow: tier-auto TDD with cop reviews and Codex gate.` — otherwise print `/workflow — tier-auto TDD with cop reviews and Codex gate (/wf for short).`
 
@@ -230,7 +230,7 @@ The bridge owns quota handling. It detects 429 `RESOURCE_EXHAUSTED` from `agy` s
 
 On MISSING: continue with the missing reviewer disabled for execution (its internal flag forced false) and print the downgrade loudly (default — `ALLOW_MCP_DOWNGRADE=true` since v16.2; with Codex default-on this means `CODEX REVIEW SKIPPED - MCP missing` must appear in the final output). **Record it at the gate as `UNREACH (MCP missing)`, not `N/A`** — "forced false" here means "tried, unreachable," which is the same downgrade family as a timeout; `N/A` is reserved for a reviewer the user intentionally did not run (`--no-codex`, or not active for the tier). `--abort-on-missing-mcp` restores the abort behavior. For `-g`, "missing" means the `mcp__agy__agy_ask` tool is not loaded. **A reviewer that does not reply within the 5-minute cap is treated as unreachable too** — same downgrade path; see "Reviewer wall-clock cap" immediately below.
 
-### Reviewer wall-clock cap (v27, always-on) — 5 minutes, no reply ⇒ unreachable, no retry
+### Reviewer wall-clock cap (v0.27, always-on) — 5 minutes, no reply ⇒ unreachable, no retry
 
 A reviewer MCP call that hasn't returned within **5 minutes** (`REVIEWER_TIMEOUT = 300s`) is treated as **UNREACHABLE** — the exact same downgrade path as "MCP missing." This fixes the failure mode where a Codex review that drops to the background or stalls leaves the orchestrator blocked for up to ~28h (the default tool-call timeout) "doing nothing meaningful."
 
@@ -763,13 +763,13 @@ The segment block reads `segments.tsv` (same run dir; see Segment timing in Phas
 LEDGER="${WF_LEDGER:-}"   # :- keeps this set-u safe when the env var was lost between Bash calls
 [ -f "$LEDGER" ] || LEDGER=$(find .claude/temp/wf -name started.txt -type f 2>/dev/null | sort | tail -1)
 if [ -z "$LEDGER" ] || [ ! -f "$LEDGER" ]; then
-  echo "⏱ workflow v27 tier=$TIER | TOTAL UNVERIFIED (start stamp not found)"
+  echo "⏱ workflow v0.27 tier=$TIER | TOTAL UNVERIFIED (start stamp not found)"
 else
   S=$(sed -n 1p "$LEDGER"); SH=$(sed -n 2p "$LEDGER")
   E=$(date +%s); EH=$(date '+%Y-%m-%d %H:%M:%S'); T=$((E - S))
   if [ "$T" -ge 3600 ]; then H=$(printf '%dh %02dm %02ds' $((T/3600)) $((T%3600/60)) $((T%60)));
   else H=$(printf '%dm %02ds' $((T/60)) $((T%60))); fi
-  echo "⏱ workflow v27 tier=$TIER | $SH → $EH | TOTAL $H"
+  echo "⏱ workflow v0.27 tier=$TIER | $SH → $EH | TOTAL $H"
   SEG="$(dirname "$LEDGER")/segments.tsv"
   if [ -s "$SEG" ]; then
     awk -F'\t' -v total="$T" '
@@ -795,7 +795,7 @@ fi
 Example receipt:
 
 ```text
-⏱ workflow v27 tier=small | 2026-06-11 14:02:11 → 2026-06-11 14:19:48 | TOTAL 17m 37s
+⏱ workflow v0.27 tier=small | 2026-06-11 14:02:11 → 2026-06-11 14:19:48 | TOTAL 17m 37s
   agent:tdd-red          14:02:40 → 14:05:12  2m 32s
   agent:tdd-green        14:05:20 → 14:11:03  5m 43s
   agent:cops             14:12:30 → 14:15:01  2m 31s
@@ -803,7 +803,7 @@ Example receipt:
   WAIT agent=10m 46s | codex=2m 39s | all-blocking=13m 25s | orchestrator-own=4m 12s
 ```
 
-Output (final line): `ORCHESTRATION COMPLETE (workflow v27, tier=$TIER)`
+Output (final line): `ORCHESTRATION COMPLETE (workflow v0.27, tier=$TIER)`
 
 ---
 

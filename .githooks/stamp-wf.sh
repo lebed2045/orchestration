@@ -18,17 +18,17 @@ F=".claude/commands/workflow.md"
 [ -f "$F" ] || { echo "stamp-wf: $F not found"; exit 1; }
 
 TODAY=$(date +%d-%b-%Y | tr 'A-Z' 'a-z')
-VER=$(grep -m1 '^\*\*WF_VERSION:\*\*' "$F" | grep -oE 'v[0-9]+' | head -1)
+VER=$(grep -m1 '^\*\*WF_VERSION:\*\*' "$F" | grep -oE 'v[0-9]+(\.[0-9]+)?' | head -1)
 [ -n "$VER" ] || { echo "stamp-wf: could not find a **WF_VERSION:** line in $F"; exit 1; }
 
 # 1. WF_COMMITTED date  (match the date without touching the surrounding backticks)
 sed -i '' -E "s/(WF_COMMITTED:[^0-9]*)[0-9]{2}-[a-z]{3}-[0-9]{4}/\1${TODAY}/" "$F"
 # 2a. verbatim run-banner:  workflow vN (DD-mmm-YYYY)
-sed -i '' -E "s/workflow v[0-9]+ \([0-9]{2}-[a-z]{3}-[0-9]{4}\)/workflow ${VER} (${TODAY})/" "$F"
+sed -i '' -E "s/workflow v[0-9]+(\.[0-9]+)? \([0-9]{2}-[a-z]{3}-[0-9]{4}\)/workflow ${VER} (${TODAY})/" "$F"
 # 2b. timing-receipt lines:  ⏱ workflow vN tier=
-sed -i '' -E "s/workflow v[0-9]+ tier=/workflow ${VER} tier=/" "$F"
+sed -i '' -E "s/workflow v[0-9]+(\.[0-9]+)? tier=/workflow ${VER} tier=/" "$F"
 # 2c. ORCHESTRATION COMPLETE output line:  workflow vN, tier=
-sed -i '' -E "s/workflow v[0-9]+, tier=/workflow ${VER}, tier=/" "$F"
+sed -i '' -E "s/workflow v[0-9]+(\.[0-9]+)?, tier=/workflow ${VER}, tier=/" "$F"
 
 # 3. sync to global
 cp "$F" "$HOME/.claude/commands/workflow.md"
