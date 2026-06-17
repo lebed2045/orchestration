@@ -70,13 +70,20 @@ else
   fail "CLAUDE.md missing TIMING: row"
 fi
 
-# 8. Banner sync: literal 'workflow v0.27 (13-jun-2026)' in workflow.md, CLAUDE.md, README.md
-BANNER='workflow v0.27 (13-jun-2026)'
+# 8. Banner sync: workflow.md's dated banner appears verbatim in CLAUDE.md + README.md.
+#    Derived dynamically (not a frozen literal) so a legitimate date bump can't break this,
+#    while a desync between the three files still fails.
+BANNER=$(grep -oE 'workflow v[0-9]+(\.[0-9]+)? \([0-9]{2}-[a-z]{3}-[0-9]{4}\)' "$WF" | head -1)
+if [ -n "$BANNER" ]; then
+  pass "workflow.md dated banner present: '$BANNER'"
+else
+  fail "workflow.md has no 'workflow vN (DD-mmm-YYYY)' banner to sync"
+fi
 for f in "$WF" CLAUDE.md README.md; do
-  if grep -Fq "$BANNER" "$f" 2>/dev/null; then
+  if [ -n "$BANNER" ] && grep -Fq "$BANNER" "$f" 2>/dev/null; then
     pass "banner '$BANNER' present in $f"
   else
-    fail "banner '$BANNER' missing in $f"
+    fail "banner '$BANNER' missing in $f (banner desync)"
   fi
 done
 

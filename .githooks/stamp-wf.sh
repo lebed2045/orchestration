@@ -17,7 +17,7 @@ cd "$(git rev-parse --show-toplevel)"
 F=".claude/commands/workflow.md"
 [ -f "$F" ] || { echo "stamp-wf: $F not found"; exit 1; }
 
-TODAY=$(date +%d-%b-%Y | tr 'A-Z' 'a-z')
+TODAY=$(LC_ALL=C date +%d-%b-%Y | tr 'A-Z' 'a-z')   # LC_ALL=C: month abbreviation stays English regardless of locale
 VER=$(grep -m1 '^\*\*WF_VERSION:\*\*' "$F" | grep -oE 'v[0-9]+(\.[0-9]+)?' | head -1)
 [ -n "$VER" ] || { echo "stamp-wf: could not find a **WF_VERSION:** line in $F"; exit 1; }
 
@@ -29,6 +29,13 @@ sed -i '' -E "s/workflow v[0-9]+(\.[0-9]+)? \([0-9]{2}-[a-z]{3}-[0-9]{4}\)/workf
 sed -i '' -E "s/workflow v[0-9]+(\.[0-9]+)? tier=/workflow ${VER} tier=/" "$F"
 # 2c. ORCHESTRATION COMPLETE output line:  workflow vN, tier=
 sed -i '' -E "s/workflow v[0-9]+(\.[0-9]+)?, tier=/workflow ${VER}, tier=/" "$F"
+
+# 2d. propagate the dated run-banner to the sibling files that carry it verbatim, so
+#     workflow.md / CLAUDE.md / README.md never desync. The pre-commit hook force-stages all
+#     three (and refuses if any had unstaged edits, so this only ever stages the banner change).
+for SIB in CLAUDE.md README.md; do
+  [ -f "$SIB" ] && sed -i '' -E "s/workflow v[0-9]+(\.[0-9]+)? \([0-9]{2}-[a-z]{3}-[0-9]{4}\)/workflow ${VER} (${TODAY})/g" "$SIB"
+done
 
 # 3. sync to global
 cp "$F" "$HOME/.claude/commands/workflow.md"

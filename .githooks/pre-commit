@@ -4,5 +4,15 @@
 # version + sync the global copy, then re-stage so the stamped version is what
 # actually gets committed.
 git diff --cached --name-only | grep -qx ".claude/commands/workflow.md" || exit 0
+# The banner stamp rewrites + force-stages workflow.md, CLAUDE.md, README.md so their banners stay
+# in sync. Refuse if any target has UNSTAGED edits — otherwise force-staging would sweep unrelated
+# changes into this commit.
+for bf in ".claude/commands/workflow.md" "CLAUDE.md" "README.md"; do
+  if ! git diff --quiet -- "$bf"; then   # no -f: also catches an unstaged DELETION of a tracked banner file
+    echo "pre-commit: $bf has unstaged changes — stage or stash them first (the banner-sync stamp force-stages it)"; exit 1
+  fi
+done
 "$(git rev-parse --show-toplevel)/.githooks/stamp-wf.sh" || { echo "pre-commit: stamp-wf failed — refusing to commit a drifted workflow.md banner"; exit 1; }
-git add ".claude/commands/workflow.md"
+for bf in ".claude/commands/workflow.md" "CLAUDE.md" "README.md"; do
+  [ -f "$bf" ] && git add -- "$bf"   # only stage files that exist (the guard already refused any unstaged deletion)
+done
