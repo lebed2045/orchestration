@@ -11,7 +11,7 @@ argument-hint: "[flags] <task>"
 
 **Second line — help banner:** if invoked via the `/wf` wrapper (the wrapper says so), print `/wf — short for /workflow: tier-auto TDD with cop reviews and Codex gate.` — otherwise print `/workflow — tier-auto TDD with cop reviews and Codex gate (/wf for short).`
 
-`-g` = Antigravity via agy bridge MCP (`mcp__agy__agy_ask`, Gemini 3.5 Flash). `-c` = Codex MCP — **DEFAULT-ON since v22** (all tiers; `--no-codex` disables). No-flag default: tier-auto, split TDD, no worktree, Codex reviewer ON, no Antigravity, no gate, no commit.
+`-g` = Antigravity via agy bridge MCP (`mcp__agy__agy_ask`, Gemini). `-c` = Codex MCP — **DEFAULT-ON since v22** (all tiers; `--no-codex` disables). No-flag default: tier-auto, split TDD, no worktree, Codex reviewer ON, no Antigravity, no gate, no commit.
 
 ## Usage
 
@@ -33,7 +33,7 @@ argument-hint: "[flags] <task>"
 | `--worktree` | Force-create isolated git worktree (steipete-counter: only when you want it) | |
 | `-c` | Codex MCP reviewer at both active gates (micro: Gate 2 only) | **DEFAULT** (since v22; flag kept for explicitness) |
 | `--no-codex` | Disable the default Codex reviewer for this run (last flag wins if combined with `-c`) | opt-in |
-| `-g` | Add Antigravity reviewer (`mcp__agy__agy_ask` bridge, Gemini 3.5 Flash) at both gates | opt-in |
+| `-g` | Add Antigravity reviewer (`mcp__agy__agy_ask` bridge, Gemini) at both gates | opt-in |
 | `-h` | Human gate via `AskUserQuestion` after RED | opt-in |
 | `--commit` | ff-only merge to main on success | opt-in |
 | `--allow-mcp-downgrade` | Continue if requested reviewer is missing (Codex MCP or agy bridge MCP) | **DEFAULT** (was abort in v16.1) |
@@ -224,9 +224,9 @@ ToolSearch({query: "select:mcp__codex-cli__codex,mcp__codex-cli__codex-reply", m
 ToolSearch({query: "select:mcp__agy__agy_ask,mcp__agy__agy_continue,mcp__agy__agy_status", max_results: 3})
 ```
 
-The `-g` reviewer runs through the **agy bridge MCP** (`mcp__agy__agy_ask`, Gemini 3.5 Flash) — register once with `claude mcp add agy -- ~/.claude/mcp-servers/agy-bridge/.venv/bin/python ~/.claude/mcp-servers/agy-bridge/server.py`, then restart Claude Code. The bridge wraps `agy` and reads its transcript files, working around the `agy -p` headless-stdout bug.
+The `-g` reviewer runs through the **agy bridge MCP** (`mcp__agy__agy_ask`, Gemini) — register once with `claude mcp add agy -- ~/.claude/mcp-servers/agy-bridge/.venv/bin/python ~/.claude/mcp-servers/agy-bridge/server.py`, then restart Claude Code. The bridge wraps `agy` and reads its transcript files, working around the `agy -p` headless-stdout bug.
 
-The bridge owns quota handling. It detects 429 `RESOURCE_EXHAUSTED` from `agy` stdout/stderr and `~/.gemini/antigravity-cli/log/cli-*.log`; if free Gemini quota is exhausted, it automatically routes the same prompt to Vertex `gemini-3.5-flash` on project `<vertex-project>`, location `global`, using service account key `<vertex-sa-key-path>` unless overridden by environment. A response prefixed `[agy quota exhausted — auto-routed to Vertex gemini-3.5-flash on project <vertex-project>]` is a valid Gemini response, not a downgrade. Do not substitute Codex/self-review because Vertex credits would be used; Vertex is the intended Gemini fallback. If the bridge was updated but still behaves like the old agy-only bridge, restart Claude Code so the MCP server reloads.
+The bridge owns model selection, quota, and fallback internally — that config (its fallback backend, project, and credentials) lives in the bridge's own repo, not here. If free Gemini quota is exhausted it auto-routes to its configured fallback and prefixes the response with an `[agy quota exhausted — auto-routed …]` note; that is a valid Gemini response, not a downgrade — do not substitute Codex/self-review to avoid it. If the bridge was updated but still behaves like the old agy-only bridge, restart Claude Code so the MCP server reloads.
 
 On MISSING: continue with the missing reviewer disabled for execution (its internal flag forced false) and print the downgrade loudly (default — `ALLOW_MCP_DOWNGRADE=true` since v16.2; with Codex default-on this means `CODEX REVIEW SKIPPED - MCP missing` must appear in the final output). **Record it at the gate as `UNREACH (MCP missing)`, not `N/A`** — "forced false" here means "tried, unreachable," which is the same downgrade family as a timeout; `N/A` is reserved for a reviewer the user intentionally did not run (`--no-codex`, or not active for the tier). `--abort-on-missing-mcp` restores the abort behavior. For `-g`, "missing" means the `mcp__agy__agy_ask` tool is not loaded. **A reviewer that does not reply within the 5-minute cap is treated as unreachable too** — same downgrade path; see "Reviewer wall-clock cap" immediately below.
 
@@ -412,7 +412,7 @@ Otherwise: same as v1 (self-review + external reviewers). Codex reviews the plan
 | Flag | Surface | Invocation pattern |
 |---|---|---|
 | `-c` | MCP tool call | `mcp__codex-cli__codex` with a review-style prompt ending in `End with one line: VERDICT: APPROVED or VERDICT: NEEDS_WORK <reason>.` Model + reasoning effort inherit from `~/.codex/config.toml` — do not pass `model` or reasoning override unless you need to deviate. |
-| `-g` | MCP tool call | `mcp__agy__agy_ask` with `prompt="<review prompt>"` (Gemini 3.5 Flash via the agy bridge; may auto-route to Vertex on agy quota exhaustion; returns the model's text directly — parse it for `APPROVED` / `NEEDS_WORK`) |
+| `-g` | MCP tool call | `mcp__agy__agy_ask` with `prompt="<review prompt>"` (Gemini via the agy bridge; may auto-route to its configured fallback on agy quota exhaustion; returns the model's text directly — parse it for `APPROVED` / `NEEDS_WORK`) |
 
 For `-g`: end the reviewer prompt with explicit verdict instructions, e.g. `"... End with one line: VERDICT: APPROVED or VERDICT: NEEDS_WORK <reason>."` Orchestrator greps the returned text's last line for the verdict token. Typical latency: 30–60s per call; budget accordingly. **Either reviewer is capped at 5 min** — if the call has not returned by then it is treated as UNREACHABLE (no retry, downgrade, proceed) per "Reviewer wall-clock cap" in Phase 0.
 

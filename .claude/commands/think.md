@@ -105,9 +105,9 @@ ToolSearch({query: "select:mcp__agy__agy_ask,mcp__agy__agy_continue,mcp__agy__ag
 # AGY_AVAILABLE=true iff mcp__agy__agy_ask is loaded
 ```
 
-The bridge wraps `agy` (config under `~/.gemini/`) and reads its transcript files. Model is fixed to Gemini 3.5 Flash (High) by the bridge — the command never passes a model. Register once: `claude mcp add agy -- ~/.claude/mcp-servers/agy-bridge/.venv/bin/python ~/.claude/mcp-servers/agy-bridge/server.py`, then restart Claude Code.
+The bridge wraps `agy` (config under `~/.gemini/`) and reads its transcript files. Model selection is owned by the bridge — the command never passes a model. Register once: `claude mcp add agy -- ~/.claude/mcp-servers/agy-bridge/.venv/bin/python ~/.claude/mcp-servers/agy-bridge/server.py`, then restart Claude Code.
 
-The bridge owns quota handling. It detects 429 `RESOURCE_EXHAUSTED` from `agy` stdout/stderr and `~/.gemini/antigravity-cli/log/cli-*.log`; if free Gemini quota is exhausted, it automatically routes the same prompt to Vertex `gemini-3.5-flash` on project `<vertex-project>`, location `global`, using service account key `<vertex-sa-key-path>` unless overridden by environment. A response prefixed `[agy quota exhausted — auto-routed to Vertex gemini-3.5-flash on project <vertex-project>]` is a valid Gemini council response, not a downgrade. Do not substitute Codex/self-deliberation because Vertex credits would be used; Vertex is the intended Gemini fallback. If the bridge was updated but still behaves like the old agy-only bridge, restart Claude Code so the MCP server reloads.
+The bridge owns model selection, quota, and fallback internally — that config (its fallback backend, project, and credentials) lives in the bridge's own repo, not here. If free Gemini quota is exhausted it auto-routes to its configured fallback and prefixes the response with an `[agy quota exhausted — auto-routed …]` note; that is a valid Gemini council response, not a downgrade — do not substitute Codex/self-deliberation to avoid it. If the bridge was updated but still behaves like the old agy-only bridge, restart Claude Code so the MCP server reloads.
 
 ### 0c. USER.md persona card
 
@@ -276,7 +276,7 @@ Capture the tool response to `/tmp/think-codex.md`.
 
 ### 2c. Antigravity (agy bridge MCP) — Expansionist / Analogy
 
-Call the `mcp__agy__agy_ask` MCP tool (Gemini 3.5 Flash via the agy bridge) with `timeout_s=120`. It returns the model's final text directly — save it to `/tmp/think-agy.md`. The bridge reads agy's transcript files, so the old headless-stdout hang is gone; no background PID/kill management needed.
+Call the `mcp__agy__agy_ask` MCP tool (Gemini via the agy bridge) with `timeout_s=120`. It returns the model's final text directly — save it to `/tmp/think-agy.md`. The bridge reads agy's transcript files, so the old headless-stdout hang is gone; no background PID/kill management needed.
 
 ```text
 mcp__agy__agy_ask  timeout_s=120  prompt="

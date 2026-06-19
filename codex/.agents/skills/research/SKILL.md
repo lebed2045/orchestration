@@ -37,10 +37,10 @@ Ask one concise clarification only when the topic is too vague to research safel
 4. If `-g` is set:
    - Discover the agy bridge MCP before the research call. If `tool_search` is available, search for `mcp__agy__agy_ask`, `mcp__agy__agy_continue`, and `mcp__agy__agy_status`; otherwise use whichever callable MCP tools are already exposed in the session.
    - Call `mcp__agy__agy_ask` with a prompt asking for practical patterns, pitfalls, trade-offs, reference implementations, and source URLs. Use a bounded timeout when that argument is supported.
-   - The bridge owns model selection and quota handling: it first tries Antigravity `agy`, detects 429 `RESOURCE_EXHAUSTED` from `agy` stdout/stderr and `~/.gemini/antigravity-cli/log/cli-*.log`, and if free Gemini quota is exhausted automatically routes the same prompt to Vertex `gemini-3.5-flash` on project `<vertex-project>`, location `global`, using service account key `<vertex-sa-key-path>` unless overridden by bridge environment.
-   - Treat a response prefixed `[agy quota exhausted — auto-routed to Vertex gemini-3.5-flash on project <vertex-project>]` as a valid Gemini research response, not as a degradation. Record the route in the output document.
+   - The bridge owns model selection, quota, and fallback internally — that config (its fallback backend, project, and credentials) lives in the bridge's own repo, not here. It first tries Antigravity `agy` and, if free Gemini quota is exhausted, auto-routes to its configured fallback.
+   - Treat a response prefixed `[agy quota exhausted — auto-routed …]` as a valid Gemini research response, not as a degradation. Record the route in the output document.
    - If the response is truncated and `mcp__agy__agy_continue` is available, continue the same research conversation rather than starting over.
-   - Do not replace a requested `-g` pass with Claude, Codex, or inline-only research because of perceived cost. The Vertex fallback is the intended Gemini fallback. Only degrade when the agy MCP tool is missing, errors, or times out after its own fallback path.
+   - Do not replace a requested `-g` pass with Claude, Codex, or inline-only research because of perceived cost. The bridge's fallback is the intended Gemini path. Only degrade when the agy MCP tool is missing, errors, or times out after its own fallback path.
    - If the agy MCP tool is missing, write a visible `Gemini unavailable` degradation note. Use browser/web research only as a labeled fallback for source citations when browsing is available; do not pretend Gemini participated.
    - Cite sources in the final doc. If Gemini returns uncited claims, verify/cite them separately or label them as uncited Gemini claims.
    - If the bridge was recently updated but still behaves like the old agy-only bridge, note that the MCP host must be restarted before the new fallback code is loaded.
@@ -63,7 +63,7 @@ Use this structure:
 Generated: <YYYY-MM-DD HH:MM>
 Mode: codebase [+ Gemini/Antigravity] [+ browser fallback] [+ Claude or degraded independent implementation pass]
 Degradation: <none or note>
-Gemini route: <agy | Vertex fallback | unavailable | not requested>
+Gemini route: <agy | bridge fallback | unavailable | not requested>
 
 ## Executive Summary
 

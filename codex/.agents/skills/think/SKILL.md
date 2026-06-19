@@ -30,10 +30,10 @@ If the user writes `/think`, treat it as `$think`.
 - If a persona card exists at `~/.codex/USER.md`, read it. If not, fall back to `~/.claude/USER.md` only if accessible. If neither exists, continue without a persona card and say so.
 - Do not browse unless the topic needs current facts; this workflow is primarily judgment, not research.
 - For Gemini/Antigravity participation, discover the agy bridge MCP before deliberation. If `tool_search` is available, search for `mcp__agy__agy_ask`, `mcp__agy__agy_continue`, and `mcp__agy__agy_status`; otherwise use whichever callable MCP tools are already exposed in the session.
-- The agy bridge owns model selection and quota handling: it first tries Antigravity `agy`, detects 429 `RESOURCE_EXHAUSTED` from `agy` stdout/stderr and `~/.gemini/antigravity-cli/log/cli-*.log`, and if free Gemini quota is exhausted automatically routes the same prompt to Vertex `gemini-3.5-flash` on project `<vertex-project>`, location `global`, using service account key `<vertex-sa-key-path>` unless overridden by bridge environment.
-- Treat a response prefixed `[agy quota exhausted — auto-routed to Vertex gemini-3.5-flash on project <vertex-project>]` as a valid Gemini council response, not as a degradation. Record the route in council provenance.
+- The agy bridge owns model selection, quota, and fallback internally — that config (its fallback backend, project, and credentials) lives in the bridge's own repo, not here. It first tries Antigravity `agy` and, if free Gemini quota is exhausted, auto-routes to its configured fallback.
+- Treat a response prefixed `[agy quota exhausted — auto-routed …]` as a valid Gemini council response, not as a degradation. Record the route in council provenance.
 - If a Gemini response is truncated and `mcp__agy__agy_continue` is available, continue the same council-member conversation rather than starting a replacement pass.
-- Do not replace requested Gemini/Antigravity participation with Claude, Codex, or another inline pass because of perceived cost. The Vertex fallback is the intended Gemini fallback. Only degrade when the agy MCP tool is missing, errors, or times out after its own fallback path.
+- Do not replace requested Gemini/Antigravity participation with Claude, Codex, or another inline pass because of perceived cost. The bridge's fallback is the intended Gemini path. Only degrade when the agy MCP tool is missing, errors, or times out after its own fallback path.
 - If the bridge was recently updated but still behaves like the old agy-only bridge, note that the MCP host must be restarted before the new fallback code is loaded.
 
 ## Council Passes
@@ -72,7 +72,7 @@ Generated: <YYYY-MM-DD HH:MM>
 Mode: <default | --solo | --nudge>
 Independence: <true subagents | inline separated passes | solo>
 Persona card: <path | none>
-Gemini route: <agy | Vertex fallback | unavailable | not requested>
+Gemini route: <agy | bridge fallback | unavailable | not requested>
 
 ## Synthesis
 

@@ -110,7 +110,7 @@ Vanilla Claude reviews its own work and the review is biased. `/wf` enforces thr
 
 Codex `-c` uses the official-Claude bridge at `~/.agents/bin/claude-peer` or `codex/bin/claude-peer`, preferring the user-local copy. It requires Claude Code subscription login (`claude.ai`) and refuses API-key auth, so it uses your Claude quota, not API billing. This is for local personal workflow use; workflows must say clearly when an optional reviewer is unavailable.
 
-The agy bridge first tries `agy`. It detects 429 `RESOURCE_EXHAUSTED` from `agy` stdout/stderr and `~/.gemini/antigravity-cli/log/cli-*.log`; if free Gemini quota is exhausted, the bridge automatically routes the same prompt to a Vertex Gemini model (`gemini-3.5-flash`) using a project, location, and service-account key read from the bridge's own environment — never committed — and prefixes the response with the route. Workflows should treat that as the intended Gemini fallback, not substitute Claude/Codex or inline self-review to avoid Vertex credits. After bridge-code updates, restart the MCP host so the new fallback logic is loaded.
+The agy bridge owns model selection, quota, and fallback internally — that config (its fallback backend, project, and credentials) lives in the bridge's own repo, not here. If free Gemini quota is exhausted the bridge auto-routes to its configured fallback and prefixes the response with the route. Workflows should treat that as the intended Gemini fallback, not substitute Claude/Codex or inline self-review to avoid it. After bridge-code updates, restart the MCP host so the new fallback logic is loaded.
 
 ## Thanks
 
