@@ -5,7 +5,7 @@ description: Codex-native fast-iteration TDD workflow equivalent to Claude /wf. 
 
 # WF
 
-First response line for every run: `wf v0.21 (19-jun-2026)`.
+First response line for every run: `wf (19-jun-2026)`.
 
 This is the Codex-native adaptation of `.claude/commands/wf.md`. Preserve the workflow intent, but use Codex surfaces: `update_plan`, shell commands, available subagents, available MCP/app tools, and explicit degradation notes. Do not call Claude-only primitives such as `TodoWrite`, `EnterPlanMode`, `AskUserQuestion`, or `Agent`.
 

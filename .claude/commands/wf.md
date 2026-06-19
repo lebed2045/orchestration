@@ -5,6 +5,8 @@ argument-hint: "[flags] <task>"
 
 # /wf — short for /workflow
 
+**Updated:** `19-jun-2026`
+
 Invoke the `workflow` skill (Skill tool — not the built-in Workflow orchestration tool) with the arguments below passed through verbatim. Follow only the skill file. Tell it you were invoked via the `/wf` wrapper so its second-line help banner uses the `/wf — short for /workflow: …` variant; its first-line version banner prints as usual.
 
 $ARGUMENTS

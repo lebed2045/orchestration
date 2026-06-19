@@ -1,6 +1,6 @@
 # /research - Multi-Agent Research
 
-**R_VERSION:** `v0.1` · **R_COMMITTED:** `19-jun-2026`
+**Updated:** `19-jun-2026`
 
 **Help banner.** Unless the invoking command already printed one (the `/r` wrapper prints its own), print exactly this line first:
 

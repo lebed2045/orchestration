@@ -1,4 +1,6 @@
-# /reflect v2 - Turn Failures into Rules with Escalation
+# /reflect - Turn Failures into Rules with Escalation
+
+**Updated:** `19-jun-2026`
 
 **Purpose**: Turn failures into WHEN/DO/PROVE rules in CLAUDE.md. Track recurrence. Escalate mechanically.
 
@@ -429,7 +431,7 @@ Also show escalation status:
 
 ## Summary
 
-| Feature | v1 (old) | v2 (current) |
+| Feature | Old | Current |
 |---------|----------|--------------|
 | **Rule format** | Prose paragraphs | WHEN/DO/PROVE |
 | **Storage** | failures.md only | incidents.jsonl + failures.md |

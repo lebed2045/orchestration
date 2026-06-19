@@ -5,7 +5,7 @@ description: Codex-native research workflow equivalent to Claude /research. Use 
 
 # Research
 
-First response line for every run: `research v0.1 (19-jun-2026)`.
+First response line for every run: `research (19-jun-2026)`.
 
 Run a codebase-first research pass with optional external/source-backed research. This adapts `.claude/commands/r.md` for Codex.
 

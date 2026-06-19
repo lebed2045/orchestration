@@ -5,6 +5,8 @@ description: Summarize the previous assistant output in a tweet-size message and
 
 # tldr — tweet-size summary of the last output, with action buttons
 
+**Updated:** `19-jun-2026`
+
 **Charter:** The user shouldn't have to read a wall of text to decide what happens next. Compress the last output to one tweet, then hand them buttons for the real choices — or no buttons if there's genuinely nothing to choose.
 
 ## Steps

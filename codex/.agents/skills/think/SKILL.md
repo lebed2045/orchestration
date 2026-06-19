@@ -5,7 +5,7 @@ description: Codex-native deliberation workflow equivalent to Claude /think. Use
 
 # Think
 
-First response line for every run: `think v0.1 (19-jun-2026)`.
+First response line for every run: `think (19-jun-2026)`.
 
 This is a Codex-native adaptation of `.claude/commands/think.md`. Use it for opinion, judgment, framing critique, or decisions without a single objective test. Do not use it for code changes (`$wf` exists for those, but only on explicit invocation), or source-backed factual research that should run through `$research`.
 
@@ -67,7 +67,7 @@ Write `codex/research/think-<slug>.md` with:
 ```markdown
 # Council deliberation: <topic>
 
-think v0.1 (19-jun-2026)
+think (19-jun-2026)
 Generated: <YYYY-MM-DD HH:MM>
 Mode: <default | --solo | --nudge>
 Independence: <true subagents | inline separated passes | solo>

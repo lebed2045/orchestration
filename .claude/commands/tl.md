@@ -1,5 +1,7 @@
 # /tl — tweet-size TLDR of the last output, with action buttons
 
+**Updated:** `19-jun-2026`
+
 First print exactly this help line:
 
 `/tl — short for /tldr: tweet-size summary of the last assistant output, with clickable next-action buttons.`
