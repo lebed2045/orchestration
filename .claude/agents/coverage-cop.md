@@ -47,6 +47,7 @@ $QUICK_TEST_CMD 2>&1 | tail -20
 - [ ] Tests are deterministic (no flaky)? → If not, REJECT
 - [ ] Tests have meaningful assertions (not just "no error")? → If not, REJECT
 - [ ] Tests cover the contract, not implementation details? → If not, Flag
+- [ ] Test name/assertion makes clear WHY this behavior matters, and breaks if the meaningful logic is wrong (not just if output bytes shift)? → If not, Flag
 
 ## Behavior Evidence Matrix
 
