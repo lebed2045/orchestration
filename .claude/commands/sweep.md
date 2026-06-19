@@ -3,11 +3,11 @@ description: "Sweep the working tree after agents finish: classify every uncommi
 argument-hint: "[--fast] [--no-codex] [--dry-run] [freeform hint]"
 ---
 
-# /sweep — Working-Tree Sweep (v1, ships with workflow v0.27)
+# /sweep — Working-Tree Sweep (v0.1, ships with workflow v0.28)
 
 Companion to `/gardener`. `/gardener` is periodic **deep** entropy removal across the whole repo; `/sweep` is the quick **end-of-session** pass over whatever the agents left uncommitted — it reads each leftover file, decides what it is, and disposes of it so `git status` ends clean.
 
-**First line of every run, verbatim:** `sweep v1 (13-jun-2026)`.
+**First line of every run, verbatim:** `sweep v0.1 (19-jun-2026)`.
 
 The job that used to be "hey, what are these files?" → read each one → delete / gitignore / commit / separate-chore-commit / stash, every time. This is that loop as one command.
 
@@ -137,7 +137,7 @@ echo "== new stashes =="; git stash list | grep -E 'sweep/(unclear|sensitive|res
 
 The clean-tree postcondition is **enforced, not just checked**: if anything survives the execute phase, fail closed by stashing it (`sweep/residue` — reversible, nothing lost) so the promise holds, then report the anomaly to investigate. Only claim a clean tree when the final `git status --porcelain -uall` is provably **empty**; if even the residue stash leaves something, stop and report `tree clean: no` with the exact remainder — never assert clean without the empty status.
 
-Print a final **disposition table**: each path → bucket → outcome (commit SHA / stash ref / removed), plus recovery hints (`git stash pop <ref>` to restore, `git reset --soft HEAD~N` to unwind commits). End with `SWEEP COMPLETE (v1) — tree clean: <yes/no>`.
+Print a final **disposition table**: each path → bucket → outcome (commit SHA / stash ref / removed), plus recovery hints (`git stash pop <ref>` to restore, `git reset --soft HEAD~N` to unwind commits). End with `SWEEP COMPLETE (v0.1) — tree clean: <yes/no>`.
 
 ## Safety invariants (always on, every mode)
 

@@ -1,8 +1,8 @@
 # /think — Council of Opus + Codex + Antigravity. One-shot, peer-reviewed, anti-sycophancy.
 
-**THINK_VERSION:** `v1` · **THINK_COMMITTED:** `08-jun-2026` · **Tag:** `[council-default | peer-review | anti-syco | persona-card]`
+**THINK_VERSION:** `v0.1` · **THINK_COMMITTED:** `19-jun-2026` · **Tag:** `[council-default | peer-review | anti-syco | persona-card]`
 
-**First line of every run must be, verbatim:** `think v1 (08-jun-2026)` — derived from the two values above. Bump both when the deliberation logic changes meaningfully.
+**First line of every run must be, verbatim:** `think v0.1 (19-jun-2026)` — derived from the two values above. Bump both when the deliberation logic changes meaningfully.
 
 A third primitive next to `/wf` (do) and `/r` (find): for open / introspective / "what do you think?" questions where there is no objective ground truth. Implements **Karpathy's LLM Council** (parallel → anonymized peer review → chair synthesis) with **forced reasoning-method diversity** (ngmeyer/council-review). Anti-sycophancy is load-bearing, not decorative.
 
@@ -12,7 +12,7 @@ A third primitive next to `/wf` (do) and `/r` (find): for open / introspective /
 /think <topic>                       # default: 3-agent council (Opus + Codex + Antigravity)
 /think --solo <topic>                # Opus only — fast, no peer review
 /think --nudge "<pushback>"          # re-deliberate on most-recent think-*.md with new context
-/think --vault <path> <topic>        # OPT-IN journal RAG — DEFERRED to v2, ignored in v1
+/think --vault <path> <topic>        # OPT-IN journal RAG — DEFERRED to a later version, ignored in v0.1
 ```
 
 **Default behavior:** all three EIs in parallel. The `-cg` is not an opt-in here — it is the point of the command. Flags subtract.
@@ -53,11 +53,11 @@ if [[ "$TOPIC" == *"--nudge"* ]]; then
   TOPIC="${TOPIC//--nudge=$NUDGE/}"
 fi
 
-# --vault <path> (deferred to v2)
+# --vault <path> (deferred to a later version)
 if [[ "$TOPIC" == *"--vault"* ]]; then
   VAULT_PATH=$(echo "$TOPIC" | sed -n 's/.*--vault[[:space:]]\+\([^ ]*\).*/\1/p')
   TOPIC="${TOPIC//--vault $VAULT_PATH/}"
-  echo "[INFO] --vault is documented but NOT implemented in v1. Ignoring '$VAULT_PATH'. Persona card only."
+  echo "[INFO] --vault is documented but NOT implemented in v0.1. Ignoring '$VAULT_PATH'. Persona card only."
 fi
 
 TOPIC="${TOPIC## }"; TOPIC="${TOPIC%% }"
@@ -340,7 +340,7 @@ FINAL RANKING:
 
 Parse the ranking, de-anonymize using the saved mapping, store for Phase 4.
 
-**Honest framing of the anonymization:** In a single-orchestrator session, Opus chair could plausibly recognize its own subagent's voice. The shuffle is best-effort, not perfect blinding. A v2 with separate backend processes would be the real fix.
+**Honest framing of the anonymization:** In a single-orchestrator session, Opus chair could plausibly recognize its own subagent's voice. The shuffle is best-effort, not perfect blinding. A later version with separate backend processes would be the real fix.
 
 ---
 
@@ -405,7 +405,7 @@ Write `.claude/research/think-${SLUG}.md` (or `.claude/research/think-${ORIGINAL
 ```markdown
 # Council deliberation: <TOPIC>
 
-think v1 (08-jun-2026)
+think v0.1 (19-jun-2026)
 Generated: <YYYY-MM-DD HH:MM>
 Council size: <N> (Opus + [Codex] + [Antigravity])
 Mode: <default | --solo | --nudge from think-<prev-slug>.md>
@@ -475,7 +475,7 @@ This is a thinking tool, not therapy. The output is opinion, not fact — no EXI
 ### 5b. Surface synthesis in chat (synthesis-only, per user choice)
 
 In-chat output is ONLY:
-1. The first-line banner: `think v1 (08-jun-2026)`
+1. The first-line banner: `think v0.1 (19-jun-2026)`
 2. (If degraded) the `DEGRADE_NOTE` line
 3. The full `## Synthesis` block from the file (4 sub-sections + provenance)
 4. The clickable link:
@@ -553,7 +553,7 @@ This file is injected verbatim into every council member's prompt. Opus, Codex (
 
 ## Documents the council CAN quote from
 - [Optional path: ~/journals/2026/, only if you want it read]
-- (Empty = persona card only. Recommended for v1 — the --vault flag is deferred.)
+- (Empty = persona card only. Recommended for v0.1 — the --vault flag is deferred.)
 
 ## Anti-sycophancy preferences (the council reads this verbatim)
 - I want disagreement, even when uncomfortable.

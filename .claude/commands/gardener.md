@@ -3,7 +3,9 @@ description: "Periodic entropy-removal workflow. Reads the longitudinal ledgers 
 argument-hint: "[--top=K] [--dry-run]"
 ---
 
-# /gardener — Periodic Entropy Removal (v1, ships with workflow v0.27)
+# /gardener — Periodic Entropy Removal (v0.1, ships with workflow v0.28)
+
+**G_VERSION:** `v0.1` · **G_COMMITTED:** `19-jun-2026`
 
 Companion to `/wf`'s longitudinal gates. `/wf` *blocks* new entropy (ratchet + debt escalation); `/gardener` *removes* accumulated entropy on demand. Run it manually when the ledgers show drift, or on a schedule.
 

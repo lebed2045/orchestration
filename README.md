@@ -62,9 +62,9 @@ Missing MCP is fine — `/wf` continues with the reviewer downgraded (pass `--ab
 
 | Command | What it does |
 |---|---|
-| `/workflow` (`/wf`) | The workflow. Tier-auto TDD on modern primitives. Codex reviewer on by default (`--no-codex` to skip). Prints `workflow v0.27 (19-jun-2026)` as its first line. |
+| `/workflow` (`/wf`) | The workflow. Tier-auto TDD on modern primitives. Codex reviewer on by default (`--no-codex` to skip). Prints `workflow v0.28 (19-jun-2026)` as its first line. |
 | `/gardener` | Periodic entropy removal. Reads the longitudinal ledgers (`.claude/metrics/ratchet.tsv`, `debt.tsv`), sweeps for duplication / dead code, and executes the top-K cleanups as small `/wf`-style tasks (`--top=K`, `--dry-run`). |
-| `/sweep` | End-of-session working-tree sweep. Classifies each uncommitted path (discard/ignore/commit-main/commit-sidecar/stash/hold) and executes so `git status` ends clean. Codex on by default (`--fast` / `--no-codex` to skip); secrets hard-fenced from auto-commit; never pushes. Prints `sweep v1 (13-jun-2026)` as its first line. |
+| `/sweep` | End-of-session working-tree sweep. Classifies each uncommitted path (discard/ignore/commit-main/commit-sidecar/stash/hold) and executes so `git status` ends clean. Codex on by default (`--fast` / `--no-codex` to skip); secrets hard-fenced from auto-commit; never pushes. Prints `sweep v0.1 (19-jun-2026)` as its first line. |
 | `/research` (`/r`) | Codebase + agy bridge MCP + Codex MCP research. |
 | `/think` | Council-style deliberation for judgment calls, framing critique, and pushback. |
 | `/reflect` | Turn recurring failures into rules. |
