@@ -30,6 +30,15 @@ When the workflow body in `.claude/commands/workflow.md` changes meaningfully, u
 
 The mandatory first-line banner the workflow prints is derived from these two values. If they drift apart, the rule fails.
 
+### Ship-a-change rule: bump version + sync README (project-local)
+
+Whenever you fix, update, or add behavior to any artifact in this repo (command / skill / agent / workflow / hook), the SAME turn MUST also:
+1. **Bump that artifact's version + date** — its version banner / `WF_VERSION` + `WF_COMMITTED` pair / `sweep v1 (DD-mmm-YYYY)` line, etc. No behavior change ships without a version bump.
+2. **Update `README.md`** to reflect the change.
+3. **Keep `README.md` very short** — terse one-liners only, no prose creep. If an edit would grow it, trim elsewhere to hold the line.
+
+This is a local directive (this repo's CLAUDE.md only) — do NOT promote it to global `~/.claude/CLAUDE.md`.
+
 **Suffix legend:** `g`=Antigravity CLI (`agy -p`, Gemini-MCP successor), `c`=Codex MCP (**default-on in `/wf` since v22** — `--no-codex` opts out), `h`=human gate
 
 For Codex skills, `c` is inverted: `$wf -c` and `$research -c` request Claude. The rule is "call the other main model."
