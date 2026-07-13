@@ -30,10 +30,11 @@ If the user writes `/think`, treat it as `$think`.
 - If a persona card exists at `~/.codex/USER.md`, read it. If not, fall back to `~/.claude/USER.md` only if accessible. If neither exists, continue without a persona card and say so.
 - Do not browse unless the topic needs current facts; this workflow is primarily judgment, not research.
 - For Gemini/Antigravity participation, discover the agy bridge MCP before deliberation. If `tool_search` is available, search for `mcp__agy__agy_ask`, `mcp__agy__agy_continue`, and `mcp__agy__agy_status`; otherwise use whichever callable MCP tools are already exposed in the session.
-- The agy bridge owns model selection, quota, and fallback internally — that config (its fallback backend, project, and credentials) lives in the bridge's own repo, not here. It first tries Antigravity `agy` and, if free Gemini quota is exhausted, auto-routes to its configured fallback.
+- Call `mcp__agy__agy_ask`, or invoke `~/.local/bin/agy-ask` with the same prompt when the MCP tool is not exposed. These are two transports into the same router.
+- The repository-owned agy bridge first tries Antigravity `agy`, then auto-routes to its configured local Gemini-compatible fallback. It reports the actual route in every response.
 - Treat a response prefixed `[agy quota exhausted — auto-routed …]` as a valid Gemini council response, not as a degradation. Record the route in council provenance.
 - If a Gemini response is truncated and `mcp__agy__agy_continue` is available, continue the same council-member conversation rather than starting a replacement pass.
-- Do not replace requested Gemini/Antigravity participation with Claude, Codex, or another inline pass because of perceived cost. The bridge's fallback is the intended Gemini path. Only degrade when the agy MCP tool is missing, errors, or times out after its own fallback path.
+- Do not invoke raw `agy`, `gemini`, a browser, Vertex, or Gemini API, and do not replace requested Gemini participation with Claude, Codex, or another inline pass. Only degrade when both bridge transports are unavailable or the bridge errors after trying its own fallback.
 - If the bridge was recently updated but still behaves like the old agy-only bridge, note that the MCP host must be restarted before the new fallback code is loaded.
 
 ## Council Passes
@@ -52,7 +53,7 @@ For default mode, produce these perspectives:
    - Answer from that inversion.
 
 3. Expansionist + analogy:
-   - Prefer `mcp__agy__agy_ask` for this pass when Gemini/Antigravity is available.
+   - Prefer `mcp__agy__agy_ask`; use `~/.local/bin/agy-ask` when the MCP tool is not exposed.
    - Pick a genuinely different domain.
    - Map only the parts that survive mechanical scrutiny.
    - Drop the parts that do not transfer.

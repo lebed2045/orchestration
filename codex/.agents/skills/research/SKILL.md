@@ -38,12 +38,12 @@ Ask one concise clarification only when the topic is too vague to research safel
    - Record concrete file paths and line numbers.
 4. If `-g` is set:
    - Discover the agy bridge MCP before the research call. If `tool_search` is available, search for `mcp__agy__agy_ask`, `mcp__agy__agy_continue`, and `mcp__agy__agy_status`; otherwise use whichever callable MCP tools are already exposed in the session.
-   - Call `mcp__agy__agy_ask` with a prompt asking for practical patterns, pitfalls, trade-offs, reference implementations, and source URLs. Use a bounded timeout when that argument is supported.
-   - The bridge owns model selection, quota, and fallback internally — that config (its fallback backend, project, and credentials) lives in the bridge's own repo, not here. It first tries Antigravity `agy` and, if free Gemini quota is exhausted, auto-routes to its configured fallback.
+   - Call `mcp__agy__agy_ask` with a prompt asking for practical patterns, pitfalls, trade-offs, reference implementations, and source URLs. If the MCP tool is not exposed, invoke `~/.local/bin/agy-ask` with the same prompt. This is the same router's CLI transport, not a separate provider route.
+   - The repository-owned bridge first tries Antigravity `agy`, then auto-routes to its configured local Gemini-compatible fallback. It reports the actual route in every response.
    - Treat a response prefixed `[agy quota exhausted — auto-routed …]` as a valid Gemini research response, not as a degradation. Record the route in the output document.
-   - If the response is truncated and `mcp__agy__agy_continue` is available, continue the same research conversation rather than starting over.
-   - Do not replace a requested `-g` pass with Claude, Codex, or inline-only research because of perceived cost. The bridge's fallback is the intended Gemini path. Only degrade when the agy MCP tool is missing, errors, or times out after its own fallback path.
-   - If the agy MCP tool is missing, write a visible `Gemini unavailable` degradation note. Use browser/web research only as a labeled fallback for source citations when browsing is available; do not pretend Gemini participated.
+   - If the response is truncated, continue with `mcp__agy__agy_continue` or `~/.local/bin/agy-ask continue` rather than starting over.
+   - Do not invoke raw `agy`, `gemini`, a browser, Vertex, or Gemini API, and do not replace a requested `-g` pass with Claude, Codex, or inline-only research. Only degrade when both bridge transports are unavailable or the bridge errors after trying its own fallback.
+   - If both bridge transports are missing or the bridge fails after its internal fallback, write a visible `Gemini unavailable` degradation note. Browser/web research may still provide labeled source research, but it is never a Gemini substitute.
    - Cite sources in the final doc. If Gemini returns uncited claims, verify/cite them separately or label them as uncited Gemini claims.
    - If the bridge was recently updated but still behaves like the old agy-only bridge, note that the MCP host must be restarted before the new fallback code is loaded.
 5. If `-c` is set:

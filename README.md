@@ -46,7 +46,18 @@ claude mcp add --transport stdio --scope user codex-cli -- codex mcp-server
 
 Needs the `codex` CLI installed and logged in. It authenticates with its own session — **no API key goes into MCP config**.
 
-**Antigravity reviewer (`-g`, opt-in)** — a small local Python bridge to Gemini. Read the bridge source before adding it, then register your local script as a stdio server.
+**Antigravity reviewer (`-g`, opt-in)** — the repository-owned `codex/bin/agy-peer-mcp` bridge. It asks Antigravity first and routes to the configured local Gemini-compatible fallback only when Antigravity is unavailable:
+
+```
+claude mcp add --transport stdio --scope user agy -- "$(pwd)/codex/bin/agy-peer-mcp"
+codex mcp add agy -- "$(pwd)/codex/bin/agy-peer-mcp"
+mkdir -p "$HOME/.local/bin"
+ln -sf "$(pwd)/codex/bin/agy-peer-mcp" "$HOME/.local/bin/agy-ask"
+```
+
+The MCP and `agy-ask` command are two transports into the same router. Agents use the command only when an existing session did not load the MCP; they never choose the provider. The default fallback is `http://127.0.0.1:8300`, model `gemini-3.5-flash`. Override it with `AGY_FALLBACK_BASE_URL` and `AGY_FALLBACK_MODEL`. Restart the MCP hosts after registration or bridge updates.
+
+Routing policy belongs to this Orchestrator repository because its workflows decide when and how an independent reviewer participates. The fallback service (currently `google300`) remains a narrow Gemini-compatible Vertex facade: it owns Vertex authentication, model availability, and spend metering, but knows nothing about AGY or MCP. If both routes fail, the bridge returns an MCP/JSON-RPC error so workflows record the reviewer as unreachable instead of accepting an error message as a review.
 
 Security checklist for any MCP server:
 
@@ -110,7 +121,7 @@ Vanilla Claude reviews its own work and the review is biased. `/wf` enforces thr
 
 Codex `-c` uses the official-Claude bridge at `~/.agents/bin/claude-peer` or `codex/bin/claude-peer`, preferring the user-local copy. It requires Claude Code subscription login (`claude.ai`) and refuses API-key auth, so it uses your Claude quota, not API billing. This is for local personal workflow use; workflows must say clearly when an optional reviewer is unavailable.
 
-The agy bridge owns model selection, quota, and fallback internally — that config (its fallback backend, project, and credentials) lives in the bridge's own repo, not here. If free Gemini quota is exhausted the bridge auto-routes to its configured fallback and prefixes the response with the route. Workflows should treat that as the intended Gemini fallback, not substitute Claude/Codex or inline self-review to avoid it. After bridge-code updates, restart the MCP host so the new fallback logic is loaded.
+The repository-owned agy bridge owns model selection and routing. It uses Antigravity first, then auto-routes to its configured local fallback and prefixes every response with the actual route. Credentials remain inside the fallback service; they are never placed in MCP configuration. Workflows should treat that as the intended Gemini fallback, not substitute Claude/Codex or inline self-review. Restart the MCP host after bridge-code updates.
 
 ## Thanks
 

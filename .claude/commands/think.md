@@ -102,12 +102,12 @@ If both schemas come back, `CODEX_AVAILABLE=true`. If only one or none, `CODEX_A
 ```text
 # Bridge tool presence check — the agy bridge MCP exposes agy_ask/agy_continue/agy_status
 ToolSearch({query: "select:mcp__agy__agy_ask,mcp__agy__agy_continue,mcp__agy__agy_status", max_results: 3})
-# AGY_AVAILABLE=true iff mcp__agy__agy_ask is loaded
+# AGY_AVAILABLE=true iff mcp__agy__agy_ask is loaded or ~/.local/bin/agy-ask is executable
 ```
 
-The bridge wraps `agy` (config under `~/.gemini/`) and reads its transcript files. Model selection is owned by the bridge — the command never passes a model. Register once: `claude mcp add agy -- ~/.claude/mcp-servers/agy-bridge/.venv/bin/python ~/.claude/mcp-servers/agy-bridge/server.py`, then restart Claude Code.
+Use `mcp__agy__agy_ask`; if it is not exposed, use `~/.local/bin/agy-ask`. The repository-owned bridge tries `agy` first and the configured local Gemini-compatible fallback second. Model selection is owned by the bridge. Never substitute raw `agy`, `gemini`, a browser, Vertex, or Gemini API.
 
-The bridge owns model selection, quota, and fallback internally — that config (its fallback backend, project, and credentials) lives in the bridge's own repo, not here. If free Gemini quota is exhausted it auto-routes to its configured fallback and prefixes the response with an `[agy quota exhausted — auto-routed …]` note; that is a valid Gemini council response, not a downgrade — do not substitute Codex/self-deliberation to avoid it. If the bridge was updated but still behaves like the old agy-only bridge, restart Claude Code so the MCP server reloads.
+The repository-owned bridge owns model selection and routing. It tries AGY first, then auto-routes to the configured local Gemini-compatible fallback and prefixes the response with the actual route. Either route is a valid Gemini council response, not a downgrade; do not substitute Codex/self-deliberation. Restart Claude Code after bridge updates.
 
 ### 0c. USER.md persona card
 
@@ -276,7 +276,7 @@ Capture the tool response to `/tmp/think-codex.md`.
 
 ### 2c. Antigravity (agy bridge MCP) — Expansionist / Analogy
 
-Call the `mcp__agy__agy_ask` MCP tool (Gemini via the agy bridge) with `timeout_s=120`. It returns the model's final text directly — save it to `/tmp/think-agy.md`. The bridge reads agy's transcript files, so the old headless-stdout hang is gone; no background PID/kill management needed.
+Call `mcp__agy__agy_ask` with `timeout_s=120`, or `~/.local/bin/agy-ask` when the MCP tool is not exposed. Save the returned final text to `/tmp/think-agy.md`. Both transports enter the same router; no background PID/kill management is needed.
 
 ```text
 mcp__agy__agy_ask  timeout_s=120  prompt="
@@ -297,9 +297,9 @@ Structure your response with these headers, in this order:
 "
 ```
 
-The `mcp__agy__agy_ask` call is synchronous and bounded by `timeout_s`. If it errors or exceeds the timeout, treat agy as unavailable: `AGY_AVAILABLE=false; COUNCIL_SIZE=$((COUNCIL_SIZE - 1))` and continue with the remaining council members.
+The bridge call is synchronous and bounded. If the selected bridge transport errors after its internal fallback or exceeds the timeout, treat agy as unavailable: `AGY_AVAILABLE=false; COUNCIL_SIZE=$((COUNCIL_SIZE - 1))` and continue with the remaining council members.
 
-If the response is truncated and `mcp__agy__agy_continue` is available, continue the same council-member conversation before marking the Antigravity pass failed.
+If the response is truncated, continue with `mcp__agy__agy_continue` or `~/.local/bin/agy-ask continue` before marking the Antigravity pass failed.
 
 ---
 
@@ -517,8 +517,9 @@ This command produces non-verifiable output (opinion, not fact). Forbidden words
 | Condition | Behavior | User-facing line |
 |---|---|---|
 | Codex MCP namespace not loaded | Continue with Opus + Agy | `Council ran with 2 agents (Codex unavailable).` |
-| `mcp__agy__agy_ask` tool not loaded | Continue with Opus + Codex | `Council ran with 2 agents (Antigravity unavailable: agy bridge MCP not loaded).` |
-| `mcp__agy__agy_ask` errors or exceeds `timeout_s` | Continue without | `Antigravity bridge call failed/timed out. Council degraded.` |
+| MCP tool not loaded but `agy-ask` exists | Use `agy-ask`; no degradation | Record the bridge route prefix. |
+| Both bridge transports missing | Continue with Opus + Codex | `Council ran with 2 agents (Gemini bridge unavailable).` |
+| Bridge errors after fallback or exceeds timeout | Continue without | `Antigravity bridge call failed/timed out. Council degraded.` |
 | Both external EIs unavailable | Continue Opus-only, label as auto-solo | `Both external EIs unavailable. Running auto-solo mode.` |
 | `~/.claude/USER.md` missing | STOP, write template, halt | `Created template at ~/.claude/USER.md. Open it, fill in, then re-run.` |
 | `--solo` flag passed | Skip Phases 2-codex, 2-agy, 3 | `SOLO mode: Opus only. No peer review.` |
