@@ -16,7 +16,7 @@ Run `/wf` for quick reference table.
 | `/research` (`/r`) | Multi-agent research (codebase + Antigravity + Codex) |
 | `/think` | Council-style deliberation for judgment calls, framing critique, and pushback |
 | `/reflect` | Turn failures into rules with escalation ladder |
-| `/tl` | Tweet-size summary of the last output + clickable next-action buttons (`tldr` skill) |
+| `/tl` | Tweet-size summary of the last output + clickable next-action buttons |
 
 ### Legacy (archived in `legacy/`, NOT invocable as slash commands)
 
@@ -120,7 +120,7 @@ Before ANY completion claim, you MUST provide:
 │   ├── wf.md             # Thin alias → workflow.md
 │   ├── research.md       # Multi-agent research (canonical)
 │   ├── r.md              # Thin alias → research.md
-│   ├── tl.md             # Thin alias → tldr skill
+│   ├── tl.md             # Tweet-size TLDR + action buttons (self-contained)
 │   └── think.md, reflect.md  # Deliberation + reflection utilities
 ├── agents/
 │   ├── simplicity-cop.md, coherence-cop.md, coverage-cop.md   # Boris's 3 cops (used by /wf)
