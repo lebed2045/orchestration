@@ -26,6 +26,7 @@ Restart Claude Code and the commands appear (`/workflow`, `/sweep`, `/research`,
 | `~/.claude/commands/` | `workflow.md`, `wf.md`, `sweep.md`, `gardener.md`, `research.md`, `r.md`, `think.md`, `reflect.md`, `tl.md` | the slash commands |
 | `~/.claude/agents/` | `simplicity-cop.md`, `coherence-cop.md`, `coverage-cop.md`, `metrics-cop.md`, … | reviewer sub-agents `/wf` spawns |
 | `~/.claude/reference/` | `code-quality-metrics.md` | metrics-cop threshold source-of-truth |
+| `~/.claude/statusline.sh` | `statusline.sh` | optional status bar (model · cwd · branch · context%); needs a `statusLine` key in `settings.json` |
 | `~/.claude/skills/tldr/` | `SKILL.md` | the `/tl` summarizer |
 
 `~/.claude/` = available in every project. A project's `.claude/` = that repo only, and it wins when both define the same name. `/wf` and `/gardener` write per-project longitudinal ledgers (`ratchet.tsv`, `debt.tsv`) into the project's `.claude/metrics/` — those stay in the project, not global.
