@@ -3,7 +3,7 @@
 This repository contains orchestration workflows for multiple coding agents.
 
 - Claude Code workflows live under `.claude/commands` and `.claude/agents`.
-- Codex workflows live under `codex/.agents/skills`; invoke them as `$wf`, `$research`, and `$think`, or select them from `/skills`.
+- Codex workflows live under `codex/.agents/skills`; invoke them as `$wf`, `$research`, `$think`, and `$tldr`, or select them from `/skills`.
 - In Claude commands, `-c` means Codex. In Codex skills, `-c` means Claude. In both, `-g` means Gemini/Antigravity.
 - Do not assume `/wf`, `/research`, or `/think` are repo-local Codex slash commands. Codex custom prompt slash commands are user-local under `~/.codex/prompts` and are deprecated; use repo skills for shared behavior.
 - Generated Codex workflow scratch belongs under `codex/temp/`; keep that path gitignored. Codex research belongs under `codex/research/`. Claude research remains under `.claude/research/`.

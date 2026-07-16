@@ -1,0 +1,4 @@
+interface:
+  display_name: "TLDR"
+  short_description: "Summarize the last output with next actions"
+  default_prompt: "Use $tldr to summarize the previous substantive assistant response."

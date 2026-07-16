@@ -80,6 +80,7 @@ Missing MCP is fine — `/wf` continues with the reviewer downgraded (pass `--ab
 | `/think` | Council-style deliberation for judgment calls, framing critique, and pushback. |
 | `/reflect` | Turn recurring failures into rules. |
 | `/tl` | Tweet-size summary of the last output + clickable next-action buttons. |
+| `$tldr` (Codex skill) | Tweet-size summary of the last output + concrete next-action choices. |
 
 Claude research goes in `.claude/research/`. Codex research goes in `codex/research/`.
 
@@ -99,14 +100,15 @@ codex/
 │   └── skills/
 │       ├── wf/
 │       ├── research/
-│       └── think/
+│       ├── think/
+│       └── tldr/
 ├── bin/
 ├── postmortems/
 ├── research/
 └── temp/        # gitignored scratch
 ```
 
-Invoke them in Codex as `$wf <task>`, `$research <topic>`, and `$think <topic>`, or choose them from `/skills`. `$wf` stays explicit-only; ordinary code requests use Codex directly under the applicable `AGENTS.md` verification rules. Start a new Codex session if the skills do not appear immediately. Codex custom prompt slash commands exist as `/prompts:<name>`, but they are user-local under `~/.codex/prompts` and deprecated, so this repo uses skills instead.
+Invoke them in Codex as `$wf <task>`, `$research <topic>`, `$think <topic>`, and `$tldr`, or choose them from `/skills`. `$wf` stays explicit-only; ordinary code requests use Codex directly under the applicable `AGENTS.md` verification rules. Start a new Codex session if skills do not appear immediately. Codex custom prompt slash commands exist as `/prompts:<name>`, but they are user-local under `~/.codex/prompts` and deprecated, so this repo uses skills instead.
 
 Older generations are archived in [legacy/](legacy/) (outside `.claude/` so Claude Code doesn't auto-register them as commands). They're kept in the repo as evolutionary context for AI coders reading the codebase, not for invocation.
 
