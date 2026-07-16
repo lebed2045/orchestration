@@ -1,4 +1,7 @@
 interface:
   display_name: "WF"
   short_description: "Run the fast TDD workflow"
-  default_prompt: "<task>"
+  default_prompt: "Use $wf to run the fast TDD workflow for <task>."
+
+policy:
+  allow_implicit_invocation: false
