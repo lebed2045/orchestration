@@ -87,13 +87,27 @@ for f in "$WF" CLAUDE.md README.md; do
   fi
 done
 
-# 9. workflow.md receipt name is versioned on BOTH paths (success + UNVERIFIED)
-WF_VER_LINES=$(grep -c '⏱ workflow v0.27' "$WF" 2>/dev/null); WF_VER_LINES=${WF_VER_LINES:-0}
-if [ "$WF_VER_LINES" -ge 2 ]; then
-  pass "workflow.md has versioned receipt on both success and UNVERIFIED paths ($WF_VER_LINES lines)"
+# 9. workflow.md receipt name carries the DECLARED version on BOTH emitting paths.
+#    Derived from WF_VERSION (not a frozen literal) so a legitimate version bump can't break this,
+#    while drift between the declaration and the receipts still fails. Parsed exactly as
+#    .githooks/stamp-wf.sh does (first ^**WF_VERSION:** line) so the two can't diverge.
+#    The paths are asserted SEPARATELY, not counted: a count>=2 passes falsely when one real path
+#    drifts, because the prose example receipt is stamped too and makes up the shortfall.
+WF_VER=$(grep -m1 '^\*\*WF_VERSION:\*\*' "$WF" 2>/dev/null | grep -oE 'v[0-9]+(\.[0-9]+)?' | head -1)
+if [ -n "$WF_VER" ]; then
+  pass "workflow.md declares a well-formed WF_VERSION: $WF_VER"
 else
-  fail "workflow.md versioned receipt lines: $WF_VER_LINES (need >=2: success + UNVERIFIED)"
+  fail "workflow.md missing well-formed version line '**WF_VERSION:** \`vN.N\`'"
 fi
+for PATH_DESC in "UNVERIFIED:⏱ workflow ${WF_VER:-<none>} tier=\$TIER | TOTAL UNVERIFIED" \
+                 "success:⏱ workflow ${WF_VER:-<none>} tier=\$TIER | \$SH → \$EH"; do
+  P_NAME=${PATH_DESC%%:*}; P_PAT=${PATH_DESC#*:}
+  if [ -n "$WF_VER" ] && grep -Fq "$P_PAT" "$WF" 2>/dev/null; then
+    pass "workflow.md $P_NAME-path receipt carries declared $WF_VER"
+  else
+    fail "workflow.md $P_NAME-path receipt missing '$P_PAT' (WF_VERSION/receipt drift)"
+  fi
+done
 
 # 10. research receipts carry the mode (graceful when unset) in research.md and Codex research skill
 for f in "$R" "$CODEX_RESEARCH"; do

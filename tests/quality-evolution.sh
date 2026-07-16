@@ -159,12 +159,16 @@ else
   fail "metrics-cop.md missing '3 consecutive' (debt escalation rule)"
 fi
 
-# 20. workflow.md version line bumped to v0.27
-VER_LINE='**WF_VERSION:** `v0.27`'
-if grep -qF "$VER_LINE" "$WF" 2>/dev/null; then
-  pass "workflow.md contains version line $VER_LINE"
+# 20. workflow.md declares a well-formed WF_VERSION.
+#     Derived dynamically (not a frozen literal) so a legitimate version bump can't break this,
+#     while a missing or malformed declaration still fails.
+#     Parsed exactly as .githooks/stamp-wf.sh does (first ^**WF_VERSION:** line), so the test can
+#     never accept a declaration the hook would reject.
+WF_VER=$(grep -m1 '^\*\*WF_VERSION:\*\*' "$WF" 2>/dev/null | grep -oE 'v[0-9]+(\.[0-9]+)?' | head -1)
+if [ -n "$WF_VER" ]; then
+  pass "workflow.md declares a well-formed WF_VERSION: $WF_VER"
 else
-  fail "workflow.md missing version line $VER_LINE"
+  fail "workflow.md missing well-formed version line '**WF_VERSION:** \`vN.N\`'"
 fi
 
 # 21. wf.md references both ledgers
@@ -174,13 +178,20 @@ else
   fail "wf.md missing ratchet.tsv and/or debt.tsv reference"
 fi
 
-# 22. workflow.md receipt name versioned to v0.27 on BOTH paths (success + UNVERIFIED)
-WF_VER_LINES=$(grep -Fc '⏱ workflow v0.27' "$WF" 2>/dev/null); WF_VER_LINES=${WF_VER_LINES:-0}
-if [ "$WF_VER_LINES" -ge 2 ]; then
-  pass "workflow.md has v0.27 receipt on both success and UNVERIFIED paths ($WF_VER_LINES lines)"
-else
-  fail "workflow.md '⏱ workflow v0.27' lines: $WF_VER_LINES (need >=2: success + UNVERIFIED)"
-fi
+# 22. workflow.md receipt name carries the DECLARED version on BOTH emitting paths.
+#     Asserts the receipts agree with WF_VERSION rather than a frozen literal — that agreement is
+#     exactly what .githooks/stamp-wf.sh propagates, so drift between the two still fails.
+#     The two paths are asserted SEPARATELY, not counted: a count>=2 passes falsely when one real
+#     path drifts, because the prose example receipt is stamped too and makes up the shortfall.
+for PATH_DESC in "UNVERIFIED:⏱ workflow ${WF_VER:-<none>} tier=\$TIER | TOTAL UNVERIFIED" \
+                 "success:⏱ workflow ${WF_VER:-<none>} tier=\$TIER | \$SH → \$EH"; do
+  P_NAME=${PATH_DESC%%:*}; P_PAT=${PATH_DESC#*:}
+  if [ -n "$WF_VER" ] && grep -Fq "$P_PAT" "$WF" 2>/dev/null; then
+    pass "workflow.md $P_NAME-path receipt carries declared $WF_VER"
+  else
+    fail "workflow.md $P_NAME-path receipt missing '$P_PAT' (WF_VERSION/receipt drift)"
+  fi
+done
 
 # 23. Banner sync: workflow.md's dated banner appears verbatim in CLAUDE.md + README.md.
 #     Derived dynamically (not a frozen literal) so a legitimate date bump can't break this,
