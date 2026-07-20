@@ -53,6 +53,19 @@ For Codex skills, `c` is inverted: `$wf -c` and `$research -c` request Claude. T
 
 Invoke the `workflow` skill ONLY when the user explicitly types `/workflow` or `/wf` (or names it: "run wf", "use the workflow"). `/wf` is a thin alias command that delegates to `workflow.md`. Never auto-route a code-change request into `/wf` — handle it directly (still under the Codex sidekick rule below). Rolled back 11-jun-2026: the old "all code changes go through /wf" default routing is gone.
 
+### Auto-TLDR at end of turn — TEST (this repo only, not promoted to global)
+
+At the end of every substantive assistant turn in this repo, append the `/tl` TLDR automatically — the user shouldn't have to type `/tl`. Follow the **summary + triage behavior** of [.claude/commands/tl.md](.claude/commands/tl.md) (its help-banner step does NOT apply here — no banner every turn):
+
+1. **Tweet summary.** One line, ≤ 280 chars, plain language, lead with the outcome/verdict. Anti-sycophancy applies (failed / unverified / needs-work says so, never softened). No headers, tables, bullets, or code blocks in this line.
+2. **Actionability triage** — exactly one:
+   - **Actionable** — only when the turn surfaced an *explicitly identified* fix, a concrete decision between named paths, or a genuinely unfinished step. Call `AskUserQuestion` using the ≤280-char summary **as the question text** (do NOT also print it as a separate line), with 2–4 options derived from the content, one always "Leave as is" (so ≤ 3 content actions; concrete labels ≤ 5 words). Never invent follow-up work or a speculative "improvement" just to show buttons.
+   - **Not actionable** — pure ack / FYI / nothing concrete to do next → print the summary line only, no buttons.
+
+**Exemptions (no auto-TLDR):** trivial acknowledgment turns ("ok", "noted"); a turn that was itself a `/tl` run (don't double up); and inside command-file runs (`/wf`, `/sweep`, `/research`, `/gardener`, …) which own their own end-of-run output — the auto-TLDR is for direct turns only. If a turn genuinely required an `AskUserQuestion` of its own, that question *is* the actionable TLDR — but never add a question merely to skip the summary.
+
+Soft rule, **no enforcement hook** — a strong default, not a Stop-hook gate (a Stop hook was considered and declined: extra model turn + cost every turn, breaks non-interactive runs, composes badly with `/wf`'s own stop handling). The summary is a read-only digest, exempt from EXECUTION_BLOCK; any action taken after a button press follows the global rules in full. If this proves reliable here, promote to global `~/.claude/CLAUDE.md`. Added 20-jul-2026.
+
 ### Codex sidekick — always on, every turn
 
 Codex MCP is a permanent second opinion watching every turn — not just code changes, and not just inside skills.
