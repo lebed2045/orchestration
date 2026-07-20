@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "codex-coder": {
+      "type": "stdio",
+      "command": "codex",
+      "args": ["mcp-server"],
+      "timeout": 1800000
+    }
+  }
+}

@@ -16,3 +16,7 @@ codex/temp/
 
 # Antigravity CLI local project symlinks (per-machine, points into ~/.gemini/config)
 .antigravitycli/
+
+# Python bytecode (hook + test helpers)
+__pycache__/
+*.pyc

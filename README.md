@@ -34,17 +34,26 @@ Settings (`MCP_TIMEOUT`/`MCP_TOOL_TIMEOUT`, the allowed MCP tools, etc.) are not
 
 The base workflows run with **no MCP at all** — the optional reviewers just downgrade and say so. The MCP setup below is opt-in.
 
-## MCP setup (optional, secure)
+## MCP setup (optional for base workflows; required for `/cc`)
 
-Two reviewers use **local stdio** MCP servers — they run a command on your machine, not a remote URL. That's the safer shape: nothing is hosted off-box and you can read the code before you trust it.
+External agent roles use **local stdio** MCP servers — commands on your machine, not remote URLs.
 
-**Codex reviewer (`-c`, default-on in `/wf`)** — the official Codex CLI's built-in MCP server:
+**Codex reviewer (`-c` in `/wf`) and `/cc` coder** — the official Codex CLI's built-in MCP server:
 
 ```
 claude mcp add --transport stdio --scope user codex-cli -- codex mcp-server
+claude mcp add-json --scope user codex-coder '{"type":"stdio","command":"codex","args":["mcp-server"],"timeout":1800000}'
 ```
 
-Needs the `codex` CLI installed and logged in. It authenticates with its own session — **no API key goes into MCP config**.
+`/cc` requires both servers. `codex-coder` has the 30-minute timeout used by writable coding calls; this repo's `.mcp.json` supplies it locally. Restart Claude Code after adding or approving it. Both need the `codex` CLI installed and logged in; no API key goes into MCP config.
+
+Codex MCP has a per-call `approval-policy`; a server-process override does not
+replace its `on-request` call default. To prevent nested approval prompts from
+waiting forever, install `.claude/hooks/enforce_codex_mcp_policy.py` under
+`~/.claude/hooks/` and add a user-level `PreToolUse` hook in
+`~/.claude/settings.json` for `mcp__codex-cli__codex` (and
+`mcp__codex-coder__codex` if installed). The hook preserves the caller's full
+input and sandbox while forcing `"approval-policy": "never"`.
 
 **Antigravity reviewer (`-g`, opt-in)** — the repository-owned `codex/bin/agy-peer-mcp` bridge. It asks Antigravity first and routes to the configured local Gemini-compatible fallback only when Antigravity is unavailable:
 
