@@ -88,6 +88,7 @@ Missing MCP is fine — `/wf` continues with the reviewer downgraded (pass `--ab
 | `/research` (`/r`) | Codebase + agy bridge MCP + Codex MCP research. |
 | `/think` | Council-style deliberation for judgment calls, framing critique, and pushback. |
 | `/reflect` | Turn recurring failures into rules. |
+| `$reflect` (Codex skill) | On confirmed mistakes/corrections: postmortem, recurrence check, permanent `AGENTS.md` rule, and L1→L4 escalation. |
 | `/tl` | Tweet-size summary of the last output + clickable next-action buttons. |
 | `$tldr` (Codex skill) | Tweet-size summary of the last output + concrete next-action choices. |
 
@@ -110,6 +111,7 @@ codex/
 │       ├── wf/
 │       ├── research/
 │       ├── think/
+│       ├── reflect/
 │       └── tldr/
 ├── bin/
 ├── postmortems/
@@ -117,7 +119,7 @@ codex/
 └── temp/        # gitignored scratch
 ```
 
-Invoke them in Codex as `$wf <task>`, `$research <topic>`, `$think <topic>`, and `$tldr`, or choose them from `/skills`. `$wf` stays explicit-only; ordinary code requests use Codex directly under the applicable `AGENTS.md` verification rules. Start a new Codex session if skills do not appear immediately. Codex custom prompt slash commands exist as `/prompts:<name>`, but they are user-local under `~/.codex/prompts` and deprecated, so this repo uses skills instead.
+Invoke them in Codex as `$wf <task>`, `$research <topic>`, `$think <topic>`, `$reflect`, and `$tldr`, or choose them from `/skills`. `$reflect` is implicit on confirmed mistakes/user corrections; `python3 codex/.agents/skills/reflect/scripts/reflection.py install` makes it globally discoverable and installs the durable reflection contract in `~/.codex/AGENTS.md`. `$wf` stays explicit-only; ordinary code requests use Codex directly under the applicable `AGENTS.md` verification rules. Start a new Codex session if skills do not appear immediately. Codex custom prompt slash commands exist as `/prompts:<name>`, but they are user-local under `~/.codex/prompts` and deprecated, so this repo uses skills instead.
 
 Older generations are archived in [legacy/](legacy/) (outside `.claude/` so Claude Code doesn't auto-register them as commands). They're kept in the repo as evolutionary context for AI coders reading the codebase, not for invocation.
 
