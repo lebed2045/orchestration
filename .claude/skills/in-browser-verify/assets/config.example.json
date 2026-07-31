@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "scenario_file": "verification/scenarios.md",
+  "test_roots": [
+    "tests/e2e"
+  ],
+  "commands": [
+    {
+      "name": "unit",
+      "argv": ["npm", "test", "--", "--run"],
+      "timeout_seconds": 600
+    },
+    {
+      "name": "build",
+      "argv": ["npm", "run", "build"],
+      "timeout_seconds": 600
+    },
+    {
+      "name": "e2e-all-scenarios",
+      "argv": ["npx", "playwright", "test"],
+      "timeout_seconds": 1200
+    }
+  ],
+  "evidence": {
+    "required_globs": [
+      "test-results/**/trace.zip"
+    ],
+    "minimum_files": 1
+  }
+}

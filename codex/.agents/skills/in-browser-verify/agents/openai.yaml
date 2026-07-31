@@ -1,0 +1,4 @@
+interface:
+  display_name: "In-Browser Verify"
+  short_description: "Prove web-app behavior before completion"
+  default_prompt: "Use $in-browser-verify to verify this web-app change end to end."
