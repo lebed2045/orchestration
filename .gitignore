@@ -20,3 +20,6 @@ codex/temp/
 # Python bytecode (hook + test helpers)
 __pycache__/
 *.pyc
+
+# Codex-side reflections are machine-local too (live in ~/.codex/reflections/), never in the repo
+.codex/reflections/
