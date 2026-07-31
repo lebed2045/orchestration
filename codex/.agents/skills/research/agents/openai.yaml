@@ -1,4 +1,4 @@
 interface:
-  display_name: "Research"
-  short_description: "Research codebase and external patterns"
-  default_prompt: "<topic>"
+  display_name: "Multi-Agent Research"
+  short_description: "Cited research with independent model passes"
+  default_prompt: "Use $research to investigate this topic with independent codebase, source, Claude, and Gemini passes, then adjudicate disagreements from primary evidence."

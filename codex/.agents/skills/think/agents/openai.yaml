@@ -1,4 +1,4 @@
 interface:
-  display_name: "Think"
-  short_description: "Run a deliberative council-style analysis"
-  default_prompt: "<topic>"
+  display_name: "Think Council"
+  short_description: "Cross-examine independent model perspectives"
+  default_prompt: "Use $think to challenge my framing with independent Claude and Gemini views, peer critique, and cross-examination before synthesis."

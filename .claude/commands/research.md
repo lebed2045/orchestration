@@ -1,10 +1,10 @@
-# /research - Multi-Agent Research
+# /research - Evidence Research
 
-**Updated:** `19-jun-2026`
+**Updated:** `24-jul-2026`
 
 **Help banner.** Unless the invoking command already printed one (the `/r` wrapper prints its own), print exactly this line first:
 
-`/research — multi-agent research: codebase + optional Antigravity/Codex (/r for short).`
+`/research — evidence research: single-agent Claude by default; -c adds Codex, -g adds Antigravity, --multi-agent enables Explore fan-out (/r for short).`
 
 Research a topic using codebase exploration + optional external research (Codex MCP / agy bridge MCP).
 
@@ -15,38 +15,41 @@ Research a topic using codebase exploration + optional external research (Codex 
 ## Usage
 
 ```bash
-/research <topic>           # Opus only (codebase patterns)
-/research -g <topic>        # Opus + Antigravity via agy bridge MCP (`mcp__agy__agy_ask`)
-/research -c <topic>        # Opus + Codex MCP
-/research -gc <topic>       # Opus + Antigravity + Codex (full research)
-/research -cg <topic>       # Same as -gc
+/research <topic>                       # Claude lead only: codebase + web when warranted
+/research -c <topic>                    # Add one bounded Codex first pass
+/research -g <topic>                    # Add one bounded Antigravity first pass
+/research -cg <topic>                   # Add both bounded external first passes
+/research --multi-agent <topic>         # Explicitly permit Explore subagent fan-out
+/research -cg --multi-agent <topic>     # Full opt-in fan-out
 ```
+
+External reviewers and Explore subagents are OFF by default. `-c`, `-g`, `-gc`/`-cg`, and `--multi-agent` are explicit opt-ins. `--no-codex` and `--no-agy` remain accepted as explicit overrides for composed aliases or saved invocations. Missing/broken MCPs never interrupt the run (see Phase 2: silent degradation); the only place they surface is the one-line externals receipt in Phase 5.
 
 ---
 
 ## Flag Detection
 
 ```bash
-AGY=false                    # `-g` flag: Antigravity via agy bridge MCP (`mcp__agy__agy_ask`)
-CODEX=false
+AGY=false                    # Explicitly enabled by -g / -gc / -cg
+CODEX=false                  # Explicitly enabled by -c / -gc / -cg
+MULTI_AGENT=false            # Explicitly enabled by --multi-agent
 TOPIC="$ARGUMENTS"
 
-# Parse flags
-if [[ "$ARGUMENTS" == *"-gc"* ]] || [[ "$ARGUMENTS" == *"-cg"* ]]; then
-  AGY=true
-  CODEX=true
-  TOPIC="${ARGUMENTS//-gc/}"
-  TOPIC="${TOPIC//-cg/}"
-elif [[ "$ARGUMENTS" == *"-g"* ]]; then
-  AGY=true
-  TOPIC="${ARGUMENTS//-g/}"
-elif [[ "$ARGUMENTS" == *"-c"* ]]; then
-  CODEX=true
-  TOPIC="${ARGUMENTS//-c/}"
-fi
-
-TOPIC="${TOPIC## }"  # trim leading space
-TOPIC="${TOPIC%% }"  # trim trailing space
+# Token-aware flag parse — whole words only, so topics like "e-commerce" or "g-code"
+# survive intact, and no globbing (set -f) so "*" in a topic never expands to filenames.
+set -f; set -- $TOPIC; set +f
+TOPIC=""
+for w in "$@"; do
+  case "$w" in
+    -g)            AGY=true ;;
+    -c)            CODEX=true ;;
+    -gc|-cg)       AGY=true; CODEX=true ;;
+    --multi-agent) MULTI_AGENT=true ;;
+    --no-codex)    CODEX=false ;;
+    --no-agy)      AGY=false ;;
+    *)             TOPIC="${TOPIC:+$TOPIC }$w" ;;
+  esac
+done
 
 # Generate filename from topic
 FILENAME=$(echo "$TOPIC" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | sed 's/[^a-z0-9-]//g')
@@ -54,15 +57,41 @@ FILENAME=$(echo "$TOPIC" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | sed 's/[^a-
 echo "TOPIC: $TOPIC"
 echo "AGY (agy bridge MCP): $AGY"
 echo "CODEX: $CODEX"
-echo "OUTPUT: .claude/research/${FILENAME}.md"
+echo "MULTI_AGENT: $MULTI_AGENT"
 
 # Timing ledger (always-on). Total wall time is computed from this file in Phase 5; never estimated.
 R_RUN_ID=$(date -u +%Y%m%dT%H%M%SZ)                  # UTC stamp; lexical sort == chronological
-R_LEDGER=".claude/temp/research/$R_RUN_ID/started.txt"
-mkdir -p ".claude/temp/research/$R_RUN_ID"
+mkdir -p .claude/temp/research
+R_DIR=$(mktemp -d ".claude/temp/research/${R_RUN_ID}-XXXX")  # run-scoped intermediates — never /tmp; mktemp is collision-proof even same-second
+R_LEDGER="$R_DIR/started.txt"
 { date +%s; date '+%Y-%m-%d %H:%M:%S'; } > "$R_LEDGER"   # line 1 = epoch, line 2 = human start
+OUTPUT=".claude/research/${FILENAME}.md"
+while stat "$OUTPUT" >/dev/null 2>&1; do
+  # The current proposal exists. Generate a fresh collision-proof run ID, then loop so
+  # stat explicitly probes the fallback proposal too before it can be selected.
+  R_COLLISION_RUN_DIR=$(mktemp -d "$R_DIR/artifact-XXXX")
+  R_COLLISION_RUN_ID="$(basename "$R_DIR")-$(basename "$R_COLLISION_RUN_DIR")"
+  OUTPUT=".claude/research/${FILENAME}-${R_COLLISION_RUN_ID}.md"
+done
+echo "OUTPUT: $OUTPUT"
 echo "timing ledger: $R_LEDGER"
 ```
+
+---
+
+## Effort Scaling
+
+Scale the run to the question — fan-out is expensive (multi-agent research burns an order of magnitude more tokens than a single pass; Anthropic's research-system numbers, not a universal law):
+
+| Question shape | Effort |
+|---|---|
+| Simple fact / familiar domain | Inline Claude codebase pass only; no WebSearch unless freshness requires it |
+| Comparison / one unfamiliar area | Claude codebase pass + WebSearch |
+| Consequential decision / unfamiliar domain / repo-specific architecture | Deeper Claude codebase + WebSearch; only explicitly enabled externals fire |
+
+**External precedence:** `-c` and `-g` request their named external even for a simple topic. `--no-codex` and `--no-agy` disable a previously enabled reviewer; when conflicting flags appear, the last whole-token flag wins.
+
+**Subagent gate:** do not use the Agent tool or spawn any Explore subagent unless `MULTI_AGENT=true`. When explicitly enabled, every subagent gets a delegation contract: objective, output format, tools/sources, and task boundary. Parallelize only genuinely independent threads.
 
 ---
 
@@ -105,7 +134,7 @@ Your research topic "[TOPIC]" could go several directions. Help me focus:
 Skip clarification if:
 - Topic is 3+ specific words (e.g., "game bastion defense patterns")
 - Topic mentions specific technology (e.g., "React authentication flow")
-- User included flags (`-g`, `-c`, `-gc`) indicating they know what they want
+- User included flags (`-g`, `-c`, `-gc`/`-cg`, `--multi-agent`, `--no-codex`, or `--no-agy`) indicating they know what they want
 
 **After clarification, proceed to Phase 1.**
 
@@ -115,17 +144,19 @@ Skip clarification if:
 
 | Agent | Researches | Focus |
 |-------|------------|-------|
-| **Opus** | Codebase | Existing patterns, conventions, constraints |
+| **Claude (lead)** | Codebase | Existing patterns, conventions, constraints |
 | **Antigravity (agy bridge MCP)** | Internet | Best practices, architecture patterns, pitfalls |
 | **Codex** | Internet | Real-world implementations, common mistakes, expert approaches |
 
 **Combined goal**: Learn how experts build this feature/architecture, then map to our codebase.
 
+**Independence rule (anti-anchoring, anti-groupthink):** Phase 1 and Phase 2 run in PARALLEL, and the external agents' first pass gets the decision brief only — never Claude's codebase findings or draft conclusions. Cross-model agreement is NOT evidence (models share correlated training data); it's the *disagreements* that carry information, and they get adjudicated with sources in Phase 4.
+
 ---
 
-## Phase 1: CODEBASE_RESEARCH (Opus — Always Runs)
+## Phase 1: CODEBASE_RESEARCH (Claude lead — Always Runs)
 
-Research existing patterns in the codebase.
+Research existing patterns in the codebase inline. If and only if `MULTI_AGENT=true`, a broad sweep may spawn parallel Explore subagents, each with a delegation contract (objective, output format, tools, boundary). Otherwise the Claude lead performs the complete pass itself.
 
 ### Search Strategy
 
@@ -143,16 +174,13 @@ glob "**/*.test.*"
 cat CLAUDE.md | grep -i "[keyword]"
 ```
 
-### Capture to temp file
+### Capture to run dir
 
 ```bash
-mkdir -p research
-echo "# Codebase Research: $TOPIC" > /tmp/opus-research.md
-echo "" >> /tmp/opus-research.md
-echo "## Existing Patterns" >> /tmp/opus-research.md
+echo "# Codebase Research: $TOPIC" > "$R_DIR/codebase.md"
 ```
 
-After exploration, append findings to `/tmp/opus-research.md`:
+After exploration, append findings to `$R_DIR/codebase.md`:
 - File paths with line numbers
 - Code snippets showing patterns
 - Constraints from CLAUDE.md
@@ -160,7 +188,37 @@ After exploration, append findings to `/tmp/opus-research.md`:
 
 ---
 
-## Phase 2: EXTERNAL_RESEARCH (Conditional)
+## Phase 2: EXTERNAL_RESEARCH (Opt-in — runs in PARALLEL with Phase 1)
+
+Only explicitly enabled external consults launch. When both are enabled, launch them together in the same turn, concurrent with Phase 1 and with each other.
+
+### Silent degradation + call ledger
+
+A missing or broken external NEVER interrupts the run and never produces mid-run warnings — the run just continues without it. Every attempt appends one space-separated row to `$R_DIR/externals.txt` (`<codex|gemini> <ok|fail|skipped|off> <short note>`); this ledger is the sole source for the Phase 5 one-liner, the only place failures surface:
+
+Every call row starts with the agent name so the Phase 5 receipt can count it with `^codex ` / `^gemini `.
+
+- Successful call → `codex ok -` / `gemini ok -` (one row per call).
+- Codex tool not loaded (ToolSearch `select:mcp__codex-cli__codex` comes back empty) → `codex fail MCP missing`, continue.
+- AGY MCP not loaded → try `~/.local/bin/agy-ask`; if that's dead too → `gemini fail bridge unreachable`, continue.
+- Call errors or times out mid-run → `codex fail <short reason>` / `gemini fail <short reason>`, continue.
+- Not requested → `codex off not requested` / `gemini off not requested`.
+- Explicitly disabled after being enabled → `codex off --no-codex` / `gemini off --no-agy`.
+
+### Decision brief (both external agents get this, and only this)
+
+Build a short sanitized brief — the external agents need enough context to give fitting answers, but no anchoring material and no secrets:
+
+```text
+DECISION BRIEF
+- Question: [TOPIC — what decision this research feeds]
+- Stack: [languages/frameworks, 1 line]
+- Hard constraints: [e.g. no new deps, single-threaded, offline — 1-3 lines]
+- Out of scope: [what NOT to research]
+- Execution contract: This is one bounded first-pass contribution inside a parent `/research` run. Answer inline in this call only. Do not invoke `/research`, `$research`, `/think`, or any other skill/workflow; do not spawn or delegate to agents; do not consult another model; do not create files.
+```
+
+Include NO proprietary code, credentials, or Claude's own findings/hypotheses. First pass must be independent.
 
 ### If AGY=true (Antigravity via the `agy` bridge MCP)
 
@@ -172,6 +230,10 @@ Call the `mcp__agy__agy_ask` MCP tool, or `~/.local/bin/agy-ask` only when the t
 mcp__agy__agy_ask  prompt="
 Research best practices for: [TOPIC]
 
+[DECISION BRIEF]
+
+You are a bounded external reviewer inside a parent research run. Follow the execution contract above.
+
 I'm building this in a software project. Research:
 
 1. **Architecture patterns**: How do experts design this? What's the recommended structure?
@@ -181,6 +243,7 @@ I'm building this in a software project. Research:
 5. **Trade-offs**: What are the pros/cons of different approaches?
 
 Focus on practical, actionable insights. I want to learn from those who've already solved this.
+Cite a URL and publish date for every key claim — uncited claims can't be adjudicated.
 
 Output format:
 ## Expert Approaches
@@ -200,7 +263,7 @@ Output format:
 "
 ```
 
-Typical latency 30–60s per call. Save the tool's returned text to `/tmp/agy-research.md`.
+Typical latency 30–60s per call. Save the tool's returned text to `$R_DIR/agy.md`.
 
 ### If CODEX=true
 
@@ -208,6 +271,10 @@ Call `mcp__codex-cli__codex`:
 
 ```text
 Research real-world implementations of: [TOPIC]
+
+[DECISION BRIEF]
+
+You are a bounded external reviewer inside a parent research run. Follow the execution contract above.
 
 Search for:
 1. How is this typically implemented in production systems?
@@ -218,6 +285,7 @@ Search for:
 
 Focus on practical code patterns and real implementations.
 I want to stand on shoulders of giants, not reinvent the wheel.
+Cite a URL and publish date for every key claim — uncited claims can't be adjudicated.
 
 Output format:
 ## Implementation Patterns
@@ -236,13 +304,13 @@ Output format:
 [Advice from experienced developers]
 ```
 
-Save to `/tmp/codex-research.md`
+Save to `$R_DIR/codex.md`
 
 ---
 
-## Phase 3: WEB_SEARCH (Always — Opus)
+## Phase 3: WEB_SEARCH (Claude lead — all tiers except simple/familiar)
 
-Use WebSearch to find additional context:
+Skipped only in the simple-fact tier of the Effort Scaling table; runs on every other tier. Use WebSearch to find additional context:
 
 ```text
 Search: "[TOPIC] best practices architecture 2026"
@@ -250,25 +318,35 @@ Search: "[TOPIC] common mistakes pitfalls"
 Search: "[TOPIC] implementation patterns"
 ```
 
-Extract key insights and add to consolidation.
+**Source quality:** go broad → narrow; prefer primary sources (official docs, source repos, papers, first-party engineering blogs) over SEO aggregators; note publish dates on anything fast-moving. Extract key insights and add to consolidation.
 
 ---
 
-## Phase 4: CONSOLIDATE (Opus)
+## Phase 4: CONSOLIDATE (Claude lead)
 
-Merge all research into single document.
+Merge all research into a single document. Where sources or models disagree, adjudicate with evidence — never by vote, and never assume agreement settles it.
 
 ```bash
 mkdir -p .claude/research
 ```
 
-Write to `.claude/research/${FILENAME}.md`:
+Write to `$OUTPUT` (the canonical topic path when unused; otherwise the run-tagged no-clobber path selected during setup):
 
 ```markdown
 # Research: [TOPIC]
 
 Generated: [YYYY-MM-DD HH:MM]
-Agents: Opus [+ Antigravity (agy bridge MCP)] [+ Codex]
+Agents: Claude [+ Antigravity (agy bridge MCP)] [+ Codex]
+
+---
+
+## Question & Scope
+
+[The decision this research feeds; what's in scope, what's explicitly out]
+
+## Assumptions
+
+[What was taken as given without verification]
 
 ---
 
@@ -314,6 +392,19 @@ Agents: Opus [+ Antigravity (agy bridge MCP)] [+ Codex]
 
 ---
 
+## Disagreements & Adjudication
+
+[Only in multi-agent runs. One row per conflict — agreement is not evidence, disagreement is signal:]
+
+| Claim | Claude | Antigravity | Codex | Adjudicating source | Verdict |
+|---|---|---|---|---|---|
+
+## Uncertainty & Unresolved Questions
+
+[Claims that couldn't be verified; open questions the user should know remain open]
+
+---
+
 ## Recommended Approach
 
 [Synthesis: Combine expert knowledge with our codebase patterns]
@@ -333,7 +424,7 @@ Agents: Opus [+ Antigravity (agy bridge MCP)] [+ Codex]
 - [URL] - [key insight]
 
 ### Agent Contributions
-- Opus: Codebase exploration
+- Claude: Codebase exploration
 - Antigravity (agy bridge MCP): [if used]
 - Codex: [if used]
 ```
@@ -344,7 +435,7 @@ Agents: Opus [+ Antigravity (agy bridge MCP)] [+ Codex]
 
 ### Write the Research Document
 
-Save consolidated research to `.claude/research/${FILENAME}.md`
+Save consolidated research to `$OUTPUT`. Never overwrite an existing research artifact; setup chooses a run-tagged path when the canonical topic path already exists.
 
 ### Show Summary to User
 
@@ -357,11 +448,12 @@ Output this EXACT format (substitute actual values):
 
 | Metric | Value |
 |--------|-------|
-| Agents | Opus [+ Antigravity] [+ Codex] |
+| Agents | Claude [+ Antigravity] [+ Codex] |
 | Codebase files | [N] analyzed |
-| Web sources | [N] referenced |
+| Web sources | [N] referenced ([N] primary) |
 | Patterns found | [N] |
 | Pitfalls found | [N] |
+| Disagreements adjudicated | [N] ([N] unresolved) |
 
 ### Key Finding
 
@@ -378,7 +470,7 @@ Output this EXACT format (substitute actual values):
 
 ### Full Document
 
-**Click to open**: [[FILENAME].md](.claude/research/[FILENAME].md)
+**Click to open**: [<actual output filename>](<actual `$OUTPUT` path>)
 ```
 
 ### Timing receipt (always-on, total wall time)
@@ -400,6 +492,27 @@ else
 fi
 ```
 
+### Externals receipt (always-on, ONE line)
+
+Directly under the timing receipt, print exactly ONE line — successful call counts per external plus a short error in parentheses when the success count is zero. Never more than one line, never a table:
+
+```bash
+EXT="$R_DIR/externals.txt"
+OUT=""
+for a in codex gemini; do
+  n=$(grep -c "^$a ok" "$EXT" 2>/dev/null); n=${n:-0}
+  f=$(grep -c "^$a fail" "$EXT" 2>/dev/null); f=${f:-0}
+  if [ "$n" -gt 0 ]; then S="$a $n"; [ "$f" -gt 0 ] && S="$S, $f fail"
+  else NOTE=$(grep -m1 "^$a " "$EXT" 2>/dev/null | cut -d' ' -f3-); S="$a 0 (${NOTE:-not attempted})"; fi
+  OUT="${OUT:+$OUT · }$S"
+done
+echo "🔌 research externals: $OUT"
+```
+
+Examples: `🔌 research externals: codex 0 (not requested) · gemini 0 (not requested)` · `🔌 research externals: codex 1 · gemini 0 (not requested)` · `🔌 research externals: codex 0 (MCP missing) · gemini 1`
+
+Like the `⏱` line, the receipt names its producing skill (`research`) — receipts must be attributable when they land in a longer transcript.
+
 **IMPORTANT**: The link MUST be in markdown format `[text](path)` to be clickable in VSCode.
 
 Example output:
@@ -411,29 +524,20 @@ Example output:
 
 ## Examples
 
-### Basic (Codebase Only)
+### Default (Single-Agent)
 
 ```
 /research authentication flow
 ```
-→ Explores codebase for auth patterns
+→ Claude codebase + web research when warranted; no external reviewers or Explore subagents
 → Output: `.claude/research/authentication-flow.md`
 
-### With Antigravity (agy bridge MCP)
+### Explicit Full Fan-out
 
 ```
-/research -g game bastion design
+/research -cg --multi-agent microservices architecture
 ```
-→ Codebase + Antigravity web research
-→ Output: `.claude/research/game-bastion-design.md`
-
-### Full Research
-
-```
-/research -gc microservices architecture
-```
-→ Codebase + Antigravity + Codex
-→ Maximum coverage
+→ Claude + bounded Antigravity + bounded Codex first passes; Explore fan-out permitted
 → Output: `.claude/research/microservices-architecture.md`
 
 ---
@@ -442,10 +546,12 @@ Example output:
 
 | Mode | Use When |
 |------|----------|
-| No flags | Quick codebase check, familiar domain |
-| `-g` | Need best practices, architecture guidance |
-| `-c` | Need implementation patterns, code examples |
-| `-gc` | Major decision, unfamiliar domain, want comprehensive research |
+| Default (no flags) | Single-agent Claude research with codebase/web depth scaled to the topic |
+| `-c` / `-g` | Add one bounded independent external first pass |
+| `-gc` / `-cg` | Add both bounded external first passes |
+| `--multi-agent` | Explicitly permit Explore subagent fan-out for a decomposable sweep |
+
+For low-stakes questions, plain conversation (no `/research`) is fine. `/research` earns its cost on consequential, unfamiliar, or repo-specific decisions — where cross-model triangulation and the persistent artifact matter.
 
 ---
 

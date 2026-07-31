@@ -1,21 +1,21 @@
-# /think — Council of Opus + Codex + Antigravity. One-shot, peer-reviewed, anti-sycophancy.
+# /think — Council of Opus + Codex + Antigravity. Independent, peer-reviewed, cross-examined, anti-sycophantic.
 
-**Updated:** `19-jun-2026` · **Tag:** `[council-default | peer-review | anti-syco | persona-card]`
+**Updated:** `21-jul-2026` · **Tag:** `[council-default | peer-review | cross-examination | anti-syco | persona-card]`
 
-**First line of every run must be, verbatim:** `think (19-jun-2026)` — update the date above when the deliberation logic changes.
+**First line of every run must be, verbatim:** `think (21-jul-2026)` — update the date above when the deliberation logic changes.
 
-A third primitive next to `/wf` (do) and `/r` (find): for open / introspective / "what do you think?" questions where there is no objective ground truth. Implements **Karpathy's LLM Council** (parallel → anonymized peer review → chair synthesis) with **forced reasoning-method diversity** (ngmeyer/council-review). Anti-sycophancy is load-bearing, not decorative.
+A third primitive next to `/wf` (do) and `/r` (find): for open / introspective / "what do you think?" questions where there is no objective ground truth. Implements **Karpathy's LLM Council** (independent parallel views → anonymized peer review → adversarial cross-examination → chair synthesis) with **forced reasoning-method diversity** (ngmeyer/council-review). Anti-sycophancy is load-bearing, not decorative.
 
 ## Usage
 
 ```bash
-/think <topic>                       # default: 3-agent council (Opus + Codex + Antigravity)
-/think --solo <topic>                # Opus only — fast, no peer review
+/think <topic>                       # default: 3-agent council, peer review, then cross-examination
+/think --solo <topic>                # Opus only — fast, no peer review or cross-examination
 /think --nudge "<pushback>"          # re-deliberate on most-recent think-*.md with new context
 /think --vault <path> <topic>        # OPT-IN journal RAG — not yet implemented
 ```
 
-**Default behavior:** all three EIs in parallel. The `-cg` is not an opt-in here — it is the point of the command. Flags subtract.
+**Default behavior:** all three EIs first answer independently in parallel. If at least two members succeed, anonymous peer review and adversarial cross-examination both run automatically before synthesis. There is no debate flag: cross-examination is the point of `/think`, not an optional mode. The `-cg` is not an opt-in here either. Flags subtract.
 
 ---
 
@@ -65,18 +65,31 @@ TOPIC="${TOPIC## }"; TOPIC="${TOPIC%% }"
 # Slug from topic (mirrors r.md convention)
 SLUG=$(echo "$TOPIC" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | sed 's/[^a-z0-9-]//g' | cut -c 1-60)
 [ -z "$SLUG" ] && SLUG="think-$(date +%s)"
-OUTPUT=".claude/research/think-${SLUG}.md"
+# Timing ledger (always-on). Total wall time is computed from this file at completion; never estimated.
+T_RUN_ID=$(date -u +%Y%m%dT%H%M%SZ)                  # UTC stamp; lexical sort == chronological
+mkdir -p .claude/temp/think
+T_DIR=$(mktemp -d ".claude/temp/think/${T_RUN_ID}-XXXX")
+T_LEDGER="$T_DIR/started.txt"
+{ date +%s; date '+%Y-%m-%d %H:%M:%S'; } > "$T_LEDGER"   # line 1 = epoch, line 2 = human start
+
+select_think_output() {
+  OUTPUT="$1.md"
+  while stat "$OUTPUT" >/dev/null 2>&1; do
+    # The current proposal exists. Generate a fresh collision-proof run ID, then loop so
+    # stat explicitly probes the fallback proposal too before it can be selected.
+    T_COLLISION_RUN_DIR=$(mktemp -d "$T_DIR/artifact-XXXX")
+    T_COLLISION_RUN_ID="$(basename "$T_DIR")-$(basename "$T_COLLISION_RUN_DIR")"
+    OUTPUT="$1-${T_COLLISION_RUN_ID}.md"
+  done
+}
+
+OUTPUT=""
+[ -z "$NUDGE" ] && select_think_output ".claude/research/think-${SLUG}"
 
 echo "TOPIC: $TOPIC"
 echo "SOLO: $SOLO"
-echo "OUTPUT: $OUTPUT"
+[ -n "$OUTPUT" ] && echo "OUTPUT: $OUTPUT"
 [ -n "$NUDGE" ] && echo "NUDGE: $NUDGE"
-
-# Timing ledger (always-on). Total wall time is computed from this file at completion; never estimated.
-T_RUN_ID=$(date -u +%Y%m%dT%H%M%SZ)                  # UTC stamp; lexical sort == chronological
-T_LEDGER=".claude/temp/think/$T_RUN_ID/started.txt"
-mkdir -p ".claude/temp/think/$T_RUN_ID"
-{ date +%s; date '+%Y-%m-%d %H:%M:%S'; } > "$T_LEDGER"   # line 1 = epoch, line 2 = human start
 echo "timing ledger: $T_LEDGER"
 ```
 
@@ -145,6 +158,11 @@ elif [ "$SOLO" != "true" ] && [ "$AGY_AVAILABLE" = "false" ]; then
   DEGRADE_NOTE="Council ran with 2 agents (Antigravity unavailable: agy bridge MCP not loaded or errored)."
 fi
 
+CROSS_EXAM_STATUS="pending"
+if [ "$SOLO" = "true" ]; then
+  CROSS_EXAM_STATUS="skipped: --solo leaves only one successful council member"
+fi
+
 echo "COUNCIL_SIZE: $COUNCIL_SIZE  (Opus + Codex=$CODEX_AVAILABLE + Agy=$AGY_AVAILABLE)"
 [ -n "$DEGRADE_NOTE" ] && echo "$DEGRADE_NOTE"
 ```
@@ -162,7 +180,13 @@ if [ -z "$PREV" ]; then
 fi
 echo "NUDGE on previous session: $PREV"
 ```
-The original topic is reconstructed from `$PREV` (first `## Council deliberation: <TOPIC>` line). The nudge text is appended as additional context for the new round. Output file: `think-<original-slug>-nudge-$(date +%s).md`.
+The original topic is reconstructed from `$PREV` (first `## Council deliberation: <TOPIC>` line). The nudge text is appended as additional context for the new round. Derive its slug, then use the same stat-and-retry selector as a normal run; never overwrite the previous deliberation:
+
+```bash
+ORIGINAL_SLUG=$(echo "$ORIGINAL_TOPIC" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | sed 's/[^a-z0-9-]//g' | cut -c 1-60)
+select_think_output ".claude/research/think-${ORIGINAL_SLUG}-nudge"
+echo "OUTPUT: $OUTPUT"
+```
 
 ---
 
@@ -181,7 +205,7 @@ If the type is `vent`, the chair synthesis will weight "is this actually a decis
 
 ## Phase 2: PARALLEL_OPINION (all available EIs in parallel)
 
-Spawn the council members **in a single message with multiple tool calls** so they run concurrently. Each gets the **shared preamble** + their **assigned reasoning method**. Capture each output to `/tmp/think-<agent>.md` for Phase 3.
+Spawn the council members **in a single message with multiple tool calls** so they run concurrently. Each gets the **shared preamble** + their **assigned reasoning method**. Capture each output to `$T_DIR/<agent>-r1.md` for Phase 3. Keep the returned Opus agent ID, Codex conversation ID, and Antigravity route/provenance for the cross-examination round when the transport supplies them.
 
 ### Shared preamble (verbatim — injected into all three agents)
 
@@ -243,7 +267,7 @@ Structure your response with these headers, in this order:
 ## What I might be wrong about
 ```
 
-Capture to `/tmp/think-opus.md`.
+Capture to `$T_DIR/opus-r1.md`.
 
 ### 2b. Codex MCP — Contrarian / Inversion
 
@@ -272,11 +296,11 @@ Structure your response with these headers, in this order:
 ## What I might be wrong about
 ```
 
-Capture the tool response to `/tmp/think-codex.md`.
+Capture the tool response to `$T_DIR/codex-r1.md`.
 
 ### 2c. Antigravity (agy bridge MCP) — Expansionist / Analogy
 
-Call `mcp__agy__agy_ask` with `timeout_s=120`, or `~/.local/bin/agy-ask` when the MCP tool is not exposed. Save the returned final text to `/tmp/think-agy.md`. Both transports enter the same router; no background PID/kill management is needed.
+Call `mcp__agy__agy_ask` with `timeout_s=120`, or `~/.local/bin/agy-ask` when the MCP tool is not exposed. Save the returned final text to `$T_DIR/agy-r1.md`. Both transports enter the same router; no background PID/kill management is needed.
 
 ```text
 mcp__agy__agy_ask  timeout_s=120  prompt="
@@ -301,11 +325,29 @@ The bridge call is synchronous and bounded. If the selected bridge transport err
 
 If the response is truncated, continue with `mcp__agy__agy_continue` or `~/.local/bin/agy-ask continue` before marking the Antigravity pass failed.
 
+### 2d. Successful-member census
+
+After all independent calls settle, count only non-empty round-1 outputs as successful council members. Update `CODEX_AVAILABLE`, `AGY_AVAILABLE`, `COUNCIL_SIZE`, and `DEGRADE_NOTE` from the actual results rather than the preflight probes. A namespace that existed but returned no usable answer is unavailable for all later phases.
+
+Set the cross-examination state from that actual count:
+
+```bash
+if [ "$SOLO" = "true" ]; then
+  CROSS_EXAM_STATUS="skipped: --solo leaves only one successful council member"
+elif [ "$COUNCIL_SIZE" -lt 2 ]; then
+  CROSS_EXAM_STATUS="skipped: fewer than two successful council members"
+else
+  CROSS_EXAM_STATUS="eligible"
+fi
+```
+
+The first-pass independence guarantee ends only after this census. Do not share any member's answer with another member before Phase 3 has banked the peer-review result.
+
 ---
 
 ## Phase 3: PEER_REVIEW (skip if COUNCIL_SIZE < 2)
 
-Opus (inline) reads the available responses in **anonymized order**. The orchestrator shuffles letter assignments per session (`A`, `B`, `C`) and keeps the mapping in a local variable for de-anonymization in Phase 4.
+Opus (inline) reads the available responses in **anonymized order**. The orchestrator shuffles letter assignments per session (`A`, `B`, `C`) and keeps the mapping in a local variable for de-anonymization in Phases 4–5.
 
 Prompt to Opus (inline):
 
@@ -317,13 +359,13 @@ CRITICAL: Do not write any text other than the FINAL RANKING block. The parser d
 Responses (anonymized — you do NOT know which model wrote which):
 
 Response A:
-<<<contents of one of the /tmp/think-*.md files>>>
+<<<contents of one of the $T_DIR/*-r1.md files>>>
 
 Response B:
-<<<contents of one of the /tmp/think-*.md files>>>
+<<<contents of one of the $T_DIR/*-r1.md files>>>
 
 Response C:    [omit if COUNCIL_SIZE == 2]
-<<<contents of one of the /tmp/think-*.md files>>>
+<<<contents of one of the $T_DIR/*-r1.md files>>>
 
 Rank them on the COMBINATION of three criteria:
 1. CHALLENGES MY ASSUMPTIONS — does it surface something I didn't already believe?
@@ -338,13 +380,66 @@ FINAL RANKING:
 3. Response <letter>    [omit if COUNCIL_SIZE == 2]
 ```
 
-Parse the ranking, de-anonymize using the saved mapping, store for Phase 4.
+Parse the ranking, de-anonymize using the saved mapping, and retain both for Phases 4–5.
 
 **Honest framing of the anonymization:** In a single-orchestrator session, Opus chair could plausibly recognize its own subagent's voice. The shuffle is best-effort, not perfect blinding. A future redesign with separate backend processes would be the real fix.
 
 ---
 
-## Phase 4: CHAIR_SYNTHESIS (Opus inline — the load-bearing output)
+## Phase 4: ADVERSARIAL_CROSS_EXAMINATION (default when COUNCIL_SIZE >= 2)
+
+This phase has no flag and is not optional in a multi-member `/think` run. It starts only after the independent first passes and anonymous peer-review ranking are banked. If `CROSS_EXAM_STATUS` is not `eligible`, make no round-2 calls and preserve its exact skip reason in the deliberation artifact and Council provenance.
+
+When eligible, build a **sanitized rival digest for each successful member**. Each digest contains the key claims, reasoning, uncertainty, and peer-review feedback for every *other* successful member, labelled by author. Share conclusions, not raw private context, credentials, or newly discovered secrets. The persona card was already authorized for all council providers, but do not repeat irrelevant personal details. Never include the chair's emerging synthesis: this is member-to-member challenge, not chair anchoring.
+
+Send one round-2 prompt to **every** successful member in parallel:
+
+- **Opus:** continue the Phase 2a subagent by its agent ID when supported; otherwise spawn a fresh `general-purpose` subagent with Opus's own round-1 response plus the rival digest. No `model:` override.
+- **Codex:** use `mcp__codex-cli__codex-reply` with the Phase 2b conversation ID when available. If the transport did not return a usable ID, make a fresh `mcp__codex-cli__codex` call containing Codex's round-1 response and rival digest. Never set `model` or `reasoningEffort`.
+- **Antigravity:** use `mcp__agy__agy_ask`, or `~/.local/bin/agy-ask` only when the MCP tool is not exposed, with Antigravity's round-1 response and rival digest. The agy bridge continues to own routing and model selection.
+
+Use this prompt body for each member:
+
+```text
+The independent first-pass council responses and anonymous peer review are now banked.
+This is an adversarial cross-examination, not a consensus exercise. Do not soften a
+real objection to be polite, and do not manufacture disagreement where you lack one.
+
+QUESTION:
+<<<TOPIC>>>
+
+YOUR round-1 response:
+<<<this member's complete round-1 response>>>
+
+RIVAL DIGESTS (sanitized, labelled by author):
+<<<key claims, reasoning, uncertainty, and relevant peer-review feedback from every other successful member>>>
+
+Do this in order:
+1. Challenge each rival's important claims. Identify what is wrong, unsupported,
+   incomplete, or framed too narrowly. Give the concrete reason. If you cannot land an
+   evidence-backed or mechanically sound objection, say "no sound rebuttal found".
+2. State what each rival caught that you missed. Do not evade a correction.
+3. Re-state your own key claims after the challenge. Mark every one [HELD], [REVISED],
+   or [WITHDRAWN]. A label without a reason is invalid.
+
+Output exactly these sections:
+## Challenges to rivals
+## What I missed
+## My final position
+```
+
+Save successful rebuttals to `$T_DIR/opus-r2.md`, `$T_DIR/codex-r2.md`, and `$T_DIR/agy-r2.md`. A round-2 failure never erases a valid round-1 response: record the member as `no rebuttal output` and use its round-1 position as the latest available position.
+
+After all round-2 calls settle, set:
+
+- `CROSS_EXAM_STATUS="completed: <N>/<COUNCIL_SIZE> rebuttals returned"` when at least one rebuttal returned; append failed member names when partial.
+- `CROSS_EXAM_STATUS="attempted: no rebuttal outputs returned"` when every round-2 call failed; synthesize from round 1 and state this degradation plainly.
+
+The chair must use each member's **latest valid position** in Phase 5: round 2 where present, otherwise round 1. `[WITHDRAWN]` retracts only that member's claim; it does not erase a rival's independently held claim. A disagreement that remains `[HELD]` on opposing sides is the highest-value signal and must be surfaced, not averaged away.
+
+---
+
+## Phase 5: CHAIR_SYNTHESIS (Opus inline — the load-bearing output)
 
 Opus (inline) writes the synthesis the user will actually read. Adaptive thinking is on — this is what justifies the whole command.
 
@@ -354,9 +449,10 @@ Prompt to Opus:
 You are the chair of an LLM council. You have:
 - The user's original question.
 - The user's persona card (~/.claude/USER.md), verbatim.
-- N=$COUNCIL_SIZE responses, each with a "What I might be wrong about" section.
+- N=$COUNCIL_SIZE latest valid member positions, using round-2 rebuttals where present and round-1 fallbacks otherwise.
 - The peer-review ranking (if N >= 2).
 - The de-anonymized mapping (which model said what).
+- CROSS_EXAM_STATUS and the HELD / REVISED / WITHDRAWN ledger (if cross-examination ran).
 
 Produce the synthesis. MUST contain these sections, in this order:
 
@@ -381,6 +477,7 @@ If the right answer is "do nothing — you're already on the right path" or "thi
 - Opus (first-principles + steel-man): ranked #<N> by peers, key contribution: <one line>
 - Codex (contrarian/inversion): ranked #<N>, key contribution: <one line>   [skip if unavailable]
 - Antigravity (expansionist/analogy): ranked #<N>, key contribution: <one line>   [skip if unavailable]
+- Cross-examination: <exact CROSS_EXAM_STATUS>
 
 ---
 
@@ -392,24 +489,25 @@ Anti-sycophancy reminder (applies to YOUR synthesis, not just the council member
 
 ---
 
-## Phase 5: OUTPUT
+## Phase 6: OUTPUT
 
-### 5a. Write the full deliberation file
+### 6a. Write the full deliberation file
 
 ```bash
 mkdir -p .claude/research
 ```
 
-Write `.claude/research/think-${SLUG}.md` (or `.claude/research/think-${ORIGINAL_SLUG}-nudge-$(date +%s).md` if `--nudge`). Template:
+Write to `$OUTPUT`, the no-clobber path selected during setup (or the run-tagged nudge path selected in Phase 0e). Template:
 
 ```markdown
 # Council deliberation: <TOPIC>
 
-think (19-jun-2026)
+think (21-jul-2026)
 Generated: <YYYY-MM-DD HH:MM>
 Council size: <N> (Opus + [Codex] + [Antigravity])
 Mode: <default | --solo | --nudge from think-<prev-slug>.md>
 Degradation: <DEGRADE_NOTE or "none">
+Cross-examination: <exact CROSS_EXAM_STATUS>
 
 ---
 
@@ -432,16 +530,16 @@ Degradation: <DEGRADE_NOTE or "none">
 
 ---
 
-## Per-agent raw views (de-anonymized)
+## Per-agent independent views (de-anonymized)
 
 ### Opus — First Principles + Steel-Man
-<<<verbatim /tmp/think-opus.md>>>
+<<<verbatim $T_DIR/opus-r1.md>>>
 
 ### Codex — Contrarian / Inversion       [if available]
-<<<verbatim /tmp/think-codex.md>>>
+<<<verbatim $T_DIR/codex-r1.md>>>
 
 ### Antigravity — Expansionist / Analogy   [if available]
-<<<verbatim /tmp/think-agy.md>>>
+<<<verbatim $T_DIR/agy-r1.md>>>
 
 ---
 
@@ -457,12 +555,33 @@ De-anonymized mapping:
 
 ---
 
+## Adversarial cross-examination
+
+Status: <exact CROSS_EXAM_STATUS>
+
+[When attempted, one row per successful round-1 member. Use `no rebuttal output; round-1 fallback` for a failed round-2 call:]
+
+| Member | HELD | REVISED | WITHDRAWN | Strongest challenge landed | Latest-position source |
+|---|---|---|---|---|---|
+
+### Opus rebuttal   [if `$T_DIR/opus-r2.md` exists]
+<<<verbatim $T_DIR/opus-r2.md>>>
+
+### Codex rebuttal   [if `$T_DIR/codex-r2.md` exists]
+<<<verbatim $T_DIR/codex-r2.md>>>
+
+### Antigravity rebuttal   [if `$T_DIR/agy-r2.md` exists]
+<<<verbatim $T_DIR/agy-r2.md>>>
+
+---
+
 ## Provenance
 
 - Topic: <TOPIC>
 - Council members invoked: <list with availability status>
 - USER.md last modified: <stat -f %Sm ~/.claude/USER.md>
-- Anti-sycophancy directives applied: ✓ "wait a minute" opener · ✓ "what I might be wrong about" closers · ✓ chair framing critique
+- Anti-sycophancy directives applied: ✓ "wait a minute" opener · ✓ "what I might be wrong about" closers · ✓ peer review · ✓ adversarial cross-examination when eligible · ✓ chair framing critique
+- Cross-examination status: <exact CROSS_EXAM_STATUS>
 - Failure modes declared up-front: <DEGRADE_NOTE or "none">
 
 ---
@@ -472,25 +591,26 @@ De-anonymized mapping:
 This is a thinking tool, not therapy. The output is opinion, not fact — no EXIT_CODE applies. Use with judgment.
 ```
 
-### 5b. Surface synthesis in chat (synthesis-only, per user choice)
+### 6b. Surface synthesis in chat (synthesis-only, per user choice)
 
 In-chat output is ONLY:
-1. The first-line banner: `think (19-jun-2026)`
+1. The first-line banner: `think (21-jul-2026)`
 2. (If degraded) the `DEGRADE_NOTE` line
 3. The full `## Synthesis` block from the file (4 sub-sections + provenance)
 4. The clickable link:
 
 ```markdown
-**Full deliberation**: [think-<slug>.md](.claude/research/think-<slug>.md)
+**Full deliberation**: [<actual output filename>](<actual `$OUTPUT` path>)
 ```
 
-5. The one-line timing receipt (see "Timing receipt" below)
+5. The factual write receipt: `Deliberation written to <actual $OUTPUT path>.`
+6. The one-line timing receipt (see "Timing receipt" below). This is the final in-chat line; emit no trailing text.
 
 No raw per-agent views, no rankings — those live in the file.
 
 ### Timing receipt (always-on, total wall time)
 
-Compute the total from the setup ledger (`T_LEDGER`) and print the one-line receipt as the last in-chat line. If the path was lost, recover the newest run (RUN_IDs are UTC stamps, so lexical sort = chronological); if no ledger exists, print the `UNVERIFIED` line — measured, never estimated.
+Immediately after `Deliberation written to <actual $OUTPUT path>.`, compute the total from the setup ledger (`T_LEDGER`) and print the one-line receipt as the last in-chat line. If the path was lost, recover the newest run (RUN_IDs are UTC stamps, so lexical sort = chronological); if no ledger exists, print the `UNVERIFIED` line — measured, never estimated. Emit nothing after the timing receipt.
 
 ```bash
 LEDGER="$T_LEDGER"
@@ -506,9 +626,9 @@ else
 fi
 ```
 
-### 5c. Completion language
+### 6c. Completion language
 
-This command produces non-verifiable output (opinion, not fact). Forbidden words in the chat surface: "Done", "Fixed", "Complete", "Tests pass", "It works". Use **"Deliberation written to `.claude/research/think-<slug>.md`."** (factual, not a completion claim). Per CLAUDE.md, the EXECUTION_BLOCK requirement is N/A for non-verifiable outputs — declare this in the provenance instead.
+This command produces non-verifiable output (opinion, not fact). Forbidden words in the chat surface: "Done", "Fixed", "Complete", "Tests pass", "It works". Use **"Deliberation written to `<actual $OUTPUT path>`."** immediately before the final timing receipt (factual, not a completion claim). Per CLAUDE.md, the EXECUTION_BLOCK requirement is N/A for non-verifiable outputs — declare this in the provenance instead.
 
 ---
 
@@ -522,7 +642,7 @@ This command produces non-verifiable output (opinion, not fact). Forbidden words
 | Bridge errors after fallback or exceeds timeout | Continue without | `Antigravity bridge call failed/timed out. Council degraded.` |
 | Both external EIs unavailable | Continue Opus-only, label as auto-solo | `Both external EIs unavailable. Running auto-solo mode.` |
 | `~/.claude/USER.md` missing | STOP, write template, halt | `Created template at ~/.claude/USER.md. Open it, fill in, then re-run.` |
-| `--solo` flag passed | Skip Phases 2-codex, 2-agy, 3 | `SOLO mode: Opus only. No peer review.` |
+| `--solo` flag passed | Skip Phases 2b, 2c, 3, and 4 | `SOLO mode: Opus only. Cross-examination skipped: --solo leaves only one successful council member.` |
 | `--nudge` with no prior session | STOP | `--nudge requires a previous /think session.` |
 | Output dir missing | `mkdir -p research` silently | (none) |
 
