@@ -36,6 +36,8 @@ Restart Claude Code and the commands appear (`/workflow`, `/manager`, `/research
 
 Settings (`MCP_TIMEOUT`/`MCP_TOOL_TIMEOUT`, the allowed MCP tools, etc.) are not shipped — `settings.local.json` is gitignored. Tell the installer to add only what you want into your own `~/.claude/settings.json`.
 
+**One live tree for host + VM:** `bash scripts/link-globals.sh link` symlinks the global commands, agents, skills, bridge scripts and hook into this checkout (`status` checks). Claude Code and Codex share one lean rules file, gitignored `global/AGENTS.md`; `/reflect` and `$reflect` write full incidents to `global/log/` and at most one line to that file (see `global/README.md`).
+
 The base workflows run with **no MCP at all** — the optional reviewers just downgrade and say so. The MCP setup below is opt-in.
 
 ## MCP setup (optional for base workflows; required for `/cc`)
@@ -88,7 +90,7 @@ Missing MCP is fine — `/wf` continues with the reviewer downgraded (pass `--ab
 
 | Command | What it does |
 |---|---|
-| `/workflow` (`/wf`) | The workflow. Tier-auto TDD on modern primitives. Codex reviewer on by default (`--no-codex` to skip). Prints `workflow v0.28 (19-jun-2026)` as its first line. |
+| `/workflow` (`/wf`) | The workflow. Tier-auto TDD on modern primitives. Intake infers obvious defaults instead of asking (`Assumptions` block to override). Codex reviewer on by default (`--no-codex` to skip). Prints `workflow v0.29 (19-jun-2026)` as its first line. |
 | `/cc` | Standalone Claude-led workflow: Codex authors plan/tests/code/fixes and runs cops; Claude reviews both gates — the plan (Gate 1) and the code (Gate 2, fresh agent). |
 | `/manager` | Explicit-only cmux orchestrator with `--plan-only` and a required `--smoke-test` before isolated `/cc` fan-out. |
 | `/gardener` | Periodic entropy removal. Reads the longitudinal ledgers (`.claude/metrics/ratchet.tsv`, `debt.tsv`), sweeps for duplication / dead code, and executes the top-K cleanups as small `/wf`-style tasks (`--top=K`, `--dry-run`). |
@@ -102,6 +104,18 @@ Missing MCP is fine — `/wf` continues with the reviewer downgraded (pass `--ab
 | `/tl` | Tweet-size summary of the last output + clickable next-action buttons. |
 | `$tldr` (Codex skill) | Single-line `$tldr — <summary>` of the last output + concrete next-action choices. |
 | `in-browser-verify` (skill) | Per-repo web verification: durable `verification/scenarios.md` ledger, scenario→Playwright ID mapping, full-suite gate with fresh trace evidence, and a Stop hook that blocks "done" without a passed manifest. Onboard a web repo with `init`; hooks stay project-local. |
+
+### Loop skills (local, experimental — under test)
+
+Five distinct agentic-loop best-practices as project-local skills (`.claude/skills/`, `22-jun-2026`), grounded in Karpathy / Boris Cherny / Reflexion / Ralph. Invoke each by name to A/B them:
+
+| Skill | Loop | Stop condition |
+|---|---|---|
+| `goal-act-verify` | minimal goal→act→verify | deterministic check passes |
+| `leashed-autonomy` | Karpathy autonomy slider (L1–5) + blast radius | goal met, budget hit, or boundary needs approval |
+| `reflexion-repair` | cited self-critique for debug/test repair | green, or same hypothesis fails 2× |
+| `evaluator-optimizer` | best-of-N, rubric written first | top score ≥ threshold or plateau |
+| `ralph-loop` | fresh-context brute-force, git = memory | checklist clean, cap, or 2 no-progress passes |
 
 Claude research goes in `.claude/research/`. Codex research goes in `codex/research/`.
 
