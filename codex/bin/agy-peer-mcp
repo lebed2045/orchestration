@@ -6,16 +6,21 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 
 
 SERVER_VERSION = "1.1.0"
 AGY_BIN = os.environ.get("AGY_BIN", "agy")
-AGY_MODEL = os.environ.get("AGY_MODEL", "Gemini 3.5 Flash (High)")
+# No model name is frozen here: Antigravity retires model families without notice,
+# so the catalog is read from the live CLI at use time. AGY_MODEL pins it explicitly.
+AGY_MODEL_OVERRIDE = os.environ.get("AGY_MODEL") or None
+MODEL_CACHE_TTL_S = float(os.environ.get("AGY_MODEL_CACHE_TTL_S", "900"))
 PROXY_BASE = os.environ.get("AGY_FALLBACK_BASE_URL", "http://127.0.0.1:8300").rstrip("/")
 PROXY_MODEL = os.environ.get("AGY_FALLBACK_MODEL", "gemini-3.5-flash")
 DEFAULT_TIMEOUT = float(os.environ.get("AGY_TIMEOUT_S", "180"))
@@ -61,13 +66,74 @@ TOOLS = [
 ]
 
 
+_MODEL_CACHE: dict[str, tuple[float, str | None]] = {}
+
+
+def _catalog_models() -> list[tuple[str, str]]:
+    """Return [(id, label)] from `agy models`, newest-first order preserved."""
+    if not shutil.which(AGY_BIN):
+        return []
+    try:
+        proc = subprocess.run(
+            [AGY_BIN, "models"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+    if proc.returncode != 0:
+        return []
+    entries = []
+    for line in proc.stdout.splitlines():
+        if "\t" not in line:
+            continue
+        model_id, _, label = line.partition("\t")
+        model_id, label = model_id.strip(), label.strip()
+        if model_id and label:
+            entries.append((model_id, label))
+    return entries
+
+
+def _rank(entry: tuple[str, str]) -> tuple:
+    """Prefer Gemini Flash at High effort, newest version first."""
+    model_id, _ = entry
+    version = re.search(r"gemini-(\d+)\.(\d+)", model_id)
+    numbers = (int(version.group(1)), int(version.group(2))) if version else (-1, -1)
+    return (
+        model_id.startswith("gemini-"),
+        "flash" in model_id,
+        model_id.endswith("-high"),
+        numbers,
+    )
+
+
+def resolve_model() -> str | None:
+    """The model to pass to `agy --model`, resolved from the live catalog."""
+    if AGY_MODEL_OVERRIDE:
+        return AGY_MODEL_OVERRIDE
+    cached = _MODEL_CACHE.get("model")
+    if cached and time.monotonic() - cached[0] < MODEL_CACHE_TTL_S:
+        return cached[1]
+    entries = _catalog_models()
+    best = max(entries, key=_rank)[1] if entries else None
+    _MODEL_CACHE["model"] = (time.monotonic(), best)
+    return best
+
+
 def _run_agy(prompt: str, timeout_s: float, *, continuation: bool = False) -> tuple[bool, str]:
     if not shutil.which(AGY_BIN):
         return False, f"agy executable not found: {AGY_BIN}"
+    model = resolve_model()
+    if not model:
+        return False, "agy exposed no usable model in its catalog"
     args = [AGY_BIN]
     if continuation:
         args.append("--continue")
-    args.extend(["--model", AGY_MODEL, "--print", prompt, "--print-timeout", f"{int(timeout_s)}s"])
+    args.extend(["--model", model, "--print", prompt, "--print-timeout", f"{int(timeout_s)}s"])
     try:
         proc = subprocess.run(
             args,
@@ -131,7 +197,7 @@ def ask(prompt: str, timeout_s: float, *, continuation: bool = False) -> str:
     )
     ok, result = _run_agy(review_prompt, timeout_s, continuation=continuation)
     if ok:
-        return f"[route: agy / {AGY_MODEL}]\n\n{result}"
+        return f"[route: agy / {resolve_model()}]\n\n{result}"
     fallback_prompt = review_prompt
     if continuation:
         fallback_prompt = (
@@ -142,23 +208,9 @@ def ask(prompt: str, timeout_s: float, *, continuation: bool = False) -> str:
 
 
 def status() -> str:
-    agy_ok = False
-    agy_detail = f"not found ({AGY_BIN})"
-    if shutil.which(AGY_BIN):
-        try:
-            proc = subprocess.run(
-                [AGY_BIN, "models"],
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                timeout=15,
-                check=False,
-            )
-            agy_ok = proc.returncode == 0 and AGY_MODEL in proc.stdout
-            agy_detail = f"model available: {AGY_MODEL}" if agy_ok else (proc.stderr.strip() or "model unavailable")
-        except (OSError, subprocess.TimeoutExpired) as exc:
-            agy_detail = str(exc)
+    model = resolve_model()
+    agy_ok = model is not None
+    agy_detail = f"model resolved: {model}" if agy_ok else f"no usable model from {AGY_BIN} catalog"
 
     proxy_ok = False
     proxy_detail = "unreachable"

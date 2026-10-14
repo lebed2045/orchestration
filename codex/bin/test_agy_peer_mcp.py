@@ -72,5 +72,61 @@ class AgyPeerMcpTests(unittest.TestCase):
         status.assert_called_once_with()
 
 
+CATALOG = """Fetching available models...
+gemini-3.8-flash-high	Gemini 3.8 Flash (High)
+gemini-3.8-flash-medium	Gemini 3.8 Flash (Medium)
+gemini-3.7-flash-high	Gemini 3.7 Flash (High)
+gemini-3.1-pro-high	Gemini 3.1 Pro (High)
+claude-opus-4-6-thinking	Claude Opus 4.6 (Thinking)
+"""
+
+
+class ModelResolutionTests(unittest.TestCase):
+    def setUp(self):
+        bridge._MODEL_CACHE.clear()
+
+    def tearDown(self):
+        bridge._MODEL_CACHE.clear()
+
+    def _catalog(self, stdout=CATALOG, returncode=0):
+        return mock.patch.object(
+            bridge.subprocess,
+            "run",
+            return_value=mock.Mock(returncode=returncode, stdout=stdout, stderr=""),
+        )
+
+    def test_resolves_highest_flash_high_from_live_catalog(self):
+        with mock.patch.object(bridge.shutil, "which", return_value="/usr/bin/agy"):
+            with self._catalog():
+                self.assertEqual(bridge.resolve_model(), "Gemini 3.8 Flash (High)")
+
+    def test_no_retired_model_literal_is_frozen_in_source(self):
+        source = PATH.read_text()
+        self.assertNotIn("Gemini 3.5 Flash", source)
+
+    def test_run_agy_passes_the_resolved_model(self):
+        with mock.patch.object(bridge, "resolve_model", return_value="Gemini 9 Flash (High)"):
+            with mock.patch.object(bridge.shutil, "which", return_value="/usr/bin/agy"):
+                with mock.patch.object(
+                    bridge.subprocess,
+                    "run",
+                    return_value=mock.Mock(returncode=0, stdout="ok", stderr=""),
+                ) as run:
+                    ok, _ = bridge._run_agy("p", 10)
+        self.assertTrue(ok)
+        self.assertIn("Gemini 9 Flash (High)", run.call_args.args[0])
+
+    def test_status_is_ok_when_resolver_finds_a_model(self):
+        with mock.patch.object(bridge, "resolve_model", return_value="Gemini 3.8 Flash (High)"):
+            with mock.patch.object(bridge, "_proxy_json", side_effect=OSError("down")):
+                report = bridge.status()
+        self.assertIn("primary agy: ok", report)
+
+    def test_unresolvable_catalog_reports_failure_not_a_guess(self):
+        with mock.patch.object(bridge.shutil, "which", return_value="/usr/bin/agy"):
+            with self._catalog(stdout="Fetching available models...\n", returncode=0):
+                self.assertIsNone(bridge.resolve_model())
+
+
 if __name__ == "__main__":
     unittest.main()
