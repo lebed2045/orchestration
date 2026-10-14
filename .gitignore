@@ -23,3 +23,6 @@ __pycache__/
 
 # Codex-side reflections are machine-local too (live in ~/.codex/reflections/), never in the repo
 .codex/reflections/
+
+# Machine-global CLAUDE.md / AGENTS.md shared live between host and VM (private; this repo is public)
+/global/

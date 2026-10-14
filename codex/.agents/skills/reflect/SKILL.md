@@ -5,7 +5,9 @@ description: Turn confirmed Codex mistakes into durable prevention rules. Use im
 
 # Reflect
 
-Turn a confirmed failure into a short postmortem, a live rule, and an append-only incident record. Do this before resuming the task that exposed the failure.
+**Updated:** `14-oct-2026`
+
+Turn a confirmed failure into a short postmortem and an append-only incident record that holds the full rule. The global rules file stays lean: it gets at most one added or tightened line. Do this before resuming the task that exposed the failure.
 
 ## Modes
 
@@ -38,7 +40,7 @@ Do not dilute a confirmed correction with defensiveness. Continue the original t
 
 Read the applicable `AGENTS.md` files before crafting the rule.
 
-- Use `global` and `~/.codex/AGENTS.md` when the prevention applies across projects.
+- Use `global` when the prevention applies across projects. `~/.codex/AGENTS.md` is a link to the shared rules file that Claude Code loads too.
 - Use `project` and the repository's `AGENTS.md` only when the failure depends on that codebase, toolchain, or project convention.
 - Do not duplicate a global rule into a project file.
 
@@ -112,27 +114,33 @@ python3 <skill-dir>/scripts/reflection.py record --scope project --project-root 
 
 Add `--dry-run` for `$reflect --dry`. Delete only the temporary input you created after successful recording.
 
-The helper must update the live `AGENTS.md` rule and all four ledger views:
+The helper must update all four ledger views. In project scope it also writes the rule into the repository's `AGENTS.md`; in global scope it never touches the rules file:
 
 - `incidents.jsonl`: structured source of truth.
 - `failures.md`: human-readable postmortems.
 - `failures-addressed.md`: scope, rule, recurrence, and status.
-- `reflection-log.md`: append-only verbatim rule history.
+- `reflection-log.md`: append-only history with every rule's full text.
 
 Each target is replaced atomically, and the helper rolls back earlier targets if a later write fails.
 
-If the helper prints `SIZE_GATE: COMPRESSION_REQUIRED`, back up the target `AGENTS.md`, archive verbose provenance outside the loaded instructions, and perform one conservative compression pass. Never remove or weaken a `WHEN`, `DO`, `PROVE`, `GATE`, `HALT`, level tag, or complete rule. Compare those directive counts before and after; restore the backup if any count drops.
+Global scope — after recording, update the shared rules file by hand, carefully (edit the real file, `readlink ~/.codex/AGENTS.md`):
+
+- If a line already covers the failure, tighten it. Only if none does, add ONE line in the fitting section.
+- One line per rule: plain imperative, no ID, no incident story, no WHEN/DO/PROVE block, no level tag.
+- If the helper prints `LINE_BUDGET: EXCEEDED`, merge or remove a line before finishing. Never raise the budget yourself; removing a line loses nothing, because the full rule is in `reflection-log.md`.
+
+Project scope — if the helper prints `SIZE_GATE: COMPRESSION_REQUIRED`, back up the target `AGENTS.md`, archive verbose provenance outside the loaded instructions, and perform one conservative compression pass. Never remove or weaken a `WHEN`, `DO`, `PROVE`, `GATE`, `HALT`, level tag, or complete rule. Compare those directive counts before and after; restore the backup if any count drops.
 
 ### 7. Report and resume
 
-Report the generated ID, recurrence, level, exact `AGENTS.md` location, and rule in one compact block. Then resume the user's current request under the new rule.
+Report the generated ID, recurrence, level, the ledger location, and the rules-file line you added or tightened (or that none was needed) in one compact block. Then resume the user's current request under the new rule.
 
 ## Installation
 
-Install global discovery and the reflection contract idempotently:
+Install global discovery idempotently:
 
 ```bash
 python3 <skill-dir>/scripts/reflection.py install
 ```
 
-This creates a source-of-truth symlink under `~/.agents/skills/reflect` and adds a managed reflection section to `~/.codex/AGENTS.md`. It refuses to replace unrelated paths.
+This creates a source-of-truth symlink under `~/.agents/skills/reflect`. It refuses to replace unrelated paths and does not touch `~/.codex/AGENTS.md`.

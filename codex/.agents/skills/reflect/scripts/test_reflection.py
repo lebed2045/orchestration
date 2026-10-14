@@ -57,7 +57,7 @@ class ReflectionTests(unittest.TestCase):
             skills = root / ".agents" / "skills"
             self.run_cli("install", "--codex-home", str(home), "--skills-root", str(skills))
             self.assertTrue((skills / "reflect").is_symlink())
-            self.assertIn("CODEX-REFLECT-SYSTEM", (home / "AGENTS.md").read_text(encoding="utf-8"))
+            self.assertFalse((home / "AGENTS.md").exists())
 
             input_path = self.write_input(root, incident())
             for expected_id, expected_level, expected_marker in (
@@ -76,9 +76,10 @@ class ReflectionTests(unittest.TestCase):
                     str(input_path),
                 )
                 self.assertIn(f"RECORDED: {expected_id}", result.stdout)
-                agents = (home / "AGENTS.md").read_text(encoding="utf-8")
-                self.assertIn(expected_marker, agents)
-                self.assertEqual(agents.count("reflect-pattern: instruction-source-confusion"), 1)
+                # WHY: the global rules file is lean and shared; the full rule lives in the log only.
+                self.assertFalse((home / "AGENTS.md").exists())
+                history = (home / "reflections" / "reflection-log.md").read_text(encoding="utf-8")
+                self.assertIn(expected_marker, history)
 
             incidents = [
                 json.loads(line)
@@ -86,8 +87,48 @@ class ReflectionTests(unittest.TestCase):
             ]
             self.assertEqual([item["level"] for item in incidents], ["L1", "L2", "L3", "L4"])
             self.assertEqual(incidents[1]["recurrence_of"], "GLO-1")
-            self.assertIn("GATE Do not continue", (home / "reflections" / "reflection-log.md").read_text(encoding="utf-8"))
-            self.assertIn("HALT Do not continue", (home / "AGENTS.md").read_text(encoding="utf-8"))
+            history = (home / "reflections" / "reflection-log.md").read_text(encoding="utf-8")
+            self.assertEqual(history.count("reflect-pattern: instruction-source-confusion"), 4)
+            self.assertIn("GATE Do not continue", history)
+            self.assertIn("HALT Do not continue", history)
+
+    def test_global_record_leaves_rules_file_alone_and_reports_budget(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            home = root / ".codex"
+            home.mkdir()
+            rules = "# Shared rules\n# Budget: 4 lines.\n- one\n- two\n"
+            (home / "AGENTS.md").write_text(rules, encoding="utf-8")
+            input_path = self.write_input(root, incident("budget-pattern"))
+            args = ("record", "--scope", "global", "--codex-home", str(home), "--input", str(input_path))
+
+            result = self.run_cli(*args)
+            self.assertIn("AGENTS_LINES: 4/4", result.stdout)
+            self.assertIn("LINE_BUDGET: OK", result.stdout)
+            self.assertEqual((home / "AGENTS.md").read_text(encoding="utf-8"), rules)
+
+            (home / "AGENTS.md").write_text(rules + "- three\n", encoding="utf-8")
+            result = self.run_cli(*args)
+            self.assertIn("AGENTS_LINES: 5/4", result.stdout)
+            self.assertIn("LINE_BUDGET: EXCEEDED", result.stdout)
+            self.assertEqual((home / "AGENTS.md").read_text(encoding="utf-8"), rules + "- three\n")
+
+    def test_unreachable_linked_ledger_is_refused(self) -> None:
+        # WHY: the ledger folder may be a link into a shared tree; when that tree is
+        # unreachable, recording must fail loudly instead of starting a second local log.
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            home = root / ".codex"
+            home.mkdir()
+            target = root / "unmounted" / "reflections"
+            (home / "reflections").symlink_to(target)
+            input_path = self.write_input(root, incident("unreachable-ledger"))
+
+            with self.assertRaises(subprocess.CalledProcessError):
+                self.run_cli("record", "--scope", "global", "--codex-home", str(home), "--input", str(input_path))
+
+            self.assertTrue((home / "reflections").is_symlink())
+            self.assertFalse(target.parent.exists())
 
     def test_dry_run_is_read_only(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -145,6 +186,37 @@ class ReflectionTests(unittest.TestCase):
 
             self.assertEqual(first.read_text(encoding="utf-8"), "original\n")
             self.assertFalse(second.exists())
+
+    def test_atomic_write_keeps_symlinked_agents_file(self) -> None:
+        # WHY: a global AGENTS.md may be a symlink into a shared tree; replacing the link
+        # itself would silently fork this machine's rules from the shared copy.
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            shared = root / "shared" / "AGENTS.md"
+            shared.parent.mkdir()
+            shared.write_text("original\n", encoding="utf-8")
+            link = root / "AGENTS.md"
+            link.symlink_to(shared)
+
+            REFLECTION.atomic_write(link, "changed\n")
+
+            self.assertTrue(link.is_symlink())
+            self.assertEqual(shared.read_text(encoding="utf-8"), "changed\n")
+
+    def test_dangling_symlink_is_refused_and_kept(self) -> None:
+        # WHY: a dangling AGENTS.md link means the shared tree is unreachable (share not
+        # mounted); writing would recreate its path locally or drop the link on rollback.
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            target = root / "unmounted" / "AGENTS.md"
+            link = root / "AGENTS.md"
+            link.symlink_to(target)
+
+            with self.assertRaisesRegex(OSError, "dangling symlink"):
+                REFLECTION.commit_updates({link: "changed\n"})
+
+            self.assertTrue(link.is_symlink())
+            self.assertFalse(target.parent.exists())
 
 
 if __name__ == "__main__":

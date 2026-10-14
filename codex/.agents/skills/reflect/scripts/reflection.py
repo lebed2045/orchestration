@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Record Codex reflection incidents and maintain live AGENTS.md rules."""
+"""Record Codex reflection incidents; the lean global rules file is never written here."""
 
 from __future__ import annotations
 
@@ -82,6 +82,11 @@ def read_text(path: Path) -> str:
 
 
 def atomic_write(path: Path, content: str) -> None:
+    if path.is_symlink():
+        # Replace the link's target, not the link: a symlinked AGENTS.md must stay linked.
+        if not path.exists():
+            raise OSError(f"{path} is a dangling symlink (shared tree unreachable?); not writing")
+        path = path.resolve()
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, temp_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
     try:
@@ -242,6 +247,13 @@ def upsert_rule(content: str, pattern_key: str, block: str) -> str:
     return updated.rstrip() + "\n"
 
 
+def line_budget(agents_path: Path) -> tuple[int, int | None]:
+    """Lines in the rules file, and the budget its own header declares (if any)."""
+    text = read_text(agents_path)
+    match = re.search(r"^# Budget: (\d+) lines", text, flags=re.M)
+    return len(text.splitlines()), int(match.group(1)) if match else None
+
+
 def targets(scope: str, home: Path, root: Path | None) -> tuple[Path, Path]:
     if scope == "global":
         return home / "AGENTS.md", home / "reflections"
@@ -281,7 +293,7 @@ def ledger_updates(
     data: dict[str, Any],
     incident: dict[str, Any],
     block: str,
-    agents_path: Path,
+    rule_home: Path,
 ) -> dict[Path, str]:
     incident_id = incident["id"]
     date = str(incident["ts"])[:10]
@@ -302,7 +314,7 @@ def ledger_updates(
 
 **What happened:** {incident['what']}
 **Root cause:** {incident['root_cause']}
-**Rule added:** {agents_path} -> \"{data['rule_title']}\"
+**Rule added:** {rule_home} -> \"{data['rule_title']}\"
 **Pattern:** {incident['pattern_key']}
 **Escalation:** {incident['level']}
 **Recurrence of:** {recurrence}
@@ -317,7 +329,7 @@ def ledger_updates(
 **Correction:** {incident['correction']}
 **Pattern:** {incident['pattern_key']}
 **Recurrence of:** {recurrence}
-**Rule (verbatim as added to AGENTS.md):**
+**Rule (full text):**
 {block}
 
 ---
@@ -331,7 +343,6 @@ def ledger_updates(
 
 
 def command_install(args: argparse.Namespace) -> int:
-    home = codex_home(args.codex_home)
     skills_root = Path(args.skills_root).expanduser().resolve() if args.skills_root else Path.home() / ".agents" / "skills"
     skill = Path(__file__).resolve().parent.parent
     link = skills_root / "reflect"
@@ -345,13 +356,6 @@ def command_install(args: argparse.Namespace) -> int:
         print(f"Installed global skill link: {link} -> {skill}")
     else:
         print(f"Global skill link already installed: {link}")
-    agents = home / "AGENTS.md"
-    updated = ensure_contract(read_text(agents))
-    if updated != read_text(agents):
-        atomic_write(agents, updated)
-        print(f"Installed reflection contract: {agents}")
-    else:
-        print(f"Reflection contract already installed: {agents}")
     return 0
 
 
@@ -367,12 +371,17 @@ def command_record(args: argparse.Namespace) -> int:
     timestamp = utc_now().isoformat(timespec="seconds").replace("+00:00", "Z")
     block = rule_block(data, incident_id, level, prior_strikes)
     incident = incident_record(data, incident_id, timestamp, args.scope, level, recurrence_of)
-    agents_updated = upsert_rule(read_text(agents_path), data["pattern_key"], block)
-    updates = {agents_path: agents_updated, **ledger_updates(ledger, data, incident, block, agents_path)}
+    # Global scope: the full rule goes to the ledger only; the shared rules file stays lean.
+    rule_home = agents_path if args.scope == "project" else ledger / "reflection-log.md"
+    updates = ledger_updates(ledger, data, incident, block, rule_home)
+    agents_updated = ""
+    if args.scope == "project":
+        agents_updated = upsert_rule(read_text(agents_path), data["pattern_key"], block)
+        updates = {agents_path: agents_updated, **updates}
 
     if args.dry_run:
         print(f"DRY RUN: {incident_id} {incident['level']} recurrence_of={recurrence_of or 'none'}")
-        print(f"Target: {agents_path}")
+        print(f"Target: {rule_home}")
         print(block)
         return 0
 
@@ -380,12 +389,19 @@ def command_record(args: argparse.Namespace) -> int:
     print(f"RECORDED: {incident_id}")
     print(f"LEVEL: {incident['level']}")
     print(f"RECURRENCE_OF: {recurrence_of or 'none'}")
-    print(f"RULE: {agents_path}")
+    print(f"RULE: {rule_home}")
     print(f"LEDGER: {ledger}")
-    size = len(agents_updated.encode("utf-8"))
-    print(f"AGENTS_SIZE: {size}")
-    if size > 30000:
-        print("SIZE_GATE: COMPRESSION_REQUIRED")
+    if args.scope == "project":
+        size = len(agents_updated.encode("utf-8"))
+        print(f"AGENTS_SIZE: {size}")
+        if size > 30000:
+            print("SIZE_GATE: COMPRESSION_REQUIRED")
+        return 0
+    lines, budget = line_budget(agents_path)
+    print(f"LEAN_LINE: add or tighten at most one line in {agents_path}")
+    if budget is not None:
+        print(f"AGENTS_LINES: {lines}/{budget}")
+        print(f"LINE_BUDGET: {'EXCEEDED' if lines > budget else 'OK'}")
     return 0
 
 
@@ -414,12 +430,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    install = subparsers.add_parser("install", help="install global skill discovery and reflection contract")
+    install = subparsers.add_parser("install", help="install global skill discovery")
     install.add_argument("--codex-home")
     install.add_argument("--skills-root")
     install.set_defaults(func=command_install)
 
-    record = subparsers.add_parser("record", help="record an incident and update the live rule")
+    record = subparsers.add_parser("record", help="record an incident (project scope also updates its AGENTS.md)")
     record.add_argument("--scope", choices=("global", "project"), required=True)
     record.add_argument("--input", required=True)
     record.add_argument("--codex-home")
