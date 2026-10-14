@@ -5,9 +5,9 @@ argument-hint: "[flags] <task>"
 
 # /workflow — Fast-Iteration TDD (Tier-Auto, Split-TDD, No-Worktree, Codex-Default) — `/wf` for short
 
-**WF_VERSION:** `v0.28` · **WF_COMMITTED:** `19-jun-2026` · **Tag:** `[tier-auto | split-tdd | codex-default | rewind-discard | no-auto-commit | evidence-graded-gates | timing-receipt | segment-timing | assisted-by-trailer | longitudinal-ratchet | reviewer-timeout]`
+**WF_VERSION:** `v0.29` · **WF_COMMITTED:** `19-jun-2026` · **Tag:** `[tier-auto | split-tdd | codex-default | rewind-discard | no-auto-commit | evidence-graded-gates | timing-receipt | segment-timing | assisted-by-trailer | longitudinal-ratchet | reviewer-timeout | infer-dont-ask]`
 
-**First line of every run must be, verbatim:** `workflow v0.28 (19-jun-2026)` — derived from the two values above. Bump both when the workflow body changes meaningfully.
+**First line of every run must be, verbatim:** `workflow v0.29 (19-jun-2026)` — derived from the two values above. Bump both when the workflow body changes meaningfully.
 
 **Second line — help banner:** if invoked via the `/wf` wrapper (the wrapper says so), print `/wf — short for /workflow: tier-auto TDD with cop reviews and Codex gate.` — otherwise print `/workflow — tier-auto TDD with cop reviews and Codex gate (/wf for short).`
 
@@ -20,6 +20,8 @@ argument-hint: "[flags] <task>"
 ```
 
 **Default behavior (no flags):** `tier=auto` (heuristic) · `split-tdd` · `no-worktree` · **Codex MCP reviewer ON** · no Antigravity · no human gate · no auto-commit · MCP downgrade allowed.
+
+**Intake is infer-first:** under-specified details are resolved from the materials and proceeded on (announce-and-proceed), **not** turned into clarifying questions — see Phase 2 "Infer, don't interrogate." A blocking question is reserved for a fork that is non-inferable **and** expensive/irreversible **and** has no dominant option; outward/destructive side effects still confirm regardless.
 
 | Flag | Effect | Default? |
 |---|---|---|
@@ -329,7 +331,55 @@ printf '%s\tend\t%s\t%s\n'   "<label>" "$(date +%s)" "$(date '+%H:%M:%S')" >> "$
 
 ## Phase 2: INTAKE (Autonomous, all tiers)
 
-Same as v1. Write spec → `.claude/temp/spec.md`. For micro tier, spec can be a 3-line note.
+Write spec → `.claude/temp/spec.md`. For micro tier, spec can be a 3-line note.
+
+### Infer, don't interrogate (intake default — all tiers)
+
+The materials almost always answer the "obvious" questions. Resolve every under-specified
+detail by **inferring the most logical default and proceeding** — do not stop to interrogate
+the user for anything a competent collaborator handed these same inputs would simply decide.
+The global rule "ambiguous → ASK" still holds, but **inferable-from-the-materials is not
+ambiguous** — it is a decision you make and record, not a question you raise.
+
+**Inference precedence** (higher wins):
+1. explicit user instruction (their exact words / values / scope)
+2. the source material's own properties — a vertical source → vertical output; Russian audio +
+   "subtitles" → Russian *same-language* captions; HDR source → tonemap to SDR
+3. platform / task convention (the named target's standard default)
+4. repo / workflow convention (how this codebase already does it)
+5. workflow default
+
+**Posture = announce-and-proceed, never gate-and-wait.** For any non-trivial or long-running
+task, print a one-line **non-blocking** assumptions banner *before* execution and immediately
+continue — e.g. `Assumptions: 9:16 (from source) · Russian captions (detected audio) · MP4/H.264 · clips → out/. Reply to override.`
+Then reproduce the same material assumptions under `Assumptions (reply to override any)` in the
+final summary (Phase 9). List **only assumptions the user might plausibly care about** — ones
+that affect visible output. Boring implementation defaults (codec, file naming, scratch paths)
+are chosen silently; do not pad the banner.
+
+**Bar for a blocking `AskUserQuestion` at intake — ask only if ALL THREE hold:**
+1. **not inferable** — no dominant reading survives the precedence above, AND
+2. **expensive or irreversible to get wrong** — burns significant unrecoverable tokens/time, or
+   feeds a downstream step that is costly to redo, AND
+3. **no clearly-dominant option** you could take-and-flag instead.
+
+If all three hold, ask **one** tight question with your recommended option first. Otherwise
+**proceed** — choose, flag it as an assumption, keep moving. When torn on a cheap/reversible
+call, proceed: re-running a render beats a round-trip that reads as *"would I like my Russian
+vertical video in English landscape?"*
+
+**Override — outward / destructive side effects always confirm** (this is NOT an intake
+inference, so the take-and-flag default does not apply): publishing, emailing, deleting or
+overwriting originals, spending money, pushing, or anything that ships outward needs explicit
+authorization even when a "dominant" option exists. Infer-don't-ask covers reversible
+generation only; it never green-lights an unauthorized destructive or outward action (global
+rules 4 & 6 still bind).
+
+**Never ask** for: aspect ratio when the source ratio is obvious (preserve it unless the user
+names a target platform that implies otherwise); subtitle / UI language when the audio language
+is obvious (same-language captions unless the user says *translate*, names an audience, or
+detection confidence is low); codec / container defaults; file naming; conventional output
+location — or any detail the inputs already settle.
 
 ---
 
@@ -763,13 +813,13 @@ The segment block reads `segments.tsv` (same run dir; see Segment timing in Phas
 LEDGER="${WF_LEDGER:-}"   # :- keeps this set-u safe when the env var was lost between Bash calls
 [ -f "$LEDGER" ] || LEDGER=$(find .claude/temp/wf -name started.txt -type f 2>/dev/null | sort | tail -1)
 if [ -z "$LEDGER" ] || [ ! -f "$LEDGER" ]; then
-  echo "⏱ workflow v0.28 tier=$TIER | TOTAL UNVERIFIED (start stamp not found)"
+  echo "⏱ workflow v0.29 tier=$TIER | TOTAL UNVERIFIED (start stamp not found)"
 else
   S=$(sed -n 1p "$LEDGER"); SH=$(sed -n 2p "$LEDGER")
   E=$(date +%s); EH=$(date '+%Y-%m-%d %H:%M:%S'); T=$((E - S))
   if [ "$T" -ge 3600 ]; then H=$(printf '%dh %02dm %02ds' $((T/3600)) $((T%3600/60)) $((T%60)));
   else H=$(printf '%dm %02ds' $((T/60)) $((T%60))); fi
-  echo "⏱ workflow v0.28 tier=$TIER | $SH → $EH | TOTAL $H"
+  echo "⏱ workflow v0.29 tier=$TIER | $SH → $EH | TOTAL $H"
   SEG="$(dirname "$LEDGER")/segments.tsv"
   if [ -s "$SEG" ]; then
     awk -F'\t' -v total="$T" '
@@ -795,7 +845,7 @@ fi
 Example receipt:
 
 ```text
-⏱ workflow v0.28 tier=small | 2026-06-11 14:02:11 → 2026-06-11 14:19:48 | TOTAL 17m 37s
+⏱ workflow v0.29 tier=small | 2026-06-11 14:02:11 → 2026-06-11 14:19:48 | TOTAL 17m 37s
   agent:tdd-red          14:02:40 → 14:05:12  2m 32s
   agent:tdd-green        14:05:20 → 14:11:03  5m 43s
   agent:cops             14:12:30 → 14:15:01  2m 31s
@@ -803,7 +853,9 @@ Example receipt:
   WAIT agent=10m 46s | codex=2m 39s | all-blocking=13m 25s | orchestrator-own=4m 12s
 ```
 
-Output (final line): `ORCHESTRATION COMPLETE (workflow v0.28, tier=$TIER)`
+**Assumptions block (if any):** when Phase 2 inferred material defaults (see "Infer, don't interrogate"), reproduce them here under `Assumptions (reply to override any)` — this is the override channel that replaces up-front interrogation. Omit the block if nothing material was assumed.
+
+Output (final line): `ORCHESTRATION COMPLETE (workflow v0.29, tier=$TIER)`
 
 ---
 

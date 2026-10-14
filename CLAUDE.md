@@ -10,7 +10,7 @@ Run `/wf` for quick reference table.
 
 | Command | Description |
 |---------|-------------|
-| `/workflow` (`/wf`) | The workflow. Fast TDD on modern primitives (Agent + worktree + tier-auto). Codex reviewer ON by default (`--no-codex` to disable). Prints `workflow v0.28 (19-jun-2026)` as its first line on every invocation. |
+| `/workflow` (`/wf`) | The workflow. Fast TDD on modern primitives (Agent + worktree + tier-auto). Intake infers obvious defaults instead of asking (announce-and-proceed + `Assumptions` block). Codex reviewer ON by default (`--no-codex` to disable). Prints `workflow v0.29 (19-jun-2026)` as its first line on every invocation. |
 | `/cc` | Standalone Claude-led workflow: Codex authors plan/tests/code/fixes and runs cops; Claude reviews both gates — the plan (Gate 1) and the code (Gate 2, fresh agent). |
 | `/manager` | Explicit-only cmux orchestrator with `--plan-only` and a version-pinned `--smoke-test` gate before isolated `/cc` fan-out. Updated `22-jul-2026`. |
 | `/gardener` | Periodic entropy removal. Reads the longitudinal ledgers (`.claude/metrics/ratchet.tsv`, `debt.tsv`), sweeps for duplication/dead code, executes top-K cleanups as small `/wf`-style tasks (`--top=K`, `--dry-run`). |
