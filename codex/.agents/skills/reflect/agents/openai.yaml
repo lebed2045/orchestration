@@ -1,7 +1,7 @@
 interface:
   display_name: "Reflect"
-  short_description: "Turn confirmed mistakes into stronger rules"
-  default_prompt: "Use $reflect to record this confirmed mistake, check recurrence, and install a prevention rule."
+  short_description: "Record mistakes and check recurrence"
+  default_prompt: "Use $reflect to record this confirmed mistake once, check recurrence, and propose any authorized generalized rule."
 
 policy:
   allow_implicit_invocation: true

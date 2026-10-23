@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "purpose": "Optional third-party source pins; not an installer or installation approval",
+  "dependencies": [
+    {
+      "name": "superpowers",
+      "repository": "https://github.com/obra/superpowers.git",
+      "version": "6.4.2",
+      "tag": "v6.4.2",
+      "tag_object": "668b16d4d8d4d603fd257567684fbbffccbf2022",
+      "commit": "8ca22dba9a94f28898bbce59f2537ff4d87c747d",
+      "license": "MIT",
+      "source_directory": "vendor/superpowers/6.4.2",
+      "skills_directory": "skills",
+      "pin_checked_on": "2026-10-14",
+      "reference_files_sha256": {
+        "skills/receiving-code-review/SKILL.md": "091df1629510af1b92fc4abd6f96732ebedb4cb2c0f3457e8f2740b0504a2438",
+        "skills/verification-before-completion/SKILL.md": "2befe7fc55bcadaa3d97dd9e8efeb633d2561c0ebe74c5a8b17c4d9e7e4520b3"
+      },
+      "available_skills": [
+        "brainstorming",
+        "diagnosing-superpowers",
+        "dispatching-parallel-agents",
+        "executing-plans",
+        "finishing-a-development-branch",
+        "receiving-code-review",
+        "requesting-code-review",
+        "subagent-driven-development",
+        "systematic-debugging",
+        "test-driven-development",
+        "using-git-worktrees",
+        "using-superpowers",
+        "verification-before-completion",
+        "writing-plans",
+        "writing-skills"
+      ],
+      "selected_skills": [],
+      "selection_policy": "Review each skill and its required files, scripts, hooks, triggers and dependencies; obtain the user's explicit selection before downloading or registering it. A pin or available_skills entry is not approval.",
+      "integration_policy": "Shared skill files require per-tool discovery links and compatibility checks. They do not reproduce native plugin registration or startup hooks. Do not rewrite managed plugin caches or enable duplicate discovery sources."
+    }
+  ]
+}

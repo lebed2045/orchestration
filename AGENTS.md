@@ -2,9 +2,11 @@
 
 This repository contains orchestration workflows for multiple coding agents.
 
+- For installation or host/VM sharing, read `docs/shared-setup.md` and `dependencies.json` first. They describe shared source paths, per-tool discovery links and optional dependency pins; neither authorizes downloading, installing or enabling a component.
+
 - Claude Code workflows live under `.claude/commands` and `.claude/agents`.
 - Codex workflows live under `codex/.agents/skills`; invoke them as `$wf`, `$research`, `$think`, `$reflect`, `$tldr`, and `$in-browser-verify`, or select them from `/skills`.
-- `$reflect` triggers on confirmed Codex mistakes and user corrections. It writes the postmortem/recurrence ledger under `~/.codex/reflections` (or project `.codex/reflections`) and strengthens the appropriate `AGENTS.md` rule through a tested escalation ladder.
+- `$reflect` records each confirmed incident once through the shared recorder; global history is routed into the shared checkout. Rule changes require authorization and a generalized lesson; recording alone does not demonstrate prevention. See `shared/skills/reflect/SKILL.md`.
 - `$in-browser-verify` is a standalone web-app verification workflow, not a `$wf` mode. In onboarded web repositories it persists scenarios, runs the full browser gate, requires fresh trace evidence, and uses Codex lifecycle hooks to prevent unsupported completion claims.
 - In Claude commands, `-c` means Codex. In Codex skills, `-c` means Claude. In both, `-g` means Gemini/Antigravity.
 - Do not assume `/wf`, `/research`, or `/think` are repo-local Codex slash commands. Codex custom prompt slash commands are user-local under `~/.codex/prompts` and are deprecated; use repo skills for shared behavior.
@@ -17,7 +19,7 @@ This repository contains orchestration workflows for multiple coding agents.
 # Reflection after confirmed mistakes
 
 <!-- CODEX-REFLECT-SYSTEM:START -->
-Whenever Codex makes a confirmed mistake, the user corrects it, or verification disproves its claim, stop before continuing the task and use `$reflect`: write a short postmortem, check recurrence, create or strengthen a WHEN/DO/PROVE rule, update the appropriate `AGENTS.md`, and record the incident. Repeated `pattern_key` values escalate mechanically from L1 reminder to L2 mandatory proof to L3 hard gate to L4 halt.
+After a confirmed mistake, acknowledge it, correct the affected work within scope, and use `$reflect` to record the incident once and check recurrence. Add or tighten at most one authorized generalized rule; preserve unrelated rules. Existing ledger levels are history, not permission to impose new restrictions. Report recording separately from tested prevention.
 <!-- CODEX-REFLECT-SYSTEM:END -->
 
 <!-- CODEX-REFLECT-RULES:START -->

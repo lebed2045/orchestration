@@ -37,6 +37,47 @@ def incident(pattern: str = "instruction-source-confusion") -> dict[str, str]:
 
 
 class ReflectionTests(unittest.TestCase):
+    def test_legacy_claude_recurrence_can_be_explicitly_mapped(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            home = root / '.claude'
+            ledger = home / 'reflections'
+            ledger.mkdir(parents=True)
+            old = [dict(id=f'GLO-{n}', level=f'L{n}', recurrence_of=f'GLO-{n-1}' if n > 1 else None,
+                        root_cause='Existing causal pattern') for n in range(1, 4)]
+            history = ''.join(json.dumps(row) + '\n' for row in old)
+            (ledger / 'incidents.jsonl').write_text(history)
+            data = incident('existing-causal-pattern')
+            data['recurrence_of'] = 'GLO-3'
+            self.run_cli('record', '--agent', 'claude', '--agent-home', str(home), '--scope', 'global',
+                         '--input', str(self.write_input(root, data)))
+            lines = (ledger / 'incidents.jsonl').read_text()
+            self.assertTrue(lines.startswith(history))
+            latest = json.loads(lines.splitlines()[-1])
+            self.assertEqual(latest['level'], 'L4')
+            self.assertEqual(latest['recurrence_of'], 'GLO-3')
+            self.assertIn('GLO-1 -> GLO-2 -> GLO-3 -> GLO-4', (ledger / 'reflection-log.md').read_text())
+            # The new keyed incident carries that history forward without another mapping.
+            data.pop('recurrence_of')
+            self.run_cli('record', '--agent', 'claude', '--agent-home', str(home), '--scope', 'global',
+                         '--input', str(self.write_input(root, data)))
+            self.assertEqual(json.loads((ledger / 'incidents.jsonl').read_text().splitlines()[-1])['recurrence_of'], 'GLO-4')
+
+    def test_explicit_recurrence_cannot_reference_unknown_or_other_pattern(self):
+        for predecessor in ('missing', 'GLO-1'):
+            with tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                ledger = root / 'reflections'
+                ledger.mkdir()
+                before = json.dumps(dict(id='GLO-1', pattern_key='other-pattern', level='L3')) + '\n'
+                (ledger / 'incidents.jsonl').write_text(before)
+                data = incident()
+                data['recurrence_of'] = predecessor
+                with self.assertRaises(subprocess.CalledProcessError):
+                    self.run_cli('record', '--agent-home', str(root), '--scope', 'global',
+                                 '--input', str(self.write_input(root, data)))
+                self.assertEqual((ledger / 'incidents.jsonl').read_text(), before)
+
     def run_cli(self, *args: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             ["python3", str(SCRIPT), *args],
@@ -49,6 +90,34 @@ class ReflectionTests(unittest.TestCase):
         path = root / "incident.json"
         path.write_text(json.dumps(data), encoding="utf-8")
         return path
+
+    def test_claude_global_uses_its_own_ledger_and_rules_name(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            home = root / ".claude"
+            home.mkdir()
+            rules = "# Budget: 3 lines.\nShared rules\n"
+            (home / "CLAUDE.md").write_text(rules)
+            result = self.run_cli("record", "--agent", "claude", "--agent-home", str(home),
+                "--scope", "global", "--input", str(self.write_input(root, incident())))
+            self.assertTrue((home / "reflections" / "incidents.jsonl").is_file())
+            saved = json.loads((home / "reflections" / "incidents.jsonl").read_text())
+            self.assertEqual(saved['agent'], 'claude')
+            self.assertEqual((home / "CLAUDE.md").read_text(), rules)
+            self.assertIn(str(home / "CLAUDE.md"), result.stdout)
+            self.assertFalse((root / ".codex").exists())
+
+    def test_claude_project_uses_claude_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self.run_cli("record", "--agent", "claude", "--scope", "project",
+                "--project-root", str(root), "--input", str(self.write_input(root, incident())))
+            self.assertTrue((root / "CLAUDE.md").is_file())
+            self.assertNotIn('Whenever Codex', (root / "CLAUDE.md").read_text())
+            self.assertNotIn('`AGENTS.md`', (root / "CLAUDE.md").read_text())
+            self.assertTrue((root / ".claude" / "reflections" / "incidents.jsonl").is_file())
+            self.assertFalse((root / "AGENTS.md").exists())
+            self.assertFalse((root / ".codex").exists())
 
     def test_install_and_escalation_ladder(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -152,7 +221,7 @@ class ReflectionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp) / "sample-project"
             root.mkdir()
-            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            subprocess.run(["git", "init", "-q", "-b", "master", str(root)], check=True)
             input_path = self.write_input(root, incident("project-only-pattern"))
             result = self.run_cli(
                 "record",

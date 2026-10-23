@@ -2,6 +2,8 @@
 
 This project contains orchestrated development workflows. Use the commands below to activate them.
 
+For installation or host/VM sharing, read [the shared setup guide](docs/shared-setup.md) and [dependency manifest](dependencies.json) first. They describe shared sources and per-tool links; they do not authorize installation.
+
 ## Available Commands
 
 Run `/wf` for quick reference table.
@@ -17,8 +19,8 @@ Run `/wf` for quick reference table.
 | `/sweep` | End-of-session working-tree sweep. Classifies every uncommitted path into discard/ignore/commit-main/commit-sidecar/stash/hold and executes so `git status` ends clean. Codex consult ON by default (`--fast` / `--no-codex` to skip); secrets hard-fenced from auto-commit; never pushes. Prints `sweep (19-jun-2026)` as its first line. |
 | `/research` (`/r`) | Single-agent Claude research by default. `-c` adds one bounded Codex pass, `-g` adds one bounded Antigravity pass, and `--multi-agent` explicitly permits Explore fan-out. |
 | `/think` | Council-style deliberation for judgment calls, framing critique, and pushback |
-| `/reflect` | Turn failures into rules with escalation ladder |
-| `/tl` | Tweet-size summary of the last output + clickable next-action buttons |
+| `/reflect` | Record confirmed incidents once with the shared core/recorder; authorized generalized rules only |
+| `/tl` or `/tldr` | Tweet-size line, then up to 3 choice buttons or up to 3 key points; no fixed labels |
 | `in-browser-verify` (skill) | Web-app verification gate: scenario ledger (`verification/scenarios.md`) mapped to Playwright tests by stable IDs, full-suite runs with fresh trace evidence, immutable run manifests, and project-local SessionStart/Stop hooks that block unproven "done" claims. Onboard per-repo via `scripts/in_browser_verify.py init`. Updated `13-jul-2026`. |
 
 ### Legacy (archived in `legacy/`, NOT invocable as slash commands)
@@ -56,18 +58,9 @@ For Codex skills, `c` is inverted: `$wf -c` and `$research -c` request Claude. T
 
 Invoke the `workflow` skill ONLY when the user explicitly types `/workflow` or `/wf` (or names it: "run wf", "use the workflow"). `/wf` is a thin alias command that delegates to `workflow.md`. Never auto-route a code-change request into `/wf` — handle it directly (still under the Codex sidekick rule below). Rolled back 11-jun-2026: the old "all code changes go through /wf" default routing is gone.
 
-### Auto-TLDR at end of turn — TEST (this repo only, not promoted to global)
+### Shared TLDR — updated 23-oct-2026
 
-At the end of every substantive assistant turn in this repo, append the `/tl` TLDR automatically — the user shouldn't have to type `/tl`. Follow the **summary + triage behavior** of [.claude/commands/tl.md](.claude/commands/tl.md) (its help-banner step does NOT apply here — no banner every turn):
-
-1. **Tweet summary.** One line, ≤ 280 chars, plain language, lead with the outcome/verdict. Anti-sycophancy applies (failed / unverified / needs-work says so, never softened). No headers, tables, bullets, or code blocks in this line.
-2. **Actionability triage** — exactly one:
-   - **Actionable** — only when the turn surfaced an *explicitly identified* fix, a concrete decision between named paths, or a genuinely unfinished step. Call `AskUserQuestion` using the ≤280-char summary **as the question text** (do NOT also print it as a separate line), with 2–4 options derived from the content, one always "Leave as is" (so ≤ 3 content actions; concrete labels ≤ 5 words). Never invent follow-up work or a speculative "improvement" just to show buttons.
-   - **Not actionable** — pure ack / FYI / nothing concrete to do next → print the summary line only, no buttons.
-
-**Exemptions (no auto-TLDR):** trivial acknowledgment turns ("ok", "noted"); a turn that was itself a `/tl` run (don't double up); and inside command-file runs (`/wf`, `/sweep`, `/research`, `/gardener`, …) which own their own end-of-run output — the auto-TLDR is for direct turns only. If a turn genuinely required an `AskUserQuestion` of its own, that question *is* the actionable TLDR — but never add a question merely to skip the summary.
-
-Soft rule, **no enforcement hook** — a strong default, not a Stop-hook gate (a Stop hook was considered and declined: extra model turn + cost every turn, breaks non-interactive runs, composes badly with `/wf`'s own stop handling). The summary is a read-only digest, exempt from EXECUTION_BLOCK; any action taken after a button press follows the global rules in full. If this proves reliable here, promote to global `~/.claude/CLAUDE.md`. Added 20-jul-2026.
+Follow [the shared TLDR core](shared/skills/tldr/SKILL.md): end user-facing final answers with a tweet-size line (outcome first), then up to three concrete choices when a real decision exists, otherwise up to three short key points; no fixed labels such as Outcome/Status/Next. Preserve failures and uncertainty, recommend a concrete next step, and say when none remains. User-requested formats override this default. Apply it to skill output too; do not add a second summary or routine choice dialog. This adds no hook or extra model call.
 
 ### Codex sidekick — always on, every turn
 

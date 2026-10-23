@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Record Codex reflection incidents; the lean global rules file is never written here."""
+"""Record Codex/Claude reflections; global rules stay unchanged. Updated 15-oct-2026."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ RULES_END = "<!-- CODEX-REFLECT-RULES:END -->"
 PATTERN_PREFIX = "<!-- reflect-pattern: "
 
 SYSTEM_TEXT = f"""{SYSTEM_START}
-Whenever Codex makes a confirmed mistake, the user corrects it, or verification disproves its claim, stop before continuing the task and use `$reflect`: write a short postmortem, check recurrence, create or strengthen a WHEN/DO/PROVE rule, update the appropriate `AGENTS.md`, and record the incident. Repeated `pattern_key` values escalate mechanically from L1 reminder to L2 mandatory proof to L3 hard gate to L4 halt.
+After a confirmed mistake, acknowledge it, correct the affected work within scope, and use the reflection skill to record the incident once and check recurrence. Add or tighten at most one authorized generalized rule; preserve unrelated rules. Existing ledger levels are history, not permission to impose new restrictions. Report recording separately from tested prevention.
 {SYSTEM_END}"""
 
 RULES_TEXT = f"""{RULES_START}
@@ -61,6 +61,18 @@ def codex_home(value: str | None) -> Path:
     if value:
         return Path(value).expanduser().resolve()
     return Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")).expanduser().resolve()
+
+
+def runtime_home(args: argparse.Namespace) -> Path:
+    if args.agent_home and args.codex_home:
+        raise SystemExit("use only one of --agent-home and --codex-home")
+    if args.agent_home:
+        return Path(args.agent_home).expanduser().resolve()
+    if args.agent == "claude":
+        if args.codex_home:
+            raise SystemExit("Claude scope uses --agent-home, not --codex-home")
+        return (Path.home() / ".claude").resolve()
+    return codex_home(args.codex_home)
 
 
 def project_root(value: str | None) -> Path:
@@ -204,13 +216,39 @@ def next_id(scope: str, incidents: list[dict[str, Any]], root: Path | None) -> s
     return f"{prefix}-{max(numbers, default=0) + 1}"
 
 
-def escalation(incidents: list[dict[str, Any]], pattern_key: str) -> tuple[int, str | None, list[str]]:
+def escalation(incidents: list[dict[str, Any]], pattern_key: str,
+               predecessor: str | None = None) -> tuple[int, str | None, list[str]]:
     matches = [item for item in incidents if item.get("pattern_key") == pattern_key]
-    if not matches:
+    if predecessor is not None and (not isinstance(predecessor, str) or not predecessor):
+        raise SystemExit("recurrence_of must be an existing incident ID or null")
+    if predecessor and matches and predecessor != matches[-1]["id"]:
+        raise SystemExit("recurrence_of must reference the latest incident for this pattern")
+    if not matches and not predecessor:
         return 1, None, []
-    previous = matches[-1]
+    previous_id = predecessor or str(matches[-1]["id"])
+    chain = set()
+    cursor = previous_id
+    previous = None
+    while cursor:
+        if cursor in chain:
+            raise SystemExit("recurrence_of contains a cycle")
+        records = [item for item in incidents if item.get("id") == cursor]
+        if len(records) != 1:
+            raise SystemExit(f"recurrence_of must reference one existing incident: {cursor}")
+        item = records[0]
+        if item.get("pattern_key") not in (None, pattern_key):
+            raise SystemExit(f"recurrence_of belongs to another causal pattern: {cursor}")
+        chain.add(cursor)
+        if previous is None:
+            previous = item
+        cursor = item.get("recurrence_of")
+    assert previous is not None
     previous_level = int(str(previous.get("level", "L1")).removeprefix("L"))
-    return min(previous_level + 1, 4), str(previous["id"]), [str(item["id"]) for item in matches]
+    if previous_level not in range(1, 5):
+        raise SystemExit("Historical incident level must be L1 through L4")
+    chain.update(str(item["id"]) for item in matches)
+    strikes = [str(item["id"]) for item in incidents if str(item.get("id")) in chain]
+    return min(previous_level + 1, 4), str(previous["id"]), strikes
 
 
 def rule_block(data: dict[str, Any], incident_id: str, level: int, strikes: list[str]) -> str:
@@ -254,11 +292,12 @@ def line_budget(agents_path: Path) -> tuple[int, int | None]:
     return len(text.splitlines()), int(match.group(1)) if match else None
 
 
-def targets(scope: str, home: Path, root: Path | None) -> tuple[Path, Path]:
+def targets(scope: str, home: Path, root: Path | None, agent: str = "codex") -> tuple[Path, Path]:
+    rules_name = "CLAUDE.md" if agent == "claude" else "AGENTS.md"
     if scope == "global":
-        return home / "AGENTS.md", home / "reflections"
+        return home / rules_name, home / "reflections"
     assert root is not None
-    return root / "AGENTS.md", root / ".codex" / "reflections"
+    return root / rules_name, root / f".{agent}" / "reflections"
 
 
 def incident_record(
@@ -268,11 +307,12 @@ def incident_record(
     scope: str,
     level: int,
     recurrence_of: str | None,
+    agent: str = "codex",
 ) -> dict[str, Any]:
     return {
         "id": incident_id,
         "ts": timestamp,
-        "agent": "codex",
+        "agent": agent,
         "trigger": data["trigger"],
         "what": data["what"],
         "root_cause": data["root_cause"],
@@ -298,7 +338,7 @@ def ledger_updates(
     incident_id = incident["id"]
     date = str(incident["ts"])[:10]
     recurrence = incident["recurrence_of"] or "none"
-    context = data.get("context") or "Confirmed Codex failure during the active user task."
+    context = data.get("context") or f"Confirmed {incident['agent']} failure during the active user task."
     json_line = json.dumps(incident, ensure_ascii=False, separators=(",", ":"))
 
     failures = f"""## {incident_id} | {date} | {incident['scope']}
@@ -360,17 +400,17 @@ def command_install(args: argparse.Namespace) -> int:
 
 
 def command_record(args: argparse.Namespace) -> int:
-    home = codex_home(args.codex_home)
+    home = runtime_home(args)
     root = project_root(args.project_root) if args.scope == "project" else None
-    agents_path, ledger = targets(args.scope, home, root)
+    agents_path, ledger = targets(args.scope, home, root, args.agent)
     data = json.loads(Path(args.input).read_text(encoding="utf-8"))
     validate_input(data)
     incidents = read_incidents(ledger / "incidents.jsonl")
     incident_id = next_id(args.scope, incidents, root)
-    level, recurrence_of, prior_strikes = escalation(incidents, data["pattern_key"])
+    level, recurrence_of, prior_strikes = escalation(incidents, data["pattern_key"], data.get("recurrence_of"))
     timestamp = utc_now().isoformat(timespec="seconds").replace("+00:00", "Z")
     block = rule_block(data, incident_id, level, prior_strikes)
-    incident = incident_record(data, incident_id, timestamp, args.scope, level, recurrence_of)
+    incident = incident_record(data, incident_id, timestamp, args.scope, level, recurrence_of, args.agent)
     # Global scope: the full rule goes to the ledger only; the shared rules file stays lean.
     rule_home = agents_path if args.scope == "project" else ledger / "reflection-log.md"
     updates = ledger_updates(ledger, data, incident, block, rule_home)
@@ -406,12 +446,12 @@ def command_record(args: argparse.Namespace) -> int:
 
 
 def command_list(args: argparse.Namespace) -> int:
-    home = codex_home(args.codex_home)
+    home = runtime_home(args)
     root = project_root(args.project_root) if args.scope == "project" else None
-    _, ledger = targets(args.scope, home, root)
+    _, ledger = targets(args.scope, home, root, args.agent)
     incidents = read_incidents(ledger / "incidents.jsonl")
     if not incidents:
-        print(f"No {args.scope} Codex reflection incidents.")
+        print(f"No {args.scope} {args.agent} reflection incidents.")
         return 0
     groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for incident in incidents:
@@ -435,10 +475,12 @@ def build_parser() -> argparse.ArgumentParser:
     install.add_argument("--skills-root")
     install.set_defaults(func=command_install)
 
-    record = subparsers.add_parser("record", help="record an incident (project scope also updates its AGENTS.md)")
+    record = subparsers.add_parser("record", help="record an incident (project scope also updates its agent rules file)")
     record.add_argument("--scope", choices=("global", "project"), required=True)
     record.add_argument("--input", required=True)
     record.add_argument("--codex-home")
+    record.add_argument("--agent", choices=("codex", "claude"), default="codex")
+    record.add_argument("--agent-home")
     record.add_argument("--project-root")
     record.add_argument("--dry-run", action="store_true")
     record.set_defaults(func=command_record)
@@ -446,6 +488,8 @@ def build_parser() -> argparse.ArgumentParser:
     listing = subparsers.add_parser("list", help="show patterns and escalation state without writing")
     listing.add_argument("--scope", choices=("global", "project"), required=True)
     listing.add_argument("--codex-home")
+    listing.add_argument("--agent", choices=("codex", "claude"), default="codex")
+    listing.add_argument("--agent-home")
     listing.add_argument("--project-root")
     listing.set_defaults(func=command_list)
     return parser

@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "skills": {
+    "tldr": {
+      "provider": "orchestration",
+      "engines": {
+        "codex": [{"source": "codex/.agents/skills/tldr", "target": ".agents/skills/tldr", "kind": "skill"}],
+        "claude": [
+          {"source": ".claude/skills/tldr", "target": ".claude/skills/tldr", "kind": "skill"},
+          {"source": ".claude/commands/tl.md", "target": ".claude/commands/tl.md", "kind": "command"}
+        ]
+      }
+    },
+    "reflect": {
+      "provider": "orchestration",
+      "route_ledgers": true,
+      "legacy_targets": {"claude": [".claude/commands/reflect.md"]},
+      "engines": {
+        "codex": [{"source": "codex/.agents/skills/reflect", "target": ".agents/skills/reflect", "kind": "skill"}],
+        "claude": [{"source": ".claude/skills/reflect", "target": ".claude/skills/reflect", "kind": "skill"}]
+      }
+    },
+    "research": {
+      "provider": "orchestration",
+      "engines": {
+        "codex": [{"source": "codex/.agents/skills/research", "target": ".agents/skills/research", "kind": "skill"}],
+        "claude": [{"source": ".claude/commands/research.md", "target": ".claude/commands/research.md", "kind": "command"}]
+      }
+    },
+    "think": {
+      "provider": "orchestration",
+      "engines": {
+        "codex": [{"source": "codex/.agents/skills/think", "target": ".agents/skills/think", "kind": "skill"}],
+        "claude": [{"source": ".claude/commands/think.md", "target": ".claude/commands/think.md", "kind": "command"}]
+      }
+    },
+    "wf": {
+      "provider": "orchestration",
+      "engines": {
+        "codex": [{"source": "codex/.agents/skills/wf", "target": ".agents/skills/wf", "kind": "skill"}],
+        "claude": [
+          {"source": ".claude/commands/wf.md", "target": ".claude/commands/wf.md", "kind": "command"},
+          {"source": ".claude/commands/workflow.md", "target": ".claude/commands/workflow.md", "kind": "command"}
+        ]
+      }
+    },
+    "in-browser-verify": {
+      "provider": "orchestration",
+      "engines": {
+        "codex": [{"source": "codex/.agents/skills/in-browser-verify", "target": ".agents/skills/in-browser-verify", "kind": "skill"}],
+        "claude": [{"source": ".claude/skills/in-browser-verify", "target": ".claude/skills/in-browser-verify", "kind": "skill"}]
+      }
+    }
+  }
+}

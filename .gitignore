@@ -26,3 +26,6 @@ __pycache__/
 
 # Machine-global CLAUDE.md / AGENTS.md shared live between host and VM (private; this repo is public)
 /global/
+
+# Downloaded third-party sources; pins and selection policy live in dependencies.json
+/vendor/

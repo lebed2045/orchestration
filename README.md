@@ -14,7 +14,8 @@ this project's .claude/ if I say so]. Adapt paths and conventions to my setup, a
 interview me about my stack first. The Codex and Antigravity reviewers are optional and
 need local MCP servers — set those up only if I confirm, and securely: local stdio
 servers only, no API keys in MCP config, no committed credentials. Show me a diff before
-changing any of my existing files.
+changing any of my existing files. Read docs/shared-setup.md and dependencies.json;
+review each component and let me select it before installing or linking it.
 ```
 
 Restart Claude Code and the commands appear (`/workflow`, `/manager`, `/research`, …).
@@ -36,7 +37,7 @@ Restart Claude Code and the commands appear (`/workflow`, `/manager`, `/research
 
 Settings (`MCP_TIMEOUT`/`MCP_TOOL_TIMEOUT`, the allowed MCP tools, etc.) are not shipped — `settings.local.json` is gitignored. Tell the installer to add only what you want into your own `~/.claude/settings.json`.
 
-**One live tree for host + VM:** `bash scripts/link-globals.sh link` symlinks the global commands, agents, skills, bridge scripts and hook into this checkout (`status` checks). Claude Code and Codex share one lean rules file, gitignored `global/AGENTS.md`; `/reflect` and `$reflect` write full incidents to `global/log/` and at most one line to that file (see `global/README.md`).
+**Shared host + VM setup:** [Setup guide](docs/shared-setup.md) · [component review](docs/skill-review.md). `scripts/skills.py` previews, registers and restores selected links; TLDR/reflection share common cores. `global/` is private; pinned third-party source belongs in ignored `vendor/`.
 
 The base workflows run with **no MCP at all** — the optional reviewers just downgrade and say so. The MCP setup below is opt-in.
 
@@ -99,10 +100,10 @@ Missing MCP is fine — `/wf` continues with the reviewer downgraded (pass `--ab
 | `$research` (Codex skill) | Codex-led equivalent with evidence adjudication. A bounded peer call from a parent research workflow returns inline without recursively spawning another research run. Artifact in `codex/research/` for standalone runs. |
 | `/think` | Claude-chaired Claude + Codex + Gemini council with independent first passes, peer review, and default adversarial cross-examination. |
 | `$think` (Codex skill) | Codex-chaired Codex + Claude + Gemini council with independent first passes, peer review, and default adversarial cross-examination. |
-| `/reflect` | Turn recurring failures into rules. |
-| `$reflect` (Codex skill) | On confirmed mistakes/corrections: postmortem, recurrence check, permanent `AGENTS.md` rule, and L1→L4 escalation. |
-| `/tl` | Tweet-size summary of the last output + clickable next-action buttons. |
-| `$tldr` (Codex skill) | Single-line `$tldr — <summary>` of the last output + concrete next-action choices. |
+| `/reflect` | Record a confirmed incident once using the shared recorder; authorized generalized rules only. |
+| `$reflect` (Codex skill) | Same reflection core and recorder; distinguish recording from tested prevention. |
+| `/tl` or `/tldr` | Tweet-size line, then up to 3 choice buttons or up to 3 key points; no fixed labels. |
+| `$tldr` (Codex skill) | Same shared TLDR core; choices as a numbered list. |
 | `in-browser-verify` (skill) | Per-repo web verification: durable `verification/scenarios.md` ledger, scenario→Playwright ID mapping, full-suite gate with fresh trace evidence, and a Stop hook that blocks "done" without a passed manifest. Onboard a web repo with `init`; hooks stay project-local. |
 
 ### Loop skills (local, experimental — under test)
@@ -145,15 +146,9 @@ codex/
 └── temp/        # gitignored scratch
 ```
 
-Fresh clone: link these skills into Codex's global discovery path from the repository root (plain `ln` refuses to replace an existing target):
+Fresh clone: review/select components, then follow the [shared setup guide](docs/shared-setup.md#preview-and-apply-selected-links) for individual discovery links and preserved backups.
 
-```bash
-mkdir -p "$HOME/.agents/skills"
-ln -s "$PWD/codex/.agents/skills/research" "$HOME/.agents/skills/research"
-ln -s "$PWD/codex/.agents/skills/think" "$HOME/.agents/skills/think"
-```
-
-Invoke them in Codex as `$wf <task>`, `$research <topic>`, `$think <topic>`, `$reflect`, `$tldr`, and `$in-browser-verify`, or choose them from `/skills`. `$research` owns independent multi-model evidence gathering and source adjudication; `$think` owns deliberation, peer critique, and default cross-examination. Neither skill exposes a debate flag. `$reflect` is implicit on confirmed mistakes/user corrections; `python3 codex/.agents/skills/reflect/scripts/reflection.py install` makes it globally discoverable and installs the durable reflection contract in `~/.codex/AGENTS.md`. `$wf` stays explicit-only; ordinary code requests use Codex directly under the applicable `AGENTS.md` verification rules. `$in-browser-verify` is standalone: its installer makes only the skill globally discoverable; `init` adds `SessionStart`/`Stop` hooks locally to each explicitly onboarded web repository along with the tracked scenario and command contract. Non-web repositories load no verification hooks. Start a new Codex session if skills do not appear immediately, and review new project hooks in `/hooks`. Codex custom prompt slash commands exist as `/prompts:<name>`, but they are user-local under `~/.codex/prompts` and deprecated, so this repo uses skills instead.
+Invoke Codex skills by `$name` or `/skills`. `$research` gathers evidence; `$think` deliberates; neither exposes a debate flag. `$reflect` records confirmed mistakes; use the shared registration tool for discovery and ledger routing. `$wf` remains explicit-only. Browser verification requires separate project onboarding and hooks. Larger workflows need their documented bridges/support files, beyond discovery links. Check new sessions after registration.
 
 Older generations are archived in [legacy/](legacy/) (outside `.claude/` so Claude Code doesn't auto-register them as commands). They're kept in the repo as evolutionary context for AI coders reading the codebase, not for invocation.
 
