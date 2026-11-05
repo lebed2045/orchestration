@@ -24,8 +24,10 @@ __pycache__/
 # Codex-side reflections are machine-local too (live in ~/.codex/reflections/), never in the repo
 .codex/reflections/
 
-# Machine-global CLAUDE.md / AGENTS.md shared live between host and VM (private; this repo is public)
-/global/
+# global/: AGENTS.md + README.md are public; inbox, archive, registrations stay private
+/global/*
+!/global/AGENTS.md
+!/global/README.md
 
 # Downloaded third-party sources; pins and selection policy live in dependencies.json
 /vendor/

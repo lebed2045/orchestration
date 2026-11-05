@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # link-globals.sh — point this machine's global agent files at this checkout,
 # so host and VM share one live tree. See global/README.md for the layout.
-# Updated: 14-oct-2026
+# Updated: 05-nov-2026
 #
 #   status   (default) show the state of every entry on this machine
 #   collect  copy this machine's CLAUDE.md / AGENTS.md into global/_incoming/<host>-<time>/
 #            for merging; changes nothing on this machine
 #   link     back up whatever is there, then symlink every entry into this checkout;
-#            a machine's reflections folder is first copied whole into global/log/
+#            a machine's reflections folder is first copied whole into global/inbox/ (unreviewed reflections)
 #
 # The checkout path is resolved from this script's own location, so the same
 # script works on the host and in the VM even though the paths differ.
@@ -18,7 +18,7 @@ HOST="$(hostname -s)"
 STAMP="$(date +%Y%m%d-%H%M%S)-$$"   # pid keeps two runs in one second apart
 BACKUP="$HOME/.agent-link-backups/$STAMP"
 INCOMING="$ROOT/global/_incoming/$HOST-$STAMP"
-# each machine's incident log gets its own folder: global/log/vm-claude, global/log/host-codex, ...
+# each machine's incident log gets its own folder: global/inbox/vm-claude, global/inbox/host-codex, ...
 if [ "$(sysctl -n kern.hv_vmm_present 2>/dev/null || echo 0)" = 1 ]; then MACHINE=vm; else MACHINE=host; fi
 
 # <path under $HOME>|<path under this checkout>
@@ -28,8 +28,8 @@ if [ "$(sysctl -n kern.hv_vmm_present 2>/dev/null || echo 0)" = 1 ]; then MACHIN
 ENTRIES='
 .claude/CLAUDE.md|global/AGENTS.md
 .codex/AGENTS.md|global/AGENTS.md
-.claude/reflections|global/log/@MACHINE@-claude/reflections
-.codex/reflections|global/log/@MACHINE@-codex/reflections
+.claude/reflections|global/inbox/@MACHINE@-claude/reflections
+.codex/reflections|global/inbox/@MACHINE@-codex/reflections
 .claude/commands/workflow.md|.claude/commands/workflow.md
 .claude/commands/wf.md|.claude/commands/wf.md
 .claude/commands/research.md|.claude/commands/research.md

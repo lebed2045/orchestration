@@ -170,7 +170,7 @@ class SkillLinksTests(unittest.TestCase):
         original.mkdir(parents=True)
         (original / "incidents.jsonl").write_text('old incident\n')
         receipt = self.apply("--replace")["receipt"]
-        shared = self.root / "global/log/test-host-codex/reflections"
+        shared = self.root / "global/inbox/test-host-codex/reflections"
         self.assertTrue(original.is_symlink())
         self.assertEqual(original.resolve(), shared)
         self.assertEqual((original / "incidents.jsonl").read_text(), 'old incident\n')
@@ -186,7 +186,7 @@ class SkillLinksTests(unittest.TestCase):
         local = self.home / ".codex/reflections"
         local.mkdir(parents=True)
         (local / "incidents.jsonl").write_text('local')
-        shared = self.root / "global/log/test-host-codex/reflections"
+        shared = self.root / "global/inbox/test-host-codex/reflections"
         shared.mkdir(parents=True)
         (shared / "incidents.jsonl").write_text('shared')
         result = self.run_tool("apply", "--engine", "codex", "--skill", "tldr", "--confirm", "--replace", ok=False)

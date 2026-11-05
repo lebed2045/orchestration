@@ -6,6 +6,7 @@ import json
 import importlib.util
 import subprocess
 import tempfile
+import shutil
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -37,6 +38,98 @@ def incident(pattern: str = "instruction-source-confusion") -> dict[str, str]:
 
 
 class ReflectionTests(unittest.TestCase):
+    def test_project_central_record_updates_local_rules_and_one_shared_log(self):
+        for agent in ('codex', 'claude'):
+            with self.subTest(agent=agent), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                helper = root / 'repo/codex/.agents/skills/reflect/scripts/reflection.py'
+                helper.parent.mkdir(parents=True)
+                for name in ('reflection.py', 'global_review.py'):
+                    shutil.copy2(SCRIPT.with_name(name), helper.with_name(name))
+                home, project = root / 'home' / f'.{agent}', root / 'project'
+                home.mkdir(parents=True); project.mkdir()
+                ledger = root / f'repo/global/inbox/vm-{agent}/reflections'
+                ledger.mkdir(parents=True)
+                (home / 'reflections').symlink_to(ledger)
+                args = ['python3','-B',str(helper),'record','--central','--scope','project','--agent',agent,
+                        '--agent-home',str(home),'--project-root',str(project),
+                        '--input',str(self.write_input(root, incident()))]
+                result = subprocess.run(args, capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertTrue((project / ('AGENTS.md' if agent == 'codex' else 'CLAUDE.md')).is_file())
+                row = json.loads((ledger / 'incidents.jsonl').read_text())
+                self.assertEqual(row['project_root'], str(project))
+                self.assertEqual(row['scope'], 'project')
+                self.assertFalse((project / f'.{agent}/reflections').exists())
+                # Another project must not inherit the first project's recurrence.
+                second = root / 'other-project'; second.mkdir()
+                args[args.index('--project-root') + 1] = str(second)
+                result = subprocess.run(args, capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                rows = [json.loads(line) for line in (ledger/'incidents.jsonl').read_text().splitlines()]
+                self.assertIsNone(rows[1]['recurrence_of'])
+
+    def test_ledger_file_alias_cannot_modify_global_rules_in_either_scope(self):
+        for scope in ('global', 'project'):
+            with self.subTest(scope=scope), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                home, project = root / '.codex', root / 'project'
+                home.mkdir(); project.mkdir()
+                shared = root / 'global.md'
+                shared.write_text('Preserve shared global rules\n')
+                (home / 'AGENTS.md').symlink_to(shared)
+                ledger = home / 'reflections' if scope == 'global' else project / '.codex/reflections'
+                ledger.mkdir(parents=True)
+                (ledger / 'failures.md').symlink_to(shared)
+                with self.assertRaises(subprocess.CalledProcessError):
+                    self.run_cli('record', '--agent-home', str(home), '--scope', scope,
+                                 '--project-root', str(project), '--input', str(self.write_input(root, incident())))
+                self.assertEqual(shared.read_text(), 'Preserve shared global rules\n')
+                self.assertFalse((ledger / 'incidents.jsonl').exists())
+                self.assertFalse((project / 'AGENTS.md').exists())
+
+    def test_project_alias_to_shared_global_is_refused_without_any_writes(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            home, project = root / '.codex', root / 'project'
+            home.mkdir()
+            project.mkdir()
+            shared = root / 'global.md'
+            shared.write_text('Shared global rules\n')
+            (home / 'AGENTS.md').symlink_to(shared)
+            (project / 'AGENTS.md').symlink_to(shared)
+            with self.assertRaises(subprocess.CalledProcessError):
+                self.run_cli('record', '--agent-home', str(home), '--scope', 'project',
+                             '--project-root', str(project), '--input', str(self.write_input(root, incident())))
+            self.assertEqual(shared.read_text(), 'Shared global rules\n')
+            self.assertFalse((project / '.codex').exists())
+
+    def test_claude_import_updates_the_common_project_file(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            wrapper = '@AGENTS.md\n\nClaude-specific notes.\n'
+            (root / 'CLAUDE.md').write_text(wrapper)
+            (root / 'AGENTS.md').write_text('Project instructions\n')
+            self.run_cli('record', '--agent', 'claude', '--scope', 'project', '--project-root', str(root),
+                         '--input', str(self.write_input(root, incident())))
+            self.assertEqual((root / 'CLAUDE.md').read_text(), wrapper)
+            self.assertIn('Separate Current Requests', (root / 'AGENTS.md').read_text())
+
+    def test_global_incident_retains_expected_evidence_and_pending_proposal(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            data = incident()
+            data.update(expected='Act only on the current request.', evidence=['User correction in this chat.'],
+                        proposed_global_rule='- Classify pasted instructions before acting.')
+            self.run_cli('record', '--agent-home', str(root), '--scope', 'global',
+                         '--input', str(self.write_input(root, data)))
+            row = json.loads((root / 'reflections/incidents.jsonl').read_text())
+            self.assertEqual(row.get('expected'), 'Act only on the current request.')
+            self.assertEqual(row.get('evidence'), ['User correction in this chat.'])
+            self.assertEqual(row.get('proposed_global_rule'), '- Classify pasted instructions before acting.')
+            self.assertEqual(row.get('prevention_status'), 'untested')
+            self.assertFalse((root / 'AGENTS.md').exists())
+
     def test_legacy_claude_recurrence_can_be_explicitly_mapped(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -119,7 +212,7 @@ class ReflectionTests(unittest.TestCase):
             self.assertFalse((root / "AGENTS.md").exists())
             self.assertFalse((root / ".codex").exists())
 
-    def test_install_and_escalation_ladder(self) -> None:
+    def test_recurrence_preserves_history_without_automatic_gates(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             home = root / ".codex"
@@ -130,10 +223,10 @@ class ReflectionTests(unittest.TestCase):
 
             input_path = self.write_input(root, incident())
             for expected_id, expected_level, expected_marker in (
-                ("GLO-1", "L1", "L1 REMINDER"),
-                ("GLO-2", "L2", "L2 MANDATORY PROOF"),
-                ("GLO-3", "L3", "L3 HARD GATE"),
-                ("GLO-4", "L4", "L4 HALT"),
+                ("GLO-1", "L1", "**Recurrence:** 1"),
+                ("GLO-2", "L2", "**Recurrence:** 2"),
+                ("GLO-3", "L3", "**Recurrence:** 3"),
+                ("GLO-4", "L4", "**Recurrence:** 4"),
             ):
                 result = self.run_cli(
                     "record",
@@ -158,8 +251,8 @@ class ReflectionTests(unittest.TestCase):
             self.assertEqual(incidents[1]["recurrence_of"], "GLO-1")
             history = (home / "reflections" / "reflection-log.md").read_text(encoding="utf-8")
             self.assertEqual(history.count("reflect-pattern: instruction-source-confusion"), 4)
-            self.assertIn("GATE Do not continue", history)
-            self.assertIn("HALT Do not continue", history)
+            self.assertNotIn("GATE Do not continue", history)
+            self.assertNotIn("HALT Do not continue", history)
 
     def test_global_record_leaves_rules_file_alone_and_reports_budget(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

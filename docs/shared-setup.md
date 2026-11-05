@@ -1,6 +1,6 @@
 # Shared setup for Claude Code and Codex
 
-Updated: 15-oct-2026.
+Updated: 05-nov-2026.
 
 Keep one source checkout and let each selected agent discover it through local links. This works on one Mac or on a macOS host and UTM macOS guest. Reading this guide does not authorize installation: review [components](skill-review.md), then select them explicitly.
 
@@ -24,9 +24,9 @@ Selected sources map individually to:
 
 - Codex: `~/.agents/skills/<name>`.
 - Claude: `~/.claude/skills/<name>`, or `~/.claude/commands/<name>.md` for native command workflows.
-- Reflection history: `~/.codex/reflections` and `~/.claude/reflections` point to separate `global/log/<machine>-<agent>/reflections` folders.
+- Reflection history: `~/.codex/reflections` and `~/.claude/reflections` point to separate `global/inbox/<machine>-<agent>/reflections` folders (unreviewed; see `docs/reflection.md`). `<machine>` is exactly `host` or `vm`.
 
-TLDR and reflection adapters read one shared core each. Reflection uses the same Python recorder, with an explicit engine parameter; it retains the four ledger views and recurrence history. It does not edit global rules automatically; project recording also updates that project's rules and needs authorization for that file. Personal global instruction links are separate from skill registration.
+TLDR and reflection adapters read one shared core each. Reflection uses the same Python recorder, with an explicit engine parameter; it retains historical ledger views and refines project rules during authorized work. Global recording creates proposals only: [explicit review and approved apply](reflection.md) own all global changes. Recurrence never generates automatic halts. Personal global instruction links are separate from skill registration.
 
 Official discovery references: [Codex skills](https://learn.chatgpt.com/docs/build-skills#where-codex-loads-local-skills) and [Claude skills](https://code.claude.com/docs/en/skills#choose-where-skills-load). Filesystem links do not establish that an active session loaded a skill.
 
@@ -36,21 +36,21 @@ From the actual checkout on each machine, inspect the current state. These comma
 
 ```sh
 python3 scripts/skills.py inventory
-python3 scripts/skills.py --machine host-my-mac plan --engine both --skill tldr --skill reflect
+python3 scripts/skills.py --machine host plan --engine both --skill tldr --skill reflect
 ```
 
 Use a distinct stable label for each machine, such as `host-my-mac` or `vm-my-mac`. Do not give host and guest the same label. After explicit component selection, apply that exact preview:
 
 ```sh
-python3 scripts/skills.py --machine host-my-mac apply --engine both --skill tldr --skill reflect --confirm
-python3 scripts/skills.py --machine host-my-mac status --engine both --skill tldr --skill reflect
+python3 scripts/skills.py --machine host apply --engine both --skill tldr --skill reflect --confirm
+python3 scripts/skills.py --machine host status --engine both --skill tldr --skill reflect
 ```
 
 The VM agent runs the same commands from its mount, replacing only the machine label with its distinct VM label. The default home and checkout root resolve locally. Python 3.9 or newer is required; the tool uses only the standard library.
 
 `apply` refuses missing sources, conflicting targets, unsafe paths and duplicate legacy registrations before changing discovery paths. Existing targets require `--replace`; retiring old discovery copies additionally requires `--retire-legacy`. These flags are explicit migration choices, not cleanup. Review the paths before authorizing them. Existing files, directories and dangling symlinks move into uniquely named backups rather than being overwritten. Unrelated installed skills remain in place.
 
-Selecting reflection also routes its global ledger. Existing local history is copied into the shared destination, checked, then the original is preserved in the backup. If existing shared and local histories differ, migration stops for an explicit history merge. Project histories stay in their project. The tool does not configure reviewer bridges, MCP servers, hooks or global rule links.
+Selecting reflection also routes its agent ledger. Existing home-folder history is copied into the shared destination, checked, then the original is preserved in the backup. If histories differ, migration stops for an explicit merge. New project reflections use `--central`, updating project rules and recording incidents in the shared agent ledger; older project-only history remains in its project. The tool does not configure reviewer bridges, MCP servers, hooks or global rule links.
 
 A registry entry is not a complete dependency installer. `research`, `think`, `wf` and browser verification still require their documented support files, transports and project setup; review those dependencies separately before global activation. No claim of readiness for those larger workflows follows from a successful link.
 

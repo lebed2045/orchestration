@@ -1,4 +1,4 @@
 interface:
   display_name: "TLDR"
-  short_description: "Summarize the last output with next actions"
-  default_prompt: "Use $tldr to summarize the previous substantive assistant response."
+  short_description: "Summarize with a visible TLDR and three points"
+  default_prompt: "Use $tldr to summarize the previous substantive response under a visible TL;DR heading with exactly three short bullets."

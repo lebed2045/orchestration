@@ -8,7 +8,7 @@ Open Claude Code in any project and paste this (edit the bracketed parts):
 
 ```
 Check the orchestration repo at https://github.com/lebed2045/orchestration. Read its
-README, CLAUDE.md, and the files in .claude/commands and .claude/agents, then install
+README, AGENTS.md, and the files in .claude/commands and .claude/agents, then install
 the workflow skills for me — into ~/.claude/ so they work in every project [or into
 this project's .claude/ if I say so]. Adapt paths and conventions to my setup, and
 interview me about my stack first. The Codex and Antigravity reviewers are optional and
@@ -37,7 +37,7 @@ Restart Claude Code and the commands appear (`/workflow`, `/manager`, `/research
 
 Settings (`MCP_TIMEOUT`/`MCP_TOOL_TIMEOUT`, the allowed MCP tools, etc.) are not shipped — `settings.local.json` is gitignored. Tell the installer to add only what you want into your own `~/.claude/settings.json`.
 
-**Shared host + VM setup:** [Setup guide](docs/shared-setup.md) · [component review](docs/skill-review.md). `scripts/skills.py` previews, registers and restores selected links; TLDR/reflection share common cores. `global/` is private; pinned third-party source belongs in ignored `vendor/`.
+**Shared host + VM setup:** [Setup guide](docs/shared-setup.md) · [component review](docs/skill-review.md). `scripts/skills.py` previews, registers and restores selected links; TLDR/reflection share common cores. Rules: one project `AGENTS.md` (`CLAUDE.md` = `@AGENTS.md`) and one public `global/AGENTS.md` for every agent; reflections: `global/inbox/` = unreviewed, `global/archive/` = reviewed ([guide](docs/reflection.md)). Pinned third-party source belongs in ignored `vendor/`.
 
 The base workflows run with **no MCP at all** — the optional reviewers just downgrade and say so. The MCP setup below is opt-in.
 
@@ -100,10 +100,10 @@ Missing MCP is fine — `/wf` continues with the reviewer downgraded (pass `--ab
 | `$research` (Codex skill) | Codex-led equivalent with evidence adjudication. A bounded peer call from a parent research workflow returns inline without recursively spawning another research run. Artifact in `codex/research/` for standalone runs. |
 | `/think` | Claude-chaired Claude + Codex + Gemini council with independent first passes, peer review, and default adversarial cross-examination. |
 | `$think` (Codex skill) | Codex-chaired Codex + Claude + Gemini council with independent first passes, peer review, and default adversarial cross-examination. |
-| `/reflect` | Record a confirmed incident once using the shared recorder; authorized generalized rules only. |
-| `$reflect` (Codex skill) | Same reflection core and recorder; distinguish recording from tested prevention. |
-| `/tl` or `/tldr` | Tweet-size line, then up to 3 choice buttons or up to 3 key points; no fixed labels. |
-| `$tldr` (Codex skill) | Same shared TLDR core; choices as a numbered list. |
+| `/reflect` | Update project rules, record centrally; review global lessons in plain language, approve the diff, then `renew` archives the inbox. [Guide](docs/reflection.md). |
+| `$reflect` (Codex skill) | Same shared workflow; recurrence adds evidence, never automatic halts. Updated `05-nov-2026`. |
+| `/tl` or `/tldr` | Visible **TL;DR** heading and exactly three concise bullets; updated `03-nov-2026`. |
+| `$tldr` (Codex skill) | Same shared format as Claude, including automatic summaries on substantive final answers. |
 | `in-browser-verify` (skill) | Per-repo web verification: durable `verification/scenarios.md` ledger, scenario→Playwright ID mapping, full-suite gate with fresh trace evidence, and a Stop hook that blocks "done" without a passed manifest. Onboard a web repo with `init`; hooks stay project-local. |
 
 ### Loop skills (local, experimental — under test)

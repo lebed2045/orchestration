@@ -43,7 +43,7 @@ echo "$out" | grep -q "SKIPPED     ~/.claude/commands/wf.md" || fail "missing ta
 [ ! -e "$H1/.claude/commands/wf.md" ] && [ ! -L "$H1/.claude/commands/wf.md" ] || fail "dangling link created"
 
 # the incident log moves into the shared log folder whole, stays writable through the link, and is backed up
-LOG="$(echo "$TREE"/global/log/*-claude/reflections)"
+LOG="$(echo "$TREE"/global/inbox/*-claude/reflections)"
 [ -L "$H1/.claude/reflections" ] && [ "$(readlink "$H1/.claude/reflections")" = "$LOG" ] || fail "reflections not linked into the log"
 [ "$(cat "$LOG/archive/a.md")" = "old" ] || fail "log folder not copied whole"
 [ "$(cat "$H1"/.agent-link-backups/*/.claude/reflections/incidents.jsonl)" = "vm incident" ] || fail "reflections not backed up"

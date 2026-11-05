@@ -150,7 +150,7 @@ def plan(root, home, engines, selected, machine=None):
             if spec.get("route_ledgers"):
                 if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}", machine or ""):
                     raise SetupError("Reflection routing requires --machine with a unique host/guest label")
-                entries.append({"source": f"global/log/{machine}-{engine}/reflections",
+                entries.append({"source": f"global/inbox/{machine}-{engine}/reflections",
                                 "target": f".{engine}/reflections", "kind": "ledger"})
             for entry in entries:
                 target = target_path(home, entry["target"])

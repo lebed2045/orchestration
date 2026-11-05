@@ -1,7 +1,7 @@
 interface:
   display_name: "Reflect"
   short_description: "Record mistakes and check recurrence"
-  default_prompt: "Use $reflect to record this confirmed mistake once, check recurrence, and propose any authorized generalized rule."
+  default_prompt: "Use $reflect to record this mistake once, refine the project lesson, and leave any global rule as a proposal for explicit review."
 
 policy:
   allow_implicit_invocation: true

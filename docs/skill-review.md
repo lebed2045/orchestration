@@ -13,7 +13,7 @@ Official source: [lebed2045/orchestration](https://github.com/lebed2045/orchestr
 
 Sizes are working-tree measurements on 15-oct-2026; supporting test files and UI metadata are excluded. These sources already live in the shared checkout; registration adds small local symlinks, shared receipt JSON, and backups of any replaced targets. Backup size depends on existing files; the tool refuses an individual backup above 8 MiB or 1,000 entries. Reflection history grows with use. No package install, startup hook or daemon is added.
 
-Selecting reflection also selects routing each tool's global ledger to `global/log/<machine>-<agent>/reflections`. Existing history is preserved; divergent histories stop the migration. Project reflections remain in that project. The tool does not rewrite global instruction links.
+Selecting reflection also selects routing each tool's global ledger to `global/inbox/<machine>-<agent>/reflections`. Existing history is preserved; divergent histories stop the migration. Project reflections remain in that project. The tool does not rewrite global instruction links.
 
 Removal: run `scripts/skills.py restore` against that machine/home's printed receipt. It restores preserved originals and keeps generated links, sources and history in the shared recovery folder. Restore refuses targets changed since registration. Cleanup is a separate explicit action.
 

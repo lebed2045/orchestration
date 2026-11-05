@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-"""Record Codex/Claude reflections; global rules stay unchanged. Updated 15-oct-2026."""
+"""Record reflections; review/apply global proposals explicitly. Updated 27-oct-2026."""
 
 from __future__ import annotations
+
+import sys
+sys.dont_write_bytecode = True
 
 import argparse
 import json
 import os
 import re
 import subprocess
-import sys
 import tempfile
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -23,7 +25,7 @@ RULES_END = "<!-- CODEX-REFLECT-RULES:END -->"
 PATTERN_PREFIX = "<!-- reflect-pattern: "
 
 SYSTEM_TEXT = f"""{SYSTEM_START}
-After a confirmed mistake, acknowledge it, correct the affected work within scope, and use the reflection skill to record the incident once and check recurrence. Add or tighten at most one authorized generalized rule; preserve unrelated rules. Existing ledger levels are history, not permission to impose new restrictions. Report recording separately from tested prevention.
+After a confirmed mistake, correct the affected work and record the incident once. During authorized work, refine a concise project rule when useful. Global lessons are proposals only: use explicit reflection review and approved apply before changing global rules. Recurrence is evidence, not permission for stronger restrictions. Recording does not prove prevention.
 {SYSTEM_END}"""
 
 RULES_TEXT = f"""{RULES_START}
@@ -102,6 +104,8 @@ def atomic_write(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, temp_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
     try:
+        if path.exists():
+            os.fchmod(fd, path.stat().st_mode & 0o7777)
         with os.fdopen(fd, "w", encoding="utf-8") as handle:
             handle.write(content)
         os.replace(temp_name, path)
@@ -170,6 +174,15 @@ def validate_input(data: dict[str, Any]) -> None:
     for field in ("what", "root_cause", "impact", "correction"):
         if "\n" in str(data[field]).strip():
             raise SystemExit(f"{field} must be one line")
+    for field in ("proposed_global_rule", "replaces_global_rule"):
+        value = data.get(field)
+        if value is not None and (not isinstance(value, str) or not value.startswith("- ") or
+                                  len(value.splitlines()) != 1 or len(value) > 2000):
+            raise SystemExit(f"{field} must be one Markdown bullet of at most 2000 characters")
+    if data.get("replaces_global_rule") and not data.get("proposed_global_rule"):
+        raise SystemExit("replaces_global_rule needs proposed_global_rule")
+    if not isinstance(data.get("evidence", []), list) or not all(isinstance(x, str) for x in data.get("evidence", [])):
+        raise SystemExit("evidence must be a list of strings")
 
 
 def read_incidents(path: Path) -> list[dict[str, Any]]:
@@ -256,15 +269,11 @@ def rule_block(data: dict[str, Any], incident_id: str, level: int, strikes: list
     lines = [
         f"{PATTERN_PREFIX}{key} -->",
         f"### {data['rule_title']} (ref: {incident_id})",
-        f"**[{LEVEL_LABELS[level]}]**" + (f" Strikes: {' -> '.join(strikes + [incident_id])}." if level > 1 else ""),
+        f"**Recurrence:** {len(strikes) + 1}" + (f"; history: {' -> '.join(strikes + [incident_id])}" if strikes else ""),
         f"WHEN {str(data['when']).rstrip('.')}:" ,
         f"DO {str(data['do']).rstrip('.')}.",
         f"PROVE {str(data['prove']).rstrip('.')}.",
     ]
-    if level == 3:
-        lines.append("GATE Do not continue the triggering task until that proof is visible in the current turn.")
-    elif level >= 4:
-        lines.append("HALT Do not continue the triggering task; report the strike chain and request manual intervention.")
     return "\n".join(lines)
 
 
@@ -292,12 +301,50 @@ def line_budget(agents_path: Path) -> tuple[int, int | None]:
     return len(text.splitlines()), int(match.group(1)) if match else None
 
 
-def targets(scope: str, home: Path, root: Path | None, agent: str = "codex") -> tuple[Path, Path]:
+def targets(scope: str, home: Path, root: Path | None, agent: str = "codex", central: bool = False) -> tuple[Path, Path]:
     rules_name = "CLAUDE.md" if agent == "claude" else "AGENTS.md"
     if scope == "global":
         return home / rules_name, home / "reflections"
     assert root is not None
-    return root / rules_name, root / f".{agent}" / "reflections"
+    rules = root / rules_name
+    if agent == "claude" and re.search(r"^\s*@(?:\./)?AGENTS\.md\s*$", read_text(rules), re.M):
+        rules = root / "AGENTS.md"
+    protected = [Path(__file__).resolve().parents[5] / "global/AGENTS.md",
+                 home / rules_name, Path.home() / ".codex/AGENTS.md", Path.home() / ".claude/CLAUDE.md"]
+    resolved = rules.resolve()
+    for candidate in protected:
+        if resolved == candidate.resolve() or (rules.exists() and candidate.exists() and rules.samefile(candidate)):
+            raise SystemExit(f"Project rules resolve to global instructions; use explicit review/apply: {rules}")
+    ledger = home / "reflections" if central else root / f".{agent}" / "reflections"
+    if not resolved.is_relative_to(root) or (not central and not ledger.resolve().is_relative_to(root)):
+        raise SystemExit("Project rules or ledger escapes the project root")
+    if central:
+        shared_logs = Path(__file__).resolve().parents[5] / "global/inbox"
+        actual = ledger.resolve()
+        if (not ledger.is_symlink() or not ledger.is_dir() or actual.name != "reflections" or
+                actual.parent.parent != shared_logs.resolve() or not actual.parent.name.endswith(f"-{agent}")):
+            raise SystemExit("Central recording requires this agent's configured reflection link into this checkout's global/inbox")
+    return rules, ledger
+
+
+def validate_ledger_outputs(ledger: Path, home: Path, agent: str) -> None:
+    """A directory link is supported; no output file may redirect a record to rules."""
+    protected = [Path(__file__).resolve().parents[5] / "global/AGENTS.md",
+                 home / ("CLAUDE.md" if agent == "claude" else "AGENTS.md"),
+                 Path.home() / ".codex/AGENTS.md", Path.home() / ".claude/CLAUDE.md"]
+    if ledger.is_symlink() and not ledger.exists():
+        raise SystemExit(f"Ledger is unreachable: {ledger}")
+    resolved = ledger.resolve()
+    seen = set()
+    for name in ("incidents.jsonl", "failures.md", "failures-addressed.md", "reflection-log.md"):
+        path = ledger / name
+        actual = path.resolve()
+        if not actual.is_relative_to(resolved) or actual in seen:
+            raise SystemExit(f"Ledger output escapes or aliases another output: {path}")
+        seen.add(actual)
+        for candidate in protected:
+            if actual == candidate.resolve() or (path.exists() and candidate.exists() and path.samefile(candidate)):
+                raise SystemExit(f"Ledger output aliases global instructions: {path}")
 
 
 def incident_record(
@@ -325,6 +372,11 @@ def incident_record(
         "pillar": data["pillar"],
         "scope": scope,
         "reviewer": data["reviewer"],
+        "expected": data.get("expected"),
+        "evidence": data.get("evidence", []),
+        "proposed_global_rule": data.get("proposed_global_rule"),
+        "replaces_global_rule": data.get("replaces_global_rule"),
+        "prevention_status": "untested",
     }
 
 
@@ -345,25 +397,30 @@ def ledger_updates(
 
 **Context:** {context}
 **Failure:** {incident['what']}
+**Expected:** {incident.get('expected') or 'Not supplied'}
+**Evidence:** {json.dumps(incident.get('evidence', []), ensure_ascii=False)}
 **Root cause:** {incident['root_cause']}
 **Impact:** {incident['impact']}
 **Immediate correction:** {incident['correction']}
 **Rule:** WHEN {data['when']} DO {data['do']} PROVE {data['prove']}
 """
-    addressed = f"""## {incident_id} | ADDRESSED | {date}
+    addressed = f"""## {incident_id} | RECORDED | {date}
 
 **What happened:** {incident['what']}
 **Root cause:** {incident['root_cause']}
-**Rule added:** {rule_home} -> \"{data['rule_title']}\"
+**Rule recorded:** {rule_home} -> \"{data['rule_title']}\"
 **Pattern:** {incident['pattern_key']}
 **Escalation:** {incident['level']}
 **Recurrence of:** {recurrence}
 **Reviewed by:** {incident['reviewer']}
-**Status:** MONITORING
+**Status:** PREVENTION UNTESTED
 """
     permanent = f"""## {incident_id} | {incident['ts']} | {incident['level']} | scope={incident['scope']} | reviewed={incident['reviewer']}
 
 **What:** {incident['what']}
+**Project:** {incident.get('project_root') or 'Cross-project lesson'}
+**Expected:** {incident.get('expected') or 'Not supplied'}
+**Evidence:** {json.dumps(incident.get('evidence', []), ensure_ascii=False)}
 **Root cause:** {incident['root_cause']}
 **Impact:** {incident['impact']}
 **Correction:** {incident['correction']}
@@ -402,15 +459,23 @@ def command_install(args: argparse.Namespace) -> int:
 def command_record(args: argparse.Namespace) -> int:
     home = runtime_home(args)
     root = project_root(args.project_root) if args.scope == "project" else None
-    agents_path, ledger = targets(args.scope, home, root, args.agent)
+    agents_path, ledger = targets(args.scope, home, root, args.agent, args.central)
+    validate_ledger_outputs(ledger, home, args.agent)
     data = json.loads(Path(args.input).read_text(encoding="utf-8"))
     validate_input(data)
     incidents = read_incidents(ledger / "incidents.jsonl")
     incident_id = next_id(args.scope, incidents, root)
-    level, recurrence_of, prior_strikes = escalation(incidents, data["pattern_key"], data.get("recurrence_of"))
+    pattern_history = incidents
+    if args.central and args.scope == "project":
+        pattern_history = [item for item in incidents if item.get("scope") == "project" and item.get("project_root") == str(root)]
+    elif args.scope == "global":
+        pattern_history = [item for item in incidents if item.get("scope") != "project"]
+    level, recurrence_of, prior_strikes = escalation(pattern_history, data["pattern_key"], data.get("recurrence_of"))
     timestamp = utc_now().isoformat(timespec="seconds").replace("+00:00", "Z")
     block = rule_block(data, incident_id, level, prior_strikes)
     incident = incident_record(data, incident_id, timestamp, args.scope, level, recurrence_of, args.agent)
+    if root is not None:
+        incident["project_root"] = str(root)
     # Global scope: the full rule goes to the ledger only; the shared rules file stays lean.
     rule_home = agents_path if args.scope == "project" else ledger / "reflection-log.md"
     updates = ledger_updates(ledger, data, incident, block, rule_home)
@@ -438,7 +503,7 @@ def command_record(args: argparse.Namespace) -> int:
             print("SIZE_GATE: COMPRESSION_REQUIRED")
         return 0
     lines, budget = line_budget(agents_path)
-    print(f"LEAN_LINE: add or tighten at most one line in {agents_path}")
+    print(f"GLOBAL_RULES_UNCHANGED: {agents_path}; proposed changes require explicit review/apply")
     if budget is not None:
         print(f"AGENTS_LINES: {lines}/{budget}")
         print(f"LINE_BUDGET: {'EXCEEDED' if lines > budget else 'OK'}")
@@ -448,27 +513,28 @@ def command_record(args: argparse.Namespace) -> int:
 def command_list(args: argparse.Namespace) -> int:
     home = runtime_home(args)
     root = project_root(args.project_root) if args.scope == "project" else None
-    _, ledger = targets(args.scope, home, root, args.agent)
+    _, ledger = targets(args.scope, home, root, args.agent, args.central)
     incidents = read_incidents(ledger / "incidents.jsonl")
+    if args.central and args.scope == "project":
+        incidents = [item for item in incidents if item.get("scope") == "project" and item.get("project_root") == str(root)]
     if not incidents:
         print(f"No {args.scope} {args.agent} reflection incidents.")
         return 0
     groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for incident in incidents:
         groups[str(incident.get("pattern_key", "legacy-unclassified"))].append(incident)
-    print("PATTERN\tLEVEL\tSTRIKES\tNEXT")
+    print("PATTERN\tRECORDS\tHISTORY")
     for key, items in sorted(groups.items()):
-        last = items[-1]
-        level = int(str(last.get("level", "L1")).removeprefix("L"))
-        next_label = LEVEL_LABELS[min(level + 1, 4)]
         chain = " -> ".join(str(item["id"]) for item in items)
-        print(f"{key}\tL{level}\t{chain}\t{next_label}")
+        print(f"{key}\t{len(items)}\t{chain}")
     return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
+    from global_review import add_commands
+    add_commands(subparsers, atomic_write, Path(__file__).resolve().parents[5])
 
     install = subparsers.add_parser("install", help="install global skill discovery")
     install.add_argument("--codex-home")
@@ -482,6 +548,7 @@ def build_parser() -> argparse.ArgumentParser:
     record.add_argument("--agent", choices=("codex", "claude"), default="codex")
     record.add_argument("--agent-home")
     record.add_argument("--project-root")
+    record.add_argument("--central", action="store_true", help="store project incidents in the configured shared agent ledger, updating only project rules")
     record.add_argument("--dry-run", action="store_true")
     record.set_defaults(func=command_record)
 
@@ -491,6 +558,7 @@ def build_parser() -> argparse.ArgumentParser:
     listing.add_argument("--agent", choices=("codex", "claude"), default="codex")
     listing.add_argument("--agent-home")
     listing.add_argument("--project-root")
+    listing.add_argument("--central", action="store_true")
     listing.set_defaults(func=command_list)
     return parser
 
