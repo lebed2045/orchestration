@@ -171,7 +171,7 @@ def _proxy_json(path: str, *, body: dict | None = None, timeout_s: float = 10) -
 def _run_proxy(prompt: str, timeout_s: float, primary_error: str) -> str:
     try:
         response = _proxy_json(
-            f"/v1beta/models/{PROXY_MODEL}:generateContent?key=agy",
+            f"/v1beta/models/{PROXY_MODEL}:generateContent?key=google300-key-agy",
             body={"contents": [{"role": "user", "parts": [{"text": prompt}]}]},
             timeout_s=timeout_s,
         )
